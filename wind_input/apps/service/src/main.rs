@@ -394,6 +394,8 @@ fn main() {
     startup_trace::stage("coordinator-begin");
     let coordinator = wind_coordinator::Coordinator::new(push_server.clone());
     startup_trace::stage("coordinator-done");
+    // 心晴：开 XQP 管道，Hub 连上并下发同意后才开始采集（10 第 2.3 节）。失败只记日志。
+    wind_coordinator::xinqing::start(env!("WIND_APP_VERSION"), pipe_suffix);
     // 语言栏图标：状态推送只在状态**变化**时发生，这里补一次初始发布，否则开机后到
     // 用户第一次切换中英/标点之前，DLL 都读不到共享内存、只能本地绘制（图标正常但
     // 没有标点角标）。非 Windows 桌面形态下是空操作。
@@ -524,6 +526,8 @@ fn main() {
 
         if RESTART.load(Ordering::SeqCst) {
             info!("Restart requested, relaunching service...");
+            // 心晴：告诉 Hub 核心要退出，并让出 XQP 管道名给新实例
+            wind_coordinator::xinqing::shutdown();
             drop(_singleton_guard);
             relaunch_self();
             std::process::exit(0);
@@ -537,6 +541,8 @@ fn main() {
     match restart_rx.recv() {
         Ok(()) => {
             info!("Restart requested, relaunching service...");
+            // 心晴：告诉 Hub 核心要退出，并让出 XQP 管道名给新实例
+            wind_coordinator::xinqing::shutdown();
             // 先释放单例 Named Mutex（关闭句柄），让新实例可获取所有权，避免竞争
             drop(_singleton_guard);
             relaunch_self();

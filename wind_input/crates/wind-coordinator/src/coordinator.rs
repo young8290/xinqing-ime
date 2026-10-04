@@ -3181,6 +3181,8 @@ impl Coordinator {
         } else {
             String::new()
         };
+        // 心晴：输入框类型变化（FR-SEN-03），密码框与禁用框关闭采集闸门
+        crate::xinqing::on_focus(&name, crate::xinqing::scope_of(reason));
         // 抑制：命中密码 InputScope 位 且 策略开关开 → 强制英文。
         //
         // ⚠ 曾经这里还有一条 `&& !disabled`，理由是「disabled 时 DLL 已放行所有键、引擎收不到
@@ -8555,6 +8557,8 @@ impl Coordinator {
         if text.is_empty() {
             return;
         }
+        // 心晴：所有上屏的汇聚点（FR-SEN-02），不受清风统计开关影响
+        crate::xinqing::on_commit(text, keystrokes, candidate_pos, source);
         if let Some(log) = self
             .debug_stat_events
             .lock()
@@ -8610,7 +8614,8 @@ impl Coordinator {
         } else {
             CommitSource::Punctuation
         };
-        self.record_commit(text, 0, -1, source);
+        // 心晴：具体路径已向 Hub 报过这次上屏时不再重报（统计关着时 stat_recorded 不置位）
+        crate::xinqing::fallback_commit(|| self.record_commit(text, 0, -1, source));
     }
 
     /// 从 store 重建短语层（短语类 RPC 改动后调用，使输入期即时生效）。

@@ -2507,8 +2507,10 @@ dependencies = [
  "wind-ui-types",
  "wind-utils",
  "wind-webdata",
+ "wind-xinqing-tap",
  "windows",
  "winreg",
+ "xqp",
 ]
 
 [[package]]

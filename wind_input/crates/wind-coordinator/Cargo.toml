@@ -31,6 +31,8 @@ wind-softkeyboard = { path = "../wind-softkeyboard" }
 wind-reverse = { path = "../wind-reverse" }
 wind-aux-code = { path = "../wind-aux-code" }
 wind-punct = { path = "../wind-punct" }
+# 心晴：核心侧 XQP 服务端（纯 Rust，无 C 依赖，不影响 Android 闭包）
+wind-xinqing-tap = { path = "../wind-xinqing-tap" }
 unicode-segmentation = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
@@ -65,6 +67,8 @@ wind-keys = { path = "../wind-keys" }
 wind-ui-types = { path = "../wind-ui-types" }
 wind-bridge = { path = "../wind-bridge" }
 wind-ipc = { path = "../wind-ipc" }
+# 心晴：tests/xinqing_tap.rs 扮演 Hub 收发 XQP 帧
+xqp = { path = "../../../crates/xqp" }
 
 [lints]
 workspace = true

@@ -74,6 +74,8 @@ pub mod ui_sender;
 pub mod watchdog;
 pub mod web_host;
 pub(crate) mod wildcard;
+// 心晴：采集钩子接 wind-xinqing-tap（产品书 17 第 1.2 节）
+pub mod xinqing;
 
 pub use coordinator::{Coordinator, request_restart, restart_signal, set_settings_url_provider};
 pub use ui_sender::UiSender;

@@ -22,8 +22,8 @@ use std::sync::Arc;
 pub use gate::{AppFilter, BUILTIN_EXCLUDED, DEFAULT_BLOCKLIST};
 pub use recent::RecentText;
 pub use xqp::{
-    CandOp, CompOp, Down, KeyKind, OpenTarget, PauseBy, RewriteOutcome, RewriteSource,
-    RewriteStyle, Scope,
+    CandOp, CompOp, Down, KeyKind, OpenTarget, PIPE_NAME, PIPE_NAME_DEV, PauseBy, RewriteOutcome,
+    RewriteSource, RewriteStyle, Scope,
 };
 
 use gate::Gate;
