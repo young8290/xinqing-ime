@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（D-02 第四部分：解释面板里的“准 / 不准”）
+> 最后更新：2026-10-04（D-03：小精灵 CSS 动画）
 
 ## 1. 任务状态
 
@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | D-01 | 前端骨架：Vite + Vue 3、设计令牌、类型生成封装、多窗口 | 完成 | `xinqing_hub/src/`：`styles/tokens.css`、`api/`、`i18n/`、`windows/shared/mount.ts`、`vite.config.ts` | DS-ICON 要求的 Lucide 图标库还没引入（第一个用到图标的界面再加，记得在“关于”页列许可） |
 | D-02 | 小组件（布局、小精灵、一句话区、底栏、交互、贴边） | **进行中** | 第一部分（窗口行为、右键菜单）：[xinqing-ime#14](https://github.com/young8290/xinqing-ime/pull/14)（已合并）；第二部分（悬停解释）：[xinqing-ime#16](https://github.com/young8290/xinqing-ime/pull/16)；第三部分（全屏自动隐藏、首帧位置）、第四部分（“准 / 不准”）：随后的 PR | 见第 3 节 |
-| D-03 | 小精灵插画与 lottie 动画（6 天气 + 3 一次性动作）、logo | 占位 | `components/WeatherSprite.vue`（静态 SVG，每种天气不同配饰形状）、`components/WeatherStage.vue`（天气切换交叉淡化）；应用图标是几何占位（`tools/gen_hub_icons.py`） | 正式插画、循环动画、“晃一下 / 靠近 / 闭眼”三个一次性动画、logo（DS-BRAND-02：圆润的云后露出半个太阳，16 px 可辨认）都没做；lottie 依赖未引入。16 第 3 节允许 W6 前先用静态 SVG |
+| D-03 | 小精灵插画与 lottie 动画（6 天气 + 3 一次性动作）、logo | **进行中** | `components/WeatherSprite.vue`：SVG + CSS 动画——每种天气 2–4 秒循环（呼吸、眨眼，加上光芒转、云飘、雨落、闪电每 3 秒闪一下、月亮浮、风线摆），一次性动作 `play('shake' \| 'approach')`，“闭眼”即 `eyesClosed`；`WeatherStage.vue` 交叉淡化。应用图标是几何占位（`tools/gen_hub_icons.py`，形状已按 DS-BRAND-02） | 正式插画与 lottie 素材（要设计稿，Claude 做不了插画定稿）；“晃一下 / 靠近”还没接上触发源：打错字要 B / A 给瞬时事件，暖心话要 C-04 的事件；logo 的 SVG 版（引导页、关于页用）未做 |
 | D-04 | 卡片层（日程 / 待办 / 提醒 / 自评 / 小结 / 周信等 8 类） | 未开始 | — | 07 第 2 节的“卡片层”窗口还没在 `tauri.conf.json` 登记；卡片的数据来自 B、C 的事件，事件形状要先定（改 `bindings.ts` 走契约 PR） |
 | D-05 | 首次引导与同意 | 大部分完成 | `windows/onboarding/`（FR-ONB-01～04，有测试） | FR-ONB-05（AI 地址与密钥、“测试连接”、小组件位置、关怀频率、晴晴打招呼）未做，“测试连接”依赖 C 的网关（xinqing-ime#7） |
 | D-06 | 对话窗口（流式、标识、求助卡片 UI） | 占位 | `windows/chat/`（只有常驻 AI 说明） | 全部；依赖 C 的对话命令与流式事件 |
@@ -94,7 +94,7 @@ xinqing_hub/
 
 ## 6. 下一步（按优先级）
 
-1. D-03：天气循环动画与三个一次性动画（先用 CSS / SVG 做 2–4 秒循环，lottie 素材到位后替换）、logo 与应用图标；
+1. D-03 剩余：logo 的 SVG 版与“关于”页；“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；
 2. D-05：FR-ONB-05，等 C 的网关 PR（xinqing-ime#7）合并后接“测试连接”；
 3. D-08：和 C 约定键注册表的 schema 命令（契约 PR），再写表单生成器；
 4. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
@@ -107,3 +107,4 @@ xinqing_hub/
 | 2026-10-04 | D-02 第二部分：悬停状态行显示解释（接 B 的 `state_explain`） |
 | 2026-10-04 | D-02 第三部分：前台全屏时自动隐藏小组件、首帧不闪 |
 | 2026-10-04 | D-02 第四部分：解释面板里的“准 / 不准”（接 B 的 `submit_feedback`） |
+| 2026-10-04 | D-03：小精灵 SVG + CSS 循环动画与一次性动作（lottie 前的占位） |
