@@ -37,6 +37,11 @@ pub enum ToolbarItem {
     SoftKeyboard,
     /// 设置（齿轮图标，点击弹主菜单）。
     Settings,
+    /// 心晴：天气按钮（FR-ENT-02），图标随 Hub 的 `mood` 换。
+    ///
+    /// 心晴功能关着或没装心晴组件时 [`ToolbarState::xinqing`] 为 `None`，这一格不画。
+    /// 不会自锁：重新开启心晴的入口在主菜单。
+    Xinqing,
     /// 自定义按钮（`[[ui.toolbar.buttons]]` 的一项，经 `items` 里的 `custom:<id>` 引用）。
     ///
     /// 携带 `label` 而不是让 UI 侧再去查一份按钮表：渲染端读不到配置，下发的这一份
@@ -58,15 +63,45 @@ pub enum ToolbarItem {
 /// 与 `wind_config::TOOLBAR_ITEM_KEYS` 逐项对应，但**刻意各存一份**：那份是配置层的键名
 /// （字符串），这份是协议层的项（枚举）。让 wind-ui-types 去依赖 wind-config 只为共享
 /// 几个常量，会把配置 crate 拖进 headless / Android 的依赖图里。
-pub const DEFAULT_TOOLBAR_ITEMS: [ToolbarItem; 7] = [
+pub const DEFAULT_TOOLBAR_ITEMS: [ToolbarItem; 8] = [
     ToolbarItem::Mode,
     ToolbarItem::Punct,
     ToolbarItem::FullWidth,
     ToolbarItem::S2t,
     ToolbarItem::T2s,
     ToolbarItem::SoftKeyboard,
+    // 心晴：天气按钮排在齿轮前
+    ToolbarItem::Xinqing,
     ToolbarItem::Settings,
 ];
+
+/// 心晴：天气按钮的图标（产品书 04 第 3.1 节“情绪天气”）。
+///
+/// 只有会持续一段时间的状态；“打错字”是瞬时动画，“未知”保持上一状态，都由 Hub 处理。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum XinqingWeather {
+    /// 晴：流畅。还没收到过 `mood` 时也显示它。
+    #[default]
+    Clear,
+    /// 多云：犹豫。
+    Cloudy,
+    /// 小雨：低落。
+    Rain,
+    /// 雷阵雨：烦躁。
+    Storm,
+    /// 夜：疲劳。
+    Night,
+}
+
+/// 心晴：天气按钮这一格的状态（FR-ENT-02）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct XinqingCell {
+    pub weather: XinqingWeather,
+    /// 有未读暖心话：图标右上角小圆点（FR-CMF-04）。
+    pub dot: bool,
+    /// 淡显：Hub 没连上，或正在无痕（暂停感知）。
+    pub dim: bool,
+}
 
 /// 工具栏状态（由协调器推送）
 ///
@@ -106,6 +141,8 @@ pub struct ToolbarState {
     /// StatusUpdate 下发写入 TSF 的 `_inputTypeLabel`（持久值）。把这种随焦点来去的
     /// 临时态烧进标签，离开时就得指望下一次状态推送把它改回来，漏一次图标即长期卡 "英"。
     pub input_blocked: bool,
+    /// 心晴：天气按钮；`None` = 心晴功能关着或没装心晴组件，这一格不画。
+    pub xinqing: Option<XinqingCell>,
 }
 
 impl Default for ToolbarState {
@@ -121,6 +158,7 @@ impl Default for ToolbarState {
             s2t_shown: false,
             soft_keyboard_on: false,
             input_blocked: false,
+            xinqing: None,
         }
     }
 }

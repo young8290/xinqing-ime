@@ -1,0 +1,12 @@
+<svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <!-- 心晴：天气按钮“晴”（流畅） -->
+  <circle cx="512" cy="512" r="215"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(0 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(45 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(90 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(135 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(180 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(225 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(270 512 512)"/>
+  <rect x="477" y="40" width="70" height="170" rx="35" transform="rotate(315 512 512)"/>
+</svg>

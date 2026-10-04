@@ -5567,13 +5567,15 @@ pub fn is_wide_char(c: char) -> bool {
 ///
 /// 与 [`STATUS_ITEM_KEYS`] 的差别：那份的顺序无语义（状态气泡的渲染顺序固定在代码里），
 /// 这份的顺序**就是**渲染顺序。
-pub const TOOLBAR_ITEM_KEYS: [&str; 7] = [
+pub const TOOLBAR_ITEM_KEYS: [&str; 8] = [
     "mode",
     "punct",
     "full_width",
     "s2t",
     "t2s",
     "soft_keyboard",
+    // 心晴：天气按钮（FR-ENT-02）
+    "xinqing",
     "settings",
 ];
 
@@ -5591,13 +5593,17 @@ pub const TOOLBAR_ITEM_KEYS: [&str; 7] = [
 ///
 /// **为什么 `t2s` 也关着**：同 `s2t` 的理由，且更甚——繁入简出是给「词库是繁体、要出
 /// 简体」那一小撮人的，它连右键菜单都不做。这一格是它唯一的鼠标入口，勾上即可用。
-const DEFAULT_TOOLBAR_SHOWN: [&str; 7] = [
+///
+/// 心晴：**`xinqing` 开着**——天气按钮是心晴在输入法里最主要的入口（FR-ENT-02）；
+/// 心晴功能关着时这一格本来就不画，不必再靠 `-` 前缀藏起来。
+const DEFAULT_TOOLBAR_SHOWN: [&str; 8] = [
     "mode",
     "punct",
     "full_width",
     "-s2t",
     "-t2s",
     "soft_keyboard",
+    "xinqing",
     "settings",
 ];
 

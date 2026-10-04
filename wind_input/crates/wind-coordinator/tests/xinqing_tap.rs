@@ -1,5 +1,5 @@
 //! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04～A-07，产品书 18 的 FR-SEN-01～06、
-//! FR-OPS-03、FR-IME-02、FR-ENT-01/03）。
+//! FR-OPS-03、FR-IME-02、FR-ENT-01/02/03）。
 //!
 //! 装一个本机 TCP 的 Tap，测试扮演 Hub 握手并下发 `cfg{collect:true}`，再经 `MessageHandler`
 //! 驱动 headless 协调器，断言 Hub 收到的上行事件。Tap 是进程级单例，所以整个文件只有一个测试。
@@ -20,7 +20,7 @@ use wind_coordinator::Coordinator;
 use wind_coordinator::xinqing::{self, HubView};
 use wind_ipc::protocol::EVENT_KEY_DOWN;
 use wind_ipc::protocol::{MOD_ALT, MOD_CTRL};
-use wind_ui_types::{MenuCmd, UiCommand};
+use wind_ui_types::{MenuCmd, ToolbarAction, UiCommand, XinqingCell, XinqingWeather};
 use wind_xinqing_tap::guard::{GuardState, HubGuard, Launcher};
 use wind_xinqing_tap::{
     ByeReason, CompOp, Down, Endpoint, KeyKind, MoodState, OpenTarget, PauseBy, Scope, Tap,
@@ -177,6 +177,7 @@ fn coordinator_events_reach_hub() {
     )
     .unwrap();
     assert!(xinqing::install_guard(Arc::clone(&guard)));
+    xinqing::watch_link(&guard);
     wait_until(|| launches.load(Ordering::SeqCst) == 1);
     assert_eq!(guard.state(), GuardState::Launching);
 
@@ -237,6 +238,47 @@ fn coordinator_events_reach_hub() {
     coord.debug_run_menu_cmd(MenuCmd::XinqingOpen(1));
     match hub.recv() {
         Up::Open { target, .. } => assert_eq!(target, OpenTarget::Dashboard),
+        other => panic!("{other:?}"),
+    }
+
+    // 工具栏天气按钮（FR-ENT-02）：多云 + 小圆点；“未知”保持上一状态
+    let cell = |weather, dot, dim| Some(XinqingCell { weather, dot, dim });
+    assert_eq!(
+        coord.debug_xinqing_toolbar_cell(),
+        cell(XinqingWeather::Cloudy, true, false)
+    );
+    hub.send(&Down::Mood {
+        state: MoodState::Unknown,
+        offline: true,
+    });
+    wait_until(|| xinqing::hub_view().offline);
+    assert_eq!(
+        coord.debug_xinqing_toolbar_cell(),
+        cell(XinqingWeather::Cloudy, true, false)
+    );
+    hub.send(&Down::Mood {
+        state: MoodState::Low,
+        offline: false,
+    });
+    hub.send(&Down::Badge { on: false });
+    wait_until(|| !xinqing::hub_view().badge);
+    assert_eq!(
+        coord.debug_xinqing_toolbar_cell(),
+        cell(XinqingWeather::Rain, false, false)
+    );
+    // 右键：暂停感知、情绪看板，末尾是回主菜单的“更多…”；左键：打开对话
+    assert_eq!(
+        coord.debug_toolbar_cell_menu_labels(ToolbarAction::Xinqing),
+        Some(vec![
+            "暂停感知".to_string(),
+            "情绪看板".to_string(),
+            String::new(),
+            "更多…".to_string(),
+        ])
+    );
+    coord.debug_toolbar_click(ToolbarAction::Xinqing);
+    match hub.recv() {
+        Up::Open { target, .. } => assert_eq!(target, OpenTarget::Chat),
         other => panic!("{other:?}"),
     }
 
@@ -385,6 +427,11 @@ fn coordinator_events_reach_hub() {
         }
     ));
     assert!(tap.paused());
+    // 无痕时天气按钮淡显
+    assert_eq!(
+        coord.debug_xinqing_toolbar_cell(),
+        cell(XinqingWeather::Rain, false, true)
+    );
     coord.handle_key_event_policed(&key(VK_A));
     coord.handle_key_event_policed(&key(VK_ESCAPE));
 
@@ -409,6 +456,11 @@ fn coordinator_events_reach_hub() {
     });
     wait_until(|| guard.state() == GuardState::HubQuit);
     assert_eq!(xinqing::hub_view(), HubView::default());
+    // Hub 没连着：天气按钮淡显，回到默认的晴；左键改为重新拉起
+    assert_eq!(
+        coord.debug_xinqing_toolbar_cell(),
+        cell(XinqingWeather::Clear, false, true)
+    );
     std::thread::sleep(Duration::from_millis(600));
     assert_eq!(launches.load(Ordering::SeqCst), 1, "Hub 自己退出不重拉");
     let labels = coord.debug_main_menu_labels();
@@ -446,6 +498,11 @@ fn coordinator_events_reach_hub() {
     let labels = coord.debug_main_menu_labels();
     assert!(labels.iter().any(|l| l == "开启心晴功能"), "{labels:?}");
     assert!(!labels.iter().any(|l| l == "和晴晴聊聊"));
+    assert_eq!(
+        coord.debug_xinqing_toolbar_cell(),
+        None,
+        "心晴关着，天气按钮不画"
+    );
     std::thread::sleep(Duration::from_millis(600));
     assert_eq!(launches.load(Ordering::SeqCst), 2, "关掉后不拉起");
 

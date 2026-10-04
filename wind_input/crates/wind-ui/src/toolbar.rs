@@ -23,7 +23,7 @@ use wind_theme::schema::Dim;
 
 /// 状态数据类型已下沉至 wind-ui-types；再导出保持 `wind_ui::toolbar::ToolbarState`
 /// 原路径成立。
-pub use wind_ui_types::{ToolbarItem, ToolbarState};
+pub use wind_ui_types::{ToolbarItem, ToolbarState, XinqingWeather};
 
 /// 一个单元格：文本 + 高亮(激活态，如中文/简繁开) + 淡显(次要状态，如半角/简) + 点击动作
 struct Cell {
@@ -50,6 +50,23 @@ const SETTING_SVG: &str = include_str!("../res/icons/setting.svg");
 /// 标点 / 全半角那样两态两张图——那两格切换的是**输出形态**，两个状态各有自己的样子；
 /// 软键盘格切换的是**面板开合**，图标始终代表同一个东西。
 const SOFT_KEYBOARD_SVG: &str = include_str!("../res/icons/soft_keyboard.svg");
+// 心晴：天气按钮的五张图（产品书 04 第 3.1 节），同样只作蒙版、按主题着色。
+const WEATHER_CLEAR_SVG: &str = include_str!("../res/icons/weather_clear.svg");
+const WEATHER_CLOUDY_SVG: &str = include_str!("../res/icons/weather_cloudy.svg");
+const WEATHER_RAIN_SVG: &str = include_str!("../res/icons/weather_rain.svg");
+const WEATHER_STORM_SVG: &str = include_str!("../res/icons/weather_storm.svg");
+const WEATHER_NIGHT_SVG: &str = include_str!("../res/icons/weather_night.svg");
+
+/// 心晴：天气 → 图标。
+fn weather_svg(w: XinqingWeather) -> &'static str {
+    match w {
+        XinqingWeather::Clear => WEATHER_CLEAR_SVG,
+        XinqingWeather::Cloudy => WEATHER_CLOUDY_SVG,
+        XinqingWeather::Rain => WEATHER_RAIN_SVG,
+        XinqingWeather::Storm => WEATHER_STORM_SVG,
+        XinqingWeather::Night => WEATHER_NIGHT_SVG,
+    }
+}
 
 /// 工具栏窗口
 pub struct Toolbar {
@@ -407,6 +424,9 @@ impl Toolbar {
 /// 于是当下所有内置项都无条件产格，只剩「全是 `Custom` 且全被 `enabled = false` 关掉」
 /// 这一条路能走到空——协调器侧那种情况已在 `push_custom_item` 里跳过，故理论上到不了。
 ///
+/// 心晴：天气格（`Xinqing`）是另一条——心晴功能关着时它不产格，`items = ["xinqing"]`
+/// 再关掉心晴就会走到空。回落的全集里仍有恒在的内置项，下面的论证照样成立。
+///
 /// 兜底照留：**闸门要装在产出最终结果的那一环**，而不是靠上游当下恰好不会送空进来。
 /// 一旦日后又给某个内置项加回运行时条件（那正是上一轮发生过的事），这里不必跟着改。
 ///
@@ -424,6 +444,7 @@ fn expand_cells(layout: &[ToolbarItem], state: &ToolbarState) -> Vec<Cell> {
     // ⚠️ **这一步不可能再空，不必加第二层兜底**：全集里的内置项在 `expand_cells_raw`
     // 里全是无条件 push。若日后给某个内置项加运行时条件，这条论证就失效了——
     // 那时要么改这里，要么保证至少一项恒存。
+    // 心晴：天气格就是这样一项（心晴关着不产格），其余内置项仍恒存，故不必改这里。
     expand_cells_raw(&wind_ui_types::DEFAULT_TOOLBAR_ITEMS, state)
 }
 
@@ -510,6 +531,18 @@ fn expand_cells_raw(layout: &[ToolbarItem], state: &ToolbarState) -> Vec<Cell> {
                     dim: false,
                     action: ToolbarAction::OpenSettings,
                 }),
+                // 心晴：天气格。心晴功能关着时不画（重新开启的入口在主菜单，不会自锁）；
+                // 图标与小圆点在 render 里按 `state.xinqing` 画，这里只记淡显。
+                ToolbarItem::Xinqing => {
+                    if let Some(x) = state.xinqing {
+                        cells.push(Cell {
+                            text: String::new(),
+                            highlight: false,
+                            dim: x.dim,
+                            action: ToolbarAction::Xinqing,
+                        });
+                    }
+                }
                 // 自定义按钮：label 已由协调器按显示宽度截好（本 crate 读不到配置，
                 // 也就不该在这里判断"多宽算宽"）。无状态可言，故不高亮不淡显。
                 ToolbarItem::Custom { index, label, .. } => cells.push(Cell {
@@ -708,6 +741,22 @@ impl Toolbar {
                     size,
                     self.settings_icon,
                 );
+            } else if c.action == ToolbarAction::Xinqing {
+                // 心晴：天气图标；未读暖心话在右上角加小圆点（FR-ENT-02、FR-CMF-04）
+                let x = state.xinqing.unwrap_or_default();
+                let size = font_h * 0.80;
+                let dx = r.x + (r.w - size) * 0.5;
+                let dy = r.y + (r.h - size) * 0.5;
+                let tint = if c.dim { dim_color(self.fg) } else { self.fg };
+                let buf = self.window.buffer_mut();
+                crate::view::draw_svg_icon(buf, w, h, weather_svg(x.weather), dx, dy, size, tint);
+                if x.dot {
+                    let rad = (size * 0.18).max(2.0 * s);
+                    let (cx, cy) = (dx + size - rad * 0.5, dy + rad * 0.5);
+                    // 先用底色描一圈，圆点压在图标上也看得清
+                    crate::view::fill_circle(buf, w, h, cx, cy, rad + 1.0 * s, self.bg);
+                    crate::view::fill_circle(buf, w, h, cx, cy, rad, self.hl_bg);
+                }
             } else if matches!(
                 c.action,
                 ToolbarAction::TogglePunct
@@ -1740,7 +1789,8 @@ mod tests {
         cells.iter().map(|c| c.action).collect()
     }
 
-    /// 默认项序列展开出全部七格，且**与任何运行时状态无关**。
+    /// 默认项序列展开出全部七格（心晴天气格另测，见 `xinqing_cell_follows_feature_switch`），
+    /// 且**与简繁这类运行时状态无关**。
     #[test]
     fn default_layout_expands_to_every_item() {
         let expected = vec![
@@ -1804,6 +1854,58 @@ mod tests {
         }
     }
 
+    /// 心晴：天气格只在心晴功能开着（`state.xinqing` 有值）时出现，位置在齿轮前，
+    /// 淡显跟着 `dim` 走。其余格不受影响。
+    #[test]
+    fn xinqing_cell_follows_feature_switch() {
+        use wind_ui_types::XinqingCell;
+        let all = &wind_ui_types::DEFAULT_TOOLBAR_ITEMS;
+        let off = actions(&expand_cells(all, &tb_state(false)));
+        assert!(!off.contains(&ToolbarAction::Xinqing));
+        for dim in [false, true] {
+            let st = ToolbarState {
+                xinqing: Some(XinqingCell {
+                    weather: XinqingWeather::Rain,
+                    dot: true,
+                    dim,
+                }),
+                ..tb_state(false)
+            };
+            let cells = expand_cells(all, &st);
+            let acts = actions(&cells);
+            let i = acts
+                .iter()
+                .position(|a| *a == ToolbarAction::Xinqing)
+                .unwrap();
+            assert_eq!(acts[i + 1], ToolbarAction::OpenSettings);
+            assert_eq!(cells[i].dim, dim);
+            let mut rest = acts.clone();
+            rest.remove(i);
+            assert_eq!(rest, off, "其余格不受心晴开关影响");
+        }
+    }
+
+    /// 心晴：五种天气各有一张图，互不相同。
+    #[test]
+    fn every_weather_has_its_own_icon() {
+        let all = [
+            XinqingWeather::Clear,
+            XinqingWeather::Cloudy,
+            XinqingWeather::Rain,
+            XinqingWeather::Storm,
+            XinqingWeather::Night,
+        ];
+        for (i, a) in all.iter().enumerate() {
+            for b in &all[i + 1..] {
+                assert_ne!(
+                    weather_svg(*a),
+                    weather_svg(*b),
+                    "{a:?} 与 {b:?} 共用了图标"
+                );
+            }
+        }
+    }
+
     /// 顺序照配置走，没配的项不出现。
     #[test]
     fn expand_follows_configured_order_and_subset() {
@@ -1855,6 +1957,11 @@ mod tests {
             ("width_half", WIDTH_HALF_SVG),
             ("setting", SETTING_SVG),
             ("soft_keyboard", SOFT_KEYBOARD_SVG),
+            ("weather_clear", WEATHER_CLEAR_SVG),
+            ("weather_cloudy", WEATHER_CLOUDY_SVG),
+            ("weather_rain", WEATHER_RAIN_SVG),
+            ("weather_storm", WEATHER_STORM_SVG),
+            ("weather_night", WEATHER_NIGHT_SVG),
         ] {
             let pm = crate::image_cache::rasterize_svg_str_tinted(svg, size, size, [0, 0, 0, 255])
                 .unwrap_or_else(|| panic!("{name}.svg 解析失败——渲染时会静默画不出来"));

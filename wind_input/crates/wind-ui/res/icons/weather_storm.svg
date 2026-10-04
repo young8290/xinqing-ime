@@ -1,0 +1,7 @@
+<svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <!-- 心晴：天气按钮“雷阵雨”（烦躁） -->
+  <circle cx="380" cy="380" r="170"/>
+  <circle cx="610" cy="310" r="230"/>
+  <rect x="100" y="380" width="820" height="260" rx="130"/>
+  <path d="M560 600 L380 820 L500 820 L430 1000 L680 740 L555 740 L640 600 Z"/>
+</svg>

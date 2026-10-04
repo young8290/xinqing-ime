@@ -186,7 +186,11 @@ pub struct HubGuard {
     /// 用户点了“点击重试”：`hub_autostart` 关着时也拉起一次。
     kick: AtomicBool,
     stop: AtomicBool,
+    /// 连接接上或断开时的回调（协调器据此刷新工具栏天气按钮，A-07）。
+    on_link: Mutex<Option<LinkWatch>>,
 }
+
+type LinkWatch = Box<dyn Fn(bool) + Send>;
 
 impl HubGuard {
     /// 起线程。`linked` 一般是 `Tap::is_linked`。
@@ -200,15 +204,23 @@ impl HubGuard {
             wanted: AtomicBool::new(wanted),
             kick: AtomicBool::new(false),
             stop: AtomicBool::new(false),
+            on_link: Mutex::new(None),
         });
         let me = Arc::clone(&g);
         std::thread::Builder::new()
             .name("xq-hub-guard".into())
             .spawn(move || {
+                let mut was_linked = false;
                 while !me.stop.load(Ordering::SeqCst) {
                     let wanted = me.wanted.load(Ordering::SeqCst);
                     let kick = me.kick.swap(false, Ordering::SeqCst);
                     let is_linked = linked();
+                    if is_linked != was_linked {
+                        was_linked = is_linked;
+                        if let Some(f) = lock(&me.on_link).as_ref() {
+                            f(is_linked);
+                        }
+                    }
                     let go = lock(&me.machine).step(Instant::now(), wanted, is_linked)
                         // 不自动拉起时，用户手动重试也要拉一次（状态机仍停在 Idle）
                         || (kick && !wanted && !is_linked);
@@ -223,6 +235,11 @@ impl HubGuard {
                 }
             })?;
         Ok(g)
+    }
+
+    /// 连接接上或断开时回调（在守护线程里，最多晚一个 [`TICK`]）。只留最后一次设置的。
+    pub fn on_link_change(&self, f: Box<dyn Fn(bool) + Send>) {
+        *lock(&self.on_link) = Some(f);
     }
 
     /// `xinqing.enabled ∧ xinqing.hub_autostart`，配置热重载时更新。
@@ -418,6 +435,35 @@ mod tests {
         std::thread::sleep(TICK * 3);
         assert_eq!(*lock(&n), 1, "重试只拉一次");
         assert_eq!(g.state(), Idle);
+        g.stop();
+    }
+
+    /// 连接接上、断开各回调一次；不自动拉起时也照常回调（工具栏天气按钮要跟着变）。
+    #[test]
+    fn link_changes_are_reported() {
+        let linked = Arc::new(AtomicBool::new(false));
+        let l2 = Arc::clone(&linked);
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let s2 = Arc::clone(&seen);
+        let g = HubGuard::start(
+            Box::new(move || l2.load(Ordering::SeqCst)),
+            Box::new(Count(Arc::new(Mutex::new(0)))),
+            false,
+        )
+        .unwrap();
+        g.on_link_change(Box::new(move |on| lock(&s2).push(on)));
+        let wait_for = |n: usize| {
+            let deadline = Instant::now() + Duration::from_secs(3);
+            while lock(&seen).len() < n && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        };
+        linked.store(true, Ordering::SeqCst);
+        wait_for(1);
+        linked.store(false, Ordering::SeqCst);
+        wait_for(2);
+        std::thread::sleep(TICK * 2);
+        assert_eq!(*lock(&seen), vec![true, false]);
         g.stop();
     }
 
