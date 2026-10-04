@@ -14,7 +14,7 @@
 | B-04 | 个人基线、冷启动默认值 | 部分完成 | `domain/features/baseline.rs`、`hub_templates/baseline_default.toml` | 每天 04:00 重算、写读 `baseline` 表（D-09）、设置里“重置基线”都没做；外壳目前每次启动都用出厂默认值（`src-tauri/src/sensing.rs`）；默认值 `calibrated = false`，等 B-02 录制后校准 |
 | B-05 | 本地规则 R1–R6 | 完成（R1b 除外） | `domain/rules.rs`、`domain/features/typo.rs` | R1b 需要核心在 `comp` 里加 `invalid` 字段（ADR 0008 第 5 条），待 A 决定 |
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
-| B-07 | 状态解释、反馈校准、自评天气（后端） | **进行中** | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：本 PR | 见第 3 节 |
+| B-07 | 状态解释、反馈校准、自评天气（后端） | **进行中** | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12) | 见第 3 节 |
 | B-08 | 使用时长与四类休息提醒等（P0） | 未开始 | — | 计划 W7–W8 |
 | B-09 | 作息洞察统计 | 未开始 | — | 计划 W9 |
 | B-10 | 演示模式（clock 替换、演示数据库） | 未开始 | `infra/clock.rs` 已有 `Clock` / `ManualClock` 可用 | 计划 W10 |
@@ -44,9 +44,9 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 部分 | 需求 | 状态 |
 |---|---|---|
 | 状态解释生成 `explain::build`、按模板拼句 `ExplainCopy::render` | FR-STA-09 | 完成（#11） |
-| 实时路径：状态切换时生成并缓存，经 `SensePort::explained` 交给外壳；`Sense::explanation()` | FR-STA-09 | 完成（#11）；外壳侧缓存在 `AppState::explanation`（本 PR） |
-| `state_explain` 命令（10 第 5.1 节）：不带参数返回当前解释 | FR-STA-09 | 完成（本 PR），绑定 `commands.stateExplain(null)`，等 D 接到小组件悬停 |
-| 看板时间线历史状态点的解释 `state_explain(mood_state_id)` | FR-STA-09 | 完成（本 PR）：`Db::explain_mood_state` 用 `mood_state.window_id` 找回窗口和上一个窗口重新生成，不另存解释、不加迁移。参数是 `u32`（specta 不导出 i64） |
+| 实时路径：状态切换时生成并缓存，经 `SensePort::explained` 交给外壳；`Sense::explanation()` | FR-STA-09 | 完成（#11）；外壳侧缓存在 `AppState::explanation`（#12） |
+| `state_explain` 命令（10 第 5.1 节）：不带参数返回当前解释 | FR-STA-09 | 完成（#12），绑定 `commands.stateExplain(null)`，等 D 接到小组件悬停 |
+| 看板时间线历史状态点的解释 `state_explain(mood_state_id)` | FR-STA-09 | 完成（#12）：`Db::explain_mood_state` 用 `mood_state.window_id` 找回窗口和上一个窗口重新生成，不另存解释、不加迁移。参数是 `u32`（specta 不导出 i64） |
 | “准 / 不准”反馈：`submit_feedback` → `feedback` 表 → `Fusion::record_unfit` | FR-STA-07 | 融合侧的阈值上调已有；命令、写库、重启后恢复上调状态都没做 |
 | 自评天气：`self_report_set` / `self_report_list`、60 分钟显示覆盖、`self_report:changed`、与自动判断差异连续 3 次时调阈值 | FR-STA-10 | 未做。17 第 2.4 节：自评不经过 Fusion，由 `self_report` 服务直接设置显示覆盖；负面自评的晴晴回应是 C 的暖心话，需要和 C 约定接口 |
 
