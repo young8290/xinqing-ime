@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import type { StatusSnapshot } from '@/api'
+import type { Explanation, StatusSnapshot } from '@/api'
 import { t } from '@/i18n'
 
 type Item = { id: string; text: string; action: () => void }
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   setAlwaysOnTop: vi.fn(),
   popup: vi.fn(),
   menuItems: [] as Item[],
+  stateExplain: vi.fn(),
 }))
 const ok = (data: unknown = null) => Promise.resolve({ status: 'ok', data })
 
@@ -23,6 +24,7 @@ vi.mock('@/api', async (orig) => ({
     settingsGet: (key: string) => ok(key === 'widget.topmost'),
     openWindow: mocks.openWindow,
     pauseSet: mocks.pauseSet,
+    stateExplain: mocks.stateExplain,
   },
   events: {
     statusChanged: { listen: async () => () => {} },
@@ -73,6 +75,7 @@ describe('小组件', () => {
       f.mockReset().mockReturnValue(ok())
     mocks.setAlwaysOnTop.mockReset().mockResolvedValue(undefined)
     mocks.menuItems = []
+    mocks.stateExplain.mockReset().mockReturnValue(ok(null))
   })
 
   it('Shift+F10 在左上角弹出右键菜单（FR-WGT-06）', async () => {
@@ -125,5 +128,105 @@ describe('小组件', () => {
     await w.find('main').trigger('keydown', { key: 'Enter' })
     await flushPromises()
     expect(w.find('.message').text()).toBe(t('error.generic'))
+  })
+})
+
+describe('悬停状态行显示解释（FR-WGT-06、FR-STA-09）', () => {
+  const explanation: Explanation = {
+    state: 'hesitant',
+    prob: 85,
+    signals: [
+      { kind: 'pause', value: 2 },
+      { kind: 'abandon', value: null },
+    ],
+    source: 'jev',
+    cold_start: false,
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.snapshot = {
+      state: 'hesitant',
+      weather: 'cloudy',
+      prob: 0.85,
+      offline: false,
+      paused: false,
+      connected: true,
+      baseline_progress: 100,
+    }
+    mocks.setAlwaysOnTop.mockReset().mockResolvedValue(undefined)
+    mocks.stateExplain.mockReset().mockReturnValue(ok(explanation))
+  })
+
+  async function focusStatus() {
+    const w = await mountWidget()
+    await w.find('.status').trigger('focus')
+    await flushPromises()
+    return w
+  }
+
+  it('键盘聚焦状态行：取当前解释，每条说明一行，来源弱化', async () => {
+    const w = await focusStatus()
+    expect(mocks.stateExplain).toHaveBeenCalledWith(null)
+    const panel = w.find('[role=tooltip]')
+    expect(panel.find('.header').text()).toBe('看起来有点犹豫（可能性 85%）')
+    expect(panel.findAll('li').map((li) => li.text())).toEqual(['句子中间停顿了 2 次', '有一段话打了又删'])
+    expect(panel.find('.footer').text()).toBe('AI 根据打字节奏判断，可能不准')
+    expect(w.find('.status').attributes('aria-describedby')).toBe(panel.attributes('id'))
+  })
+
+  it('状态行本身不显示百分比（DS-COPY-02）', async () => {
+    const w = await mountWidget()
+    expect(w.find('.status').text()).not.toContain('85')
+  })
+
+  it('Esc 和失焦都会收起', async () => {
+    const w = await focusStatus()
+    await w.find('main').trigger('keydown', { key: 'Escape' })
+    expect(w.find('[role=tooltip]').exists()).toBe(false)
+    await w.find('.status').trigger('focus')
+    await flushPromises()
+    await w.find('.status').trigger('blur')
+    expect(w.find('[role=tooltip]').exists()).toBe(false)
+  })
+
+  it('鼠标停留 300 ms 才打开，移开后收起', async () => {
+    vi.useFakeTimers()
+    try {
+      const w = await mountWidget()
+      await w.find('.status').trigger('pointerenter')
+      await vi.advanceTimersByTimeAsync(200)
+      expect(w.find('[role=tooltip]').exists()).toBe(false)
+      await vi.advanceTimersByTimeAsync(150)
+      await flushPromises()
+      expect(w.find('[role=tooltip]').exists()).toBe(true)
+      await w.find('.status').trigger('pointerleave')
+      await vi.advanceTimersByTimeAsync(200)
+      expect(w.find('[role=tooltip]').exists()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('后端的解释属于别的状态（刚切换）：不用它，只显示标题', async () => {
+    mocks.stateExplain.mockReturnValue(ok({ ...explanation, state: 'low' }))
+    const w = await focusStatus()
+    expect(w.find('[role=tooltip] .header').text()).toBe('看起来有点犹豫（可能性 85%）')
+    expect(w.find('[role=tooltip] li').exists()).toBe(false)
+  })
+
+  it('还没有解释、也没有可能性：不弹面板', async () => {
+    mocks.snapshot.prob = null
+    mocks.stateExplain.mockReturnValue(ok(null))
+    const w = await focusStatus()
+    expect(w.find('[role=tooltip]').exists()).toBe(false)
+  })
+
+  it('暂停感知时没有解释，也不去取', async () => {
+    mocks.snapshot.paused = true
+    const w = await focusStatus()
+    expect(w.find('[role=tooltip]').exists()).toBe(false)
+    expect(mocks.stateExplain).not.toHaveBeenCalled()
   })
 })
