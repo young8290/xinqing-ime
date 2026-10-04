@@ -1,0 +1,12 @@
+# typer
+- 职责：按节奏脚本经 `SendInput` 发键，按键照常经过 TSF 和心晴输入法；记录每一键的实际发送时刻。用于 TC-PERF-01（按键处理耗时）和 TC-STA-04（R1 打错字的精确率、召回率），见产品书 12 第 2 节、17 第 4 节。不进安装包。
+- 脚本：每行 `<距上一键的毫秒数> <键> [标注]`，`#` 起是注释。键有 `a`–`z`、`0`–`9`、`space`、`bs`、`enter`、`esc`、`tab`、`comma`、`period`。标注只给评测对答案用：`typo` 表示这一键应触发 R1，`bs_same` / `bs_slow` / `bs_late` / `bs_far` 是四种不该触发 R1 的退格修改（重打同一字母、退格超过 600 ms、改对超过 800 ms、打成不相邻的键）。
+- 用法：
+  - `typer gen perf [--keys 10000] [--rate 8] [--seed 1] [-o perf.txt]`：TC-PERF-01 匀速长打，拼音音节加空格上屏循环。
+  - `typer gen r1 [--words 200] [--typos 40] [--backspaces 20] [--seed 1] [-o r1.txt]`：TC-STA-04，按种子选定注入位置；同一种子总是生成同一份脚本。
+  - `typer check <脚本>`：校验格式、统计标注，并用离线复刻的 R1 规则核对：标了 `typo` 的键必须恰好是 R1 会命中的键，否则报错。复刻的规则与 `xinqing_hub/core/src/domain/features/typo.rs` 一致，那边改了这里要跟着改（`src/r1.rs`）。
+  - `typer run <脚本> [--speed 1] [--countdown 5] [--log out.csv] [--dry-run]`（只在 Windows 上发键）：倒数结束时的前台窗口就是目标窗口；中途前台窗口一变就停下，免得打进别的窗口。日志列为 `idx,key,label,planned_ms,actual_us,lag_us`，结束时在标准错误输出发送时刻相对计划的延迟 p50 / p99 / 最大值。
+- 测试步骤：
+  - TC-PERF-01：在记事本里切到心晴输入法，分别在心晴开、关（托盘“暂停心晴”）下各跑一次 `typer run perf.txt --log on.csv`、`--log off.csv`，两次用同一份脚本。核心侧还没有记录每键处理耗时（P99 增量、钩子耗时）的埋点，要先补上才能出 TC-PERF-01 的数字，见 `docs/xinqing/handover/A-输入法.md`。
+  - TC-STA-04：开着 Hub 跑 `typer run r1.txt --log r1.csv`，用 Hub 记录的 `typo` 事件时刻与日志里标 `typo` 的行对齐（容差几十毫秒）算精确率、召回率。必须原速（`--speed 1`），倍速下标注不再成立。
+- 注意：目标窗口是管理员权限时，typer 也要用管理员身份运行（UIPI 会挡住低权限进程发的键）。`SendInput` 发的是虚拟键加扫描码，不是 Unicode 字符，所以会经过输入法。
