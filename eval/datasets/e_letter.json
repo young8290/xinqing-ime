@@ -1,0 +1,594 @@
+{
+  "dataset": "E-LETTER",
+  "version": "v1-draft",
+  "note": "全部为虚构数据；daily 为便于手算核对的明细，送入 P-LETTER 时可只传汇总字段；有效天数 = 活跃输入 ≥ 30 分钟的天数；avg_daily_typing_min 按有效天数平均；停止打字时间统计区间为当天 18:00 至次日 06:00，晚于 00:00 记为熬夜；晴天值增量 = 完成休息 + 饮水（每天最多 4 次）+ 23:30 前停止打字天数×2 + 完成待办",
+  "items": [
+    {
+      "id": "L1",
+      "name": "高压周",
+      "description": "考试与作业集中、烦躁和疲劳占比高、休息完成率低",
+      "week_start": "2026-10-05",
+      "week_end": "2026-10-11",
+      "valid_days": 7,
+      "state_distribution_pct": {
+        "fluent": 38,
+        "hesitant": 17,
+        "low": 12,
+        "agitated": 18,
+        "tired": 15
+      },
+      "low_tired_peak_slot": "22:00–24:00",
+      "low_tired_peak_weekday": "周三",
+      "avg_daily_typing_min": 308,
+      "rest_reminders": 61,
+      "rest_done": 29,
+      "rest_completion_pct": 48,
+      "water_count": 14,
+      "schedules_done": 11,
+      "todos_done": 12,
+      "routine": {
+        "avg_stop_typing_time": "23:59",
+        "late_night_days": 3,
+        "days_with_stop_time": 7
+      },
+      "sunny_points": {
+        "start": 40,
+        "end": 99,
+        "change": 59,
+        "breakdown": {
+          "rest_done": 29,
+          "water": 14,
+          "stop_before_2330_days_x2": 4,
+          "todos_done": 12
+        }
+      },
+      "self_report_count": 2,
+      "daily": [
+        {
+          "date": "2026-10-05",
+          "weekday": "周一",
+          "typing_min": 312,
+          "stop_typing_time": "23:50",
+          "rest_reminders": 9,
+          "rest_done": 5,
+          "water": 2,
+          "schedules_done": 2,
+          "todos_done": 3
+        },
+        {
+          "date": "2026-10-06",
+          "weekday": "周二",
+          "typing_min": 355,
+          "stop_typing_time": "00:20",
+          "rest_reminders": 10,
+          "rest_done": 4,
+          "water": 1,
+          "schedules_done": 3,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-07",
+          "weekday": "周三",
+          "typing_min": 401,
+          "stop_typing_time": "01:10",
+          "rest_reminders": 11,
+          "rest_done": 3,
+          "water": 1,
+          "schedules_done": 2,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-08",
+          "weekday": "周四",
+          "typing_min": 368,
+          "stop_typing_time": "00:45",
+          "rest_reminders": 10,
+          "rest_done": 4,
+          "water": 2,
+          "schedules_done": 1,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-09",
+          "weekday": "周五",
+          "typing_min": 290,
+          "stop_typing_time": "23:40",
+          "rest_reminders": 8,
+          "rest_done": 5,
+          "water": 2,
+          "schedules_done": 2,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-10",
+          "weekday": "周六",
+          "typing_min": 240,
+          "stop_typing_time": "23:15",
+          "rest_reminders": 7,
+          "rest_done": 4,
+          "water": 3,
+          "schedules_done": 0,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-11",
+          "weekday": "周日",
+          "typing_min": 188,
+          "stop_typing_time": "22:50",
+          "rest_reminders": 6,
+          "rest_done": 4,
+          "water": 3,
+          "schedules_done": 1,
+          "todos_done": 2
+        }
+      ],
+      "expected": {
+        "generate": true,
+        "check": "信中数字须能在本 JSON 中找到（V9）；应先肯定辛苦，可温和提到周三晚上/停止打字时间偏晚；禁止“睡眠质量”“失眠”及诊断用语；只给一个小建议"
+      }
+    },
+    {
+      "id": "L2",
+      "name": "平稳周",
+      "description": "各项指标平稳，作为对照组",
+      "week_start": "2026-10-05",
+      "week_end": "2026-10-11",
+      "valid_days": 7,
+      "state_distribution_pct": {
+        "fluent": 72,
+        "hesitant": 10,
+        "low": 6,
+        "agitated": 5,
+        "tired": 7
+      },
+      "low_tired_peak_slot": "15:00–17:00",
+      "low_tired_peak_weekday": "周四",
+      "avg_daily_typing_min": 137,
+      "rest_reminders": 32,
+      "rest_done": 28,
+      "rest_completion_pct": 88,
+      "water_count": 22,
+      "schedules_done": 6,
+      "todos_done": 9,
+      "routine": {
+        "avg_stop_typing_time": "22:35",
+        "late_night_days": 0,
+        "days_with_stop_time": 7
+      },
+      "sunny_points": {
+        "start": 120,
+        "end": 193,
+        "change": 73,
+        "breakdown": {
+          "rest_done": 28,
+          "water": 22,
+          "stop_before_2330_days_x2": 14,
+          "todos_done": 9
+        }
+      },
+      "self_report_count": 4,
+      "daily": [
+        {
+          "date": "2026-10-05",
+          "weekday": "周一",
+          "typing_min": 165,
+          "stop_typing_time": "22:40",
+          "rest_reminders": 5,
+          "rest_done": 4,
+          "water": 3,
+          "schedules_done": 1,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-06",
+          "weekday": "周二",
+          "typing_min": 180,
+          "stop_typing_time": "22:55",
+          "rest_reminders": 6,
+          "rest_done": 5,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-07",
+          "weekday": "周三",
+          "typing_min": 150,
+          "stop_typing_time": "22:30",
+          "rest_reminders": 5,
+          "rest_done": 4,
+          "water": 3,
+          "schedules_done": 2,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-08",
+          "weekday": "周四",
+          "typing_min": 172,
+          "stop_typing_time": "23:05",
+          "rest_reminders": 6,
+          "rest_done": 5,
+          "water": 3,
+          "schedules_done": 0,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-09",
+          "weekday": "周五",
+          "typing_min": 140,
+          "stop_typing_time": "22:20",
+          "rest_reminders": 5,
+          "rest_done": 5,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-10",
+          "weekday": "周六",
+          "typing_min": 60,
+          "stop_typing_time": "21:50",
+          "rest_reminders": 2,
+          "rest_done": 2,
+          "water": 2,
+          "schedules_done": 0,
+          "todos_done": 0
+        },
+        {
+          "date": "2026-10-11",
+          "weekday": "周日",
+          "typing_min": 95,
+          "stop_typing_time": "22:45",
+          "rest_reminders": 3,
+          "rest_done": 3,
+          "water": 3,
+          "schedules_done": 1,
+          "todos_done": 1
+        }
+      ],
+      "expected": {
+        "generate": true,
+        "check": "V9 事实一致；语气平和，不制造焦虑，不硬找问题"
+      }
+    },
+    {
+      "id": "L3",
+      "name": "熬夜周",
+      "description": "7 天全部在 00:00 后停止打字，疲劳占比高",
+      "week_start": "2026-10-05",
+      "week_end": "2026-10-11",
+      "valid_days": 7,
+      "state_distribution_pct": {
+        "fluent": 45,
+        "hesitant": 12,
+        "low": 13,
+        "agitated": 8,
+        "tired": 22
+      },
+      "low_tired_peak_slot": "00:00–02:00",
+      "low_tired_peak_weekday": "周五",
+      "avg_daily_typing_min": 206,
+      "rest_reminders": 42,
+      "rest_done": 20,
+      "rest_completion_pct": 48,
+      "water_count": 11,
+      "schedules_done": 4,
+      "todos_done": 5,
+      "routine": {
+        "avg_stop_typing_time": "01:12",
+        "late_night_days": 7,
+        "days_with_stop_time": 7
+      },
+      "sunny_points": {
+        "start": 60,
+        "end": 96,
+        "change": 36,
+        "breakdown": {
+          "rest_done": 20,
+          "water": 11,
+          "stop_before_2330_days_x2": 0,
+          "todos_done": 5
+        }
+      },
+      "self_report_count": 1,
+      "daily": [
+        {
+          "date": "2026-10-05",
+          "weekday": "周一",
+          "typing_min": 210,
+          "stop_typing_time": "00:35",
+          "rest_reminders": 6,
+          "rest_done": 3,
+          "water": 2,
+          "schedules_done": 1,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-06",
+          "weekday": "周二",
+          "typing_min": 230,
+          "stop_typing_time": "01:20",
+          "rest_reminders": 7,
+          "rest_done": 3,
+          "water": 1,
+          "schedules_done": 0,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-07",
+          "weekday": "周三",
+          "typing_min": 195,
+          "stop_typing_time": "00:50",
+          "rest_reminders": 6,
+          "rest_done": 4,
+          "water": 2,
+          "schedules_done": 1,
+          "todos_done": 0
+        },
+        {
+          "date": "2026-10-08",
+          "weekday": "周四",
+          "typing_min": 260,
+          "stop_typing_time": "01:45",
+          "rest_reminders": 7,
+          "rest_done": 2,
+          "water": 1,
+          "schedules_done": 1,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-09",
+          "weekday": "周五",
+          "typing_min": 280,
+          "stop_typing_time": "02:10",
+          "rest_reminders": 8,
+          "rest_done": 3,
+          "water": 1,
+          "schedules_done": 0,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-10",
+          "weekday": "周六",
+          "typing_min": 150,
+          "stop_typing_time": "01:30",
+          "rest_reminders": 4,
+          "rest_done": 2,
+          "water": 2,
+          "schedules_done": 0,
+          "todos_done": 0
+        },
+        {
+          "date": "2026-10-11",
+          "weekday": "周日",
+          "typing_min": 120,
+          "stop_typing_time": "00:15",
+          "rest_reminders": 4,
+          "rest_done": 3,
+          "water": 2,
+          "schedules_done": 1,
+          "todos_done": 1
+        }
+      ],
+      "expected": {
+        "generate": true,
+        "check": "作息只能说“停止打字的时间”，并可注明只统计这台电脑；禁止“睡眠质量”“失眠”“熬夜伤身”式说教；建议只给一个（如早一点停止打字）"
+      }
+    },
+    {
+      "id": "L4",
+      "name": "数据很少的周",
+      "description": "只有 4 天打开过电脑，其中 2 天活跃 ≥ 30 分钟",
+      "week_start": "2026-10-05",
+      "week_end": "2026-10-11",
+      "valid_days": 2,
+      "state_distribution_pct": {
+        "fluent": 60,
+        "hesitant": 15,
+        "low": 10,
+        "agitated": 5,
+        "tired": 10
+      },
+      "low_tired_peak_slot": "20:00–22:00",
+      "low_tired_peak_weekday": "周二",
+      "avg_daily_typing_min": 64,
+      "rest_reminders": 4,
+      "rest_done": 3,
+      "rest_completion_pct": 75,
+      "water_count": 3,
+      "schedules_done": 0,
+      "todos_done": 1,
+      "routine": {
+        "avg_stop_typing_time": "21:50",
+        "late_night_days": 0,
+        "days_with_stop_time": 2
+      },
+      "sunny_points": {
+        "start": 200,
+        "end": 211,
+        "change": 11,
+        "breakdown": {
+          "rest_done": 3,
+          "water": 3,
+          "stop_before_2330_days_x2": 4,
+          "todos_done": 1
+        }
+      },
+      "self_report_count": 0,
+      "daily": [
+        {
+          "date": "2026-10-06",
+          "weekday": "周二",
+          "typing_min": 85,
+          "stop_typing_time": "22:10",
+          "rest_reminders": 3,
+          "rest_done": 2,
+          "water": 1,
+          "schedules_done": 0,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-08",
+          "weekday": "周四",
+          "typing_min": 42,
+          "stop_typing_time": "21:30",
+          "rest_reminders": 1,
+          "rest_done": 1,
+          "water": 1,
+          "schedules_done": 0,
+          "todos_done": 0
+        },
+        {
+          "date": "2026-10-10",
+          "weekday": "周六",
+          "typing_min": 18,
+          "stop_typing_time": null,
+          "rest_reminders": 0,
+          "rest_done": 0,
+          "water": 0,
+          "schedules_done": 0,
+          "todos_done": 0
+        },
+        {
+          "date": "2026-10-11",
+          "weekday": "周日",
+          "typing_min": 12,
+          "stop_typing_time": null,
+          "rest_reminders": 0,
+          "rest_done": 0,
+          "water": 1,
+          "schedules_done": 0,
+          "todos_done": 0
+        }
+      ],
+      "expected": {
+        "generate": false,
+        "check": "有效天数 2 < 3，按 FR-REV-02 本周不生成周信，也不显示信件卡片"
+      }
+    },
+    {
+      "id": "L5",
+      "name": "全是晴天的周",
+      "description": "边界用例：全部窗口为 fluent，休息全部完成，饮水每天接近上限",
+      "week_start": "2026-10-05",
+      "week_end": "2026-10-11",
+      "valid_days": 7,
+      "state_distribution_pct": {
+        "fluent": 100,
+        "hesitant": 0,
+        "low": 0,
+        "agitated": 0,
+        "tired": 0
+      },
+      "low_tired_peak_slot": null,
+      "low_tired_peak_weekday": null,
+      "avg_daily_typing_min": 117,
+      "rest_reminders": 27,
+      "rest_done": 27,
+      "rest_completion_pct": 100,
+      "water_count": 27,
+      "schedules_done": 7,
+      "todos_done": 10,
+      "routine": {
+        "avg_stop_typing_time": "22:08",
+        "late_night_days": 0,
+        "days_with_stop_time": 7
+      },
+      "sunny_points": {
+        "start": 80,
+        "end": 158,
+        "change": 78,
+        "breakdown": {
+          "rest_done": 27,
+          "water": 27,
+          "stop_before_2330_days_x2": 14,
+          "todos_done": 10
+        }
+      },
+      "self_report_count": 6,
+      "daily": [
+        {
+          "date": "2026-10-05",
+          "weekday": "周一",
+          "typing_min": 130,
+          "stop_typing_time": "22:10",
+          "rest_reminders": 4,
+          "rest_done": 4,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-06",
+          "weekday": "周二",
+          "typing_min": 145,
+          "stop_typing_time": "22:25",
+          "rest_reminders": 5,
+          "rest_done": 5,
+          "water": 4,
+          "schedules_done": 2,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-07",
+          "weekday": "周三",
+          "typing_min": 120,
+          "stop_typing_time": "21:55",
+          "rest_reminders": 4,
+          "rest_done": 4,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-08",
+          "weekday": "周四",
+          "typing_min": 150,
+          "stop_typing_time": "22:30",
+          "rest_reminders": 5,
+          "rest_done": 5,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-09",
+          "weekday": "周五",
+          "typing_min": 110,
+          "stop_typing_time": "22:00",
+          "rest_reminders": 4,
+          "rest_done": 4,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 2
+        },
+        {
+          "date": "2026-10-10",
+          "weekday": "周六",
+          "typing_min": 75,
+          "stop_typing_time": "21:40",
+          "rest_reminders": 2,
+          "rest_done": 2,
+          "water": 3,
+          "schedules_done": 0,
+          "todos_done": 1
+        },
+        {
+          "date": "2026-10-11",
+          "weekday": "周日",
+          "typing_min": 90,
+          "stop_typing_time": "22:15",
+          "rest_reminders": 3,
+          "rest_done": 3,
+          "water": 4,
+          "schedules_done": 1,
+          "todos_done": 1
+        }
+      ],
+      "expected": {
+        "generate": true,
+        "check": "低落/疲劳时段为 null，信中不得编造“某天晚上好像很累”之类的观察；V9 事实一致；不出现“连续 x 天”“打卡”类表述（DS-COPY-10）"
+      }
+    }
+  ]
+}

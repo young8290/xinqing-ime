@@ -1,0 +1,83 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "心晴",
+  "mainBinaryName": "xinqing_hub",
+  "version": "0.1.0",
+  "identifier": "com.xinqing.hub",
+  "build": {
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+    },
+    "windows": [
+      {
+        "label": "widget",
+        "url": "widget/index.html",
+        "title": "心晴",
+        "width": 320,
+        "height": 168,
+        "resizable": false,
+        "maximizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "create": false
+      },
+      {
+        "label": "chat",
+        "url": "chat/index.html",
+        "title": "和晴晴聊聊",
+        "width": 400,
+        "height": 640,
+        "minWidth": 360,
+        "minHeight": 480,
+        "create": false
+      },
+      {
+        "label": "dashboard",
+        "url": "dashboard/index.html",
+        "title": "情绪看板",
+        "width": 960,
+        "height": 640,
+        "minWidth": 800,
+        "minHeight": 560,
+        "create": false
+      },
+      {
+        "label": "settings",
+        "url": "settings/index.html",
+        "title": "心晴设置",
+        "width": 880,
+        "height": 620,
+        "minWidth": 760,
+        "minHeight": 520,
+        "create": false
+      },
+      {
+        "label": "onboarding",
+        "url": "onboarding/index.html",
+        "title": "欢迎使用心晴",
+        "width": 560,
+        "height": 640,
+        "resizable": false,
+        "maximizable": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "create": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico", "icons/icon.png"]
+  }
+}

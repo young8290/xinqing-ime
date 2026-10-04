@@ -1,0 +1,15 @@
+[package]
+name = "xq-sim"
+description = "XQP 事件模拟器：扮演核心服务回放 JSONL 脚本（产品书 07 FR-DMO-01、14 第 5 节）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+xqp = { path = "../../crates/xqp" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tokio = { workspace = true, features = ["fs"] }

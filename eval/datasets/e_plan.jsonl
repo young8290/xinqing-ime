@@ -1,0 +1,120 @@
+{"id": "P001", "text": "好的，周五下午三点在实验楼开组会", "label": 1, "l1_expected": true, "category": "with_location", "note": "06 FR-SCH-04 验收样例"}
+{"id": "P002", "text": "明天上午十点组会，别迟到", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P003", "text": "后天下午两点有个线上面试", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P004", "text": "大后天早上八点半体测集合", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P005", "text": "下周二和室友去看电影", "label": 1, "l1_expected": true, "category": "relative_date", "note": "06 验收样例：全天，时刻待补充"}
+{"id": "P006", "text": "周日晚上七点班会", "label": 1, "l1_expected": true, "category": "relative_date", "note": "无修饰周日，今天周六 -> 明天"}
+{"id": "P007", "text": "下下周三英语四级模拟考试", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P008", "text": "这周日下午四点去图书馆还书", "label": 1, "l1_expected": true, "category": "relative_date", "note": "这周日=本自然周周日，未过"}
+{"id": "P009", "text": "这周五交报告", "label": 1, "l1_expected": true, "category": "relative_date", "note": "06 验收样例：本周五已过，标注时间可能已过；无截止关键词故 is_deadline=false"}
+{"id": "P010", "text": "已经定了，明天下午三点开会", "label": 1, "l1_expected": true, "category": "relative_date", "note": "含排除词“已经”但有未来日期词，L1 不排除"}
+{"id": "P011", "text": "星期四下午三点半开题汇报", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P012", "text": "礼拜一第一节课改成8点上课了", "label": 1, "l1_expected": true, "category": "relative_date", "note": "FR-SCH-04 补充规则 3：“8点”无修饰按 08:00"}
+{"id": "P013", "text": "下周三上午九点答辩，紧张死了", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P014", "text": "本周日上午十点社团招新集合", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P015", "text": "周六晚上七点和高中同学聚餐", "label": 1, "l1_expected": true, "category": "relative_date", "note": "今天就是周六且19:00未过 -> 今天"}
+{"id": "P016", "text": "周六上午九点去驾校练车", "label": 1, "l1_expected": true, "category": "relative_date", "note": "今天周六但09:00已过（当前10:00）-> 下周六"}
+{"id": "P017", "text": "下下周五晚上八点乐队演出", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P018", "text": "后天中午12点跟导师吃饭", "label": 1, "l1_expected": true, "category": "relative_date", "note": "中午12点 -> 12:00"}
+{"id": "P019", "text": "就这么定了，周二晚上八点视频面试", "label": 1, "l1_expected": true, "category": "relative_date", "note": ""}
+{"id": "P020", "text": "明早7点出发去机场", "label": 1, "l1_expected": true, "category": "relative_date", "note": "FR-SCH-04 补充规则 7：行程目的地不作为地点"}
+{"id": "P021", "text": "10月15号上午9点半面试", "label": 1, "l1_expected": true, "category": "absolute_date", "note": "06 验收样例"}
+{"id": "P022", "text": "10.20下午两点到四点期中考试", "label": 1, "l1_expected": true, "category": "absolute_date", "note": "含结束时刻"}
+{"id": "P023", "text": "11月2日上午十点去银行办卡", "label": 1, "l1_expected": true, "category": "absolute_date", "note": ""}
+{"id": "P024", "text": "10月12号晚上8点有个宣讲会", "label": 1, "l1_expected": true, "category": "absolute_date", "note": ""}
+{"id": "P025", "text": "18号上午十点校医院体检", "label": 1, "l1_expected": true, "category": "absolute_date", "note": "只有“号”默认本月"}
+{"id": "P026", "text": "10/25早上七点半出发去秋游", "label": 1, "l1_expected": true, "category": "absolute_date", "note": "“10/25”命中绝对日期类（[./-] 含“/”）"}
+{"id": "P027", "text": "11.11晚上九点直播答疑", "label": 1, "l1_expected": true, "category": "absolute_date", "note": ""}
+{"id": "P028", "text": "1月8号期末考试，还有三个月", "label": 1, "l1_expected": true, "category": "absolute_date", "note": "FR-SCH-04 补充规则 1：今年已过的月日取明年 -> 2027-01-08"}
+{"id": "P029", "text": "10月9日下午三点在302开班会", "label": 1, "l1_expected": true, "category": "absolute_date", "note": ""}
+{"id": "P030", "text": "10-28的毛概课调到下午两点上", "label": 1, "l1_expected": true, "category": "absolute_date", "note": "调课，取调整后时刻"}
+{"id": "P031", "text": "数据库大作业DDL是下周日晚上11点", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P032", "text": "奖学金申请材料周三之前交到学院办公室", "label": 1, "l1_expected": true, "category": "deadline", "note": "截止无时刻 -> 23:59"}
+{"id": "P033", "text": "数模比赛报名明天截止", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P034", "text": "毕设开题报告10月20号前提交", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P035", "text": "实验报告这周日中午12点前提交", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P036", "text": "论文初稿下周五之前交给导师", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P037", "text": "ddl大后天，PPT还一页没动", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P038", "text": "志愿者报名后天下午五点截止", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P039", "text": "四六级报名截止到10.15", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P040", "text": "政治课论文截止下下周一", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P041", "text": "课设deadline是周四下午6点，得抓紧了", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P042", "text": "下周一早上8点前把请假条交给辅导员", "label": 1, "l1_expected": true, "category": "deadline", "note": "FR-SCH-04 补充规则 4：“X点前…交”属于截止类"}
+{"id": "P043", "text": "明晚八点前交数据库作业", "label": 1, "l1_expected": true, "category": "deadline", "note": "06 验收样例"}
+{"id": "P044", "text": "医保缴费截止到11月30号", "label": 1, "l1_expected": true, "category": "deadline", "note": ""}
+{"id": "P045", "text": "今晚聚餐，地点还没定", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": "只说“今晚”无时刻 -> 全天+待补充"}
+{"id": "P046", "text": "明天晚上跟社团的人吃饭", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": ""}
+{"id": "P047", "text": "后天下午去营业厅办手机卡", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": "FR-SCH-04 补充规则 2：只说“下午”同“晚上”，时刻为空"}
+{"id": "P048", "text": "周一上午有实验课", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": "FR-SCH-04 补充规则 2：只说“上午”同“晚上”"}
+{"id": "P049", "text": "下周四晚上部门开会", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": ""}
+{"id": "P050", "text": "明早去体检，记得空腹", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": "“明早”无具体时刻"}
+{"id": "P051", "text": "这周日晚上回学校", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": ""}
+{"id": "P052", "text": "周三中午和学姐吃饭聊保研", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": "FR-SCH-04 补充规则 2：只说“中午”同“晚上”"}
+{"id": "P053", "text": "下午三点去找导师签字", "label": 1, "l1_expected": true, "category": "fuzzy_time", "note": "V1.2 起“签字”是事件动词，靠“时刻+签字”命中 L1；有时刻无日期 -> 今天"}
+{"id": "P054", "text": "明天下午两点在图书馆三楼讨论室开小组会", "label": 1, "l1_expected": true, "category": "with_location", "note": ""}
+{"id": "P055", "text": "周四晚上七点半在老地方火锅店聚餐", "label": 1, "l1_expected": true, "category": "with_location", "note": ""}
+{"id": "P056", "text": "下周二上午十点在行政楼205面试", "label": 1, "l1_expected": true, "category": "with_location", "note": ""}
+{"id": "P057", "text": "明天下午四点一刻在星巴克见面聊项目", "label": 1, "l1_expected": true, "category": "with_location", "note": "一刻 -> :15"}
+{"id": "P058", "text": "下周五下午三点三刻在报告厅听讲座", "label": 1, "l1_expected": true, "category": "with_location", "note": "三刻 -> :45"}
+{"id": "P059", "text": "早上8点在南门集合去春游", "label": 1, "l1_expected": true, "category": "with_location", "note": "有时刻无日期，08:00 已过 -> 顺延到明天"}
+{"id": "P060", "text": "晚上七点体育馆集合打羽毛球", "label": 1, "l1_expected": true, "category": "with_location", "note": "有时刻无日期，未过 -> 今天"}
+{"id": "P061", "text": "昨天开过会了，今天不用去", "label": 0, "l1_expected": true, "category": "past", "note": ""}
+{"id": "P062", "text": "组会昨天已经开完了", "label": 0, "l1_expected": false, "category": "past", "note": ""}
+{"id": "P063", "text": "上周五的考试成绩出来了", "label": 0, "l1_expected": false, "category": "past", "note": "V1.2：被“上”修饰的星期不算相对日期，“上周”触发排除，L1 挡住"}
+{"id": "P064", "text": "刚才面试完，感觉还行", "label": 0, "l1_expected": false, "category": "past", "note": ""}
+{"id": "P065", "text": "作业已经交了，终于解放", "label": 0, "l1_expected": false, "category": "past", "note": ""}
+{"id": "P066", "text": "前天晚上和室友聚餐吃撑了", "label": 0, "l1_expected": false, "category": "past", "note": ""}
+{"id": "P067", "text": "那时候每天早上八点就要上课", "label": 0, "l1_expected": false, "category": "past", "note": ""}
+{"id": "P068", "text": "上周三下午的组会我请假了", "label": 0, "l1_expected": false, "category": "past", "note": "V1.2：同“上周五”，L1 挡住"}
+{"id": "P069", "text": "昨天下午三点的面试被鸽了", "label": 0, "l1_expected": false, "category": "past", "note": ""}
+{"id": "P070", "text": "10月1号那天我们去爬山了", "label": 0, "l1_expected": true, "category": "past", "note": "过去的绝对日期且无排除词，L1 放行"}
+{"id": "P071", "text": "要是明天下雨就不去爬山了", "label": 0, "l1_expected": true, "category": "hypothetical", "note": ""}
+{"id": "P072", "text": "如果周五不用上课该多好", "label": 0, "l1_expected": true, "category": "hypothetical", "note": ""}
+{"id": "P073", "text": "假如下周考试延期，我就能多复习几天", "label": 0, "l1_expected": false, "category": "hypothetical", "note": "“下周”后无星期几、无时刻，L1 不放行（本身也是负例）"}
+{"id": "P074", "text": "万一明天面试迟到怎么办", "label": 0, "l1_expected": true, "category": "hypothetical", "note": "无问号，不触发问句排除"}
+{"id": "P075", "text": "要是能把DDL往后推一周就好了", "label": 0, "l1_expected": true, "category": "hypothetical", "note": ""}
+{"id": "P076", "text": "早知道今天下午没课我就不起这么早了", "label": 0, "l1_expected": true, "category": "hypothetical", "note": ""}
+{"id": "P077", "text": "如果晚上八点还没结束我就先走了", "label": 0, "l1_expected": false, "category": "hypothetical", "note": ""}
+{"id": "P078", "text": "等哪天有空了再一起吃饭吧", "label": 0, "l1_expected": false, "category": "hypothetical", "note": ""}
+{"id": "P079", "text": "要是周末能睡到中午就好了", "label": 0, "l1_expected": false, "category": "hypothetical", "note": ""}
+{"id": "P080", "text": "明天几点开会？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P081", "text": "周五有空吗？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P082", "text": "下周几考试来着？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P083", "text": "你后天下午有课吗", "label": 0, "l1_expected": true, "category": "question", "note": "无问号的问句，L1 放行"}
+{"id": "P084", "text": "10月15号是周几？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P085", "text": "DDL是什么时候啊？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P086", "text": "晚上一起吃饭不？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P087", "text": "明天要带身份证吗", "label": 0, "l1_expected": true, "category": "question", "note": "无问号的问句，L1 放行"}
+{"id": "P088", "text": "周三的课在哪个教室？", "label": 0, "l1_expected": false, "category": "question", "note": ""}
+{"id": "P089", "text": "我三点了还没睡", "label": 0, "l1_expected": false, "category": "current_moment", "note": "06 验收样例：不触发"}
+{"id": "P090", "text": "现在已经下午四点了，一天又过去了", "label": 0, "l1_expected": false, "category": "current_moment", "note": ""}
+{"id": "P091", "text": "今天好累啊，不想动", "label": 0, "l1_expected": true, "category": "current_moment", "note": ""}
+{"id": "P092", "text": "都晚上十一点了还在改代码", "label": 0, "l1_expected": false, "category": "current_moment", "note": ""}
+{"id": "P093", "text": "今天天气真好", "label": 0, "l1_expected": true, "category": "current_moment", "note": ""}
+{"id": "P094", "text": "正在上课，晚点回你", "label": 0, "l1_expected": false, "category": "current_moment", "note": ""}
+{"id": "P095", "text": "今晚月亮好圆", "label": 0, "l1_expected": true, "category": "current_moment", "note": ""}
+{"id": "P096", "text": "我现在在实验楼，快冻死了", "label": 0, "l1_expected": false, "category": "current_moment", "note": ""}
+{"id": "P097", "text": "早上六点就醒了，再也睡不着", "label": 0, "l1_expected": false, "category": "current_moment", "note": ""}
+{"id": "P098", "text": "室友说她明天要去面试", "label": 0, "l1_expected": true, "category": "quote", "note": "他人的日程"}
+{"id": "P099", "text": "听说隔壁班周四考试", "label": 0, "l1_expected": true, "category": "quote", "note": ""}
+{"id": "P100", "text": "老师说期中考试可能取消", "label": 0, "l1_expected": false, "category": "quote", "note": ""}
+{"id": "P101", "text": "他说周五下午三点开会，但我不用去", "label": 0, "l1_expected": true, "category": "quote", "note": ""}
+{"id": "P102", "text": "朋友圈看到有人说后天放假", "label": 0, "l1_expected": true, "category": "quote", "note": ""}
+{"id": "P103", "text": "新闻说明天降温十度", "label": 0, "l1_expected": true, "category": "quote", "note": ""}
+{"id": "P104", "text": "学长说他们组下周二答辩", "label": 0, "l1_expected": true, "category": "quote", "note": ""}
+{"id": "P105", "text": "辅导员通知别的年级周日补课，跟我们没关系", "label": 0, "l1_expected": true, "category": "quote", "note": ""}
+{"id": "P106", "text": "小王说他晚上八点的火车", "label": 0, "l1_expected": false, "category": "quote", "note": ""}
+{"id": "P107", "text": "明天又是周一，好烦", "label": 0, "l1_expected": true, "category": "time_no_event", "note": ""}
+{"id": "P108", "text": "今天才周三吗，好漫长", "label": 0, "l1_expected": true, "category": "time_no_event", "note": "无问号"}
+{"id": "P109", "text": "下周一就是十月中旬了", "label": 0, "l1_expected": true, "category": "time_no_event", "note": ""}
+{"id": "P110", "text": "10.1到10.7都放假真爽", "label": 0, "l1_expected": true, "category": "time_no_event", "note": ""}
+{"id": "P111", "text": "后天就降温了", "label": 0, "l1_expected": true, "category": "time_no_event", "note": ""}
+{"id": "P112", "text": "星期天总是过得特别快", "label": 0, "l1_expected": true, "category": "time_no_event", "note": ""}
+{"id": "P113", "text": "每周三下午都没课", "label": 0, "l1_expected": true, "category": "time_no_event", "note": "周期性陈述，非具体事件"}
+{"id": "P114", "text": "今天没什么安排，躺平", "label": 0, "l1_expected": true, "category": "time_no_event", "note": ""}
+{"id": "P115", "text": "绩点3.5还能保研吗", "label": 0, "l1_expected": true, "category": "other", "note": "V1.2 仍放行：“3.5”符合月 1–12、日 1–31 且前后不紧邻数字或小数点，靠 L2 挡"}
+{"id": "P116", "text": "我住在3号楼", "label": 0, "l1_expected": false, "category": "other", "note": "V1.2：“号”后接“楼”不算，L1 挡住"}
+{"id": "P117", "text": "明天见", "label": 0, "l1_expected": false, "category": "other", "note": "长度 3 < 4，L1 跳过"}
+{"id": "P118", "text": "这个版本是1.2的，记得更新", "label": 0, "l1_expected": true, "category": "other", "note": "V1.2 仍放行：“1.2”可解释为 1月2日，靠 L2 挡"}
+{"id": "P119", "text": "价格是19.9，挺便宜", "label": 0, "l1_expected": false, "category": "other", "note": "V1.2：月份 19 不合法，L1 挡住"}
+{"id": "P120", "text": "交了个新朋友，聊到凌晨两点", "label": 0, "l1_expected": true, "category": "other", "note": "“交”+“凌晨/两点”命中时刻+事件动词"}

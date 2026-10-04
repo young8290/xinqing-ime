@@ -1,0 +1,44 @@
+# 心晴 · 日程与待办本地初筛规则（FR-SCH-01、FR-SCH-04、FR-SCH-12，V1.2）
+# 正则使用 Rust regex 语法；Rust regex 不支持后顾断言，(?<!…) 一类条件由代码在匹配后检查，
+# 这里用 not_preceded_by / not_followed_by 字段表达。
+# 版本：v1（初稿，2026-10-04），状态：待评审；修改后重跑 E-PLAN、E-TODO 评测
+
+version = 1
+min_len = 4
+max_len = 120
+split = "[。！？；!?;\\n]"
+daily_cap = 50
+
+[date_relative]
+pattern = "今天|明天|后天|大后天|今晚|明早|明晚|(这|本|下下|下)?(周|星期|礼拜)[一二三四五六日天]"
+not_preceded_by = ["上", "上个"]
+
+[date_absolute]
+pattern = "\\d{1,2}月\\d{1,2}[日号]|(1[0-2]|0?[1-9])[./-]([12]\\d|3[01]|0?[1-9])|\\d{1,2}号"
+not_preceded_by_char = "[0-9.]"
+not_followed_by_char = "[0-9.%]"
+hao_not_followed_by = ["楼", "线", "门", "床", "位"]
+
+[time_of_day]
+pattern = "[上下]午|早上|中午|晚上|凌晨|\\d{1,2}[点:：]\\d{0,2}|[一二两三四五六七八九十]{1,3}点[半钟]?"
+
+[deadline]
+pattern = "截止|DDL|ddl|deadline|之前交|前提交|前完成|点前交"
+
+[event_verb]
+pattern = "开会|组会|见面|集合|上课|考试|面试|交|提交|汇报|答辩|聚餐|吃饭|看电影|出发|报名|签字|答疑|值班|体检"
+
+[exclude]
+past = "昨天|前天|上周|上个?(星期|礼拜)|刚才|已经|那时候"
+question_end = "[？?]$"
+confirm = "好的|行|可以|定了|就这么定"
+
+[todo]
+hint = "记得|别忘了|得去|要去|得把|要把|得先|需要|回头|改天|待会|等下|抽空"
+action = "交|买|打印|报名|还|取|寄|填|签|发|改|复习|准备|联系|回复|预约|缴|补办|办理|要回|拿"
+# 动作词在去掉已命中的提示词之后再匹配；“还”后面紧跟下列字时不算动作词（代码检查）
+huan_not_followed_by = ["是","有","在","要","没","记得","好","可以","行","挺","不","会","能","得"]
+second_person = "^你"
+second_person_allow = "我们|咱"
+remind_others = "(提醒|叫|让)"
+remind_others_not_followed_by = ["我"]

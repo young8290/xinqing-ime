@@ -1,0 +1,288 @@
+//! xq-sim：扮演核心服务，按 XQP 协议把 JSONL 脚本回放给 Hub（07 FR-DMO-01，17 第 4 节）。
+//!
+//! 传输：Windows 上默认创建命名管道 `\\.\pipe\xinqing_tap_dev`；任何平台都可以用 `--tcp`
+//! （只监听 127.0.0.1，开发调试用）或 `--stdout`（只输出补好 seq 的 JSONL，不握手）。
+//!
+//! 握手严格按 10 第 2.3 节：等 Hub 的 hello → 回 hello → 等到 `cfg{collect:true}` 才开始回放。
+
+use std::path::PathBuf;
+use std::time::Duration;
+
+use anyhow::{Context, Result, bail};
+use clap::Parser;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use xqp::{Down, Up};
+
+#[derive(Parser, Debug)]
+#[command(name = "xq-sim", about = "心晴 XQP 事件模拟器")]
+struct Args {
+    /// 回放脚本（每行一条上行消息，ts 为相对毫秒，seq 可省略）
+    #[arg(long)]
+    script: Option<PathBuf>,
+    /// 倍速（1 / 5 / 20 …）；0 表示不等待，尽快发完
+    #[arg(long, default_value_t = 1.0)]
+    speed: f64,
+    /// 命名管道名（仅 Windows）
+    #[arg(long, default_value = xqp::PIPE_NAME_DEV)]
+    pipe: String,
+    /// 改用 TCP 监听本机端口（任意平台，开发调试用），如 127.0.0.1:18765
+    #[arg(long)]
+    tcp: Option<String>,
+    /// 不握手，只把补好 seq 的消息逐行输出到标准输出
+    #[arg(long)]
+    stdout: bool,
+    /// 只校验脚本（解析、ts 单调、不含 seq 冲突），不回放
+    #[arg(long)]
+    check: bool,
+    /// 监听模式：以客户端身份连接核心（或另一个 xq-sim），把收到的上行消息去掉 text 后写入该文件（FR-DMO-02）
+    #[arg(long)]
+    listen: Option<PathBuf>,
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
+    let args = Args::parse();
+    if let Some(out) = &args.listen {
+        return listen(&args, out).await;
+    }
+    let script = args.script.as_ref().context("需要 --script")?;
+    let msgs = load_script(script).await?;
+    if args.check {
+        println!("{}：{} 条消息，校验通过", script.display(), msgs.len());
+        return Ok(());
+    }
+    if args.stdout {
+        let mut seq = 0u32;
+        for mut m in msgs {
+            if !matches!(m, Up::Hello { .. }) {
+                seq += 1;
+                m.set_seq(seq);
+            }
+            println!("{}", serde_json::to_string(&m)?);
+        }
+        return Ok(());
+    }
+    if let Some(addr) = &args.tcp {
+        if !addr.starts_with("127.0.0.1:") && !addr.starts_with("localhost:") {
+            bail!("--tcp 只允许监听本机地址（C-PLT-07）");
+        }
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        eprintln!("xq-sim：在 {addr} 等待 Hub 连接…");
+        let (stream, peer) = listener.accept().await?;
+        eprintln!("xq-sim：Hub 已连接 {peer}");
+        let (r, w) = stream.into_split();
+        return serve(r, w, msgs, args.speed).await;
+    }
+    serve_pipe(&args.pipe, msgs, args.speed).await
+}
+
+#[cfg(windows)]
+async fn serve_pipe(name: &str, msgs: Vec<Up>, speed: f64) -> Result<()> {
+    use tokio::net::windows::named_pipe::ServerOptions;
+    let path = format!(r"\\.\pipe\{name}");
+    let server = ServerOptions::new()
+        .first_pipe_instance(true)
+        .reject_remote_clients(true)
+        .create(&path)
+        .with_context(|| format!("创建管道 {path} 失败（核心或另一个 xq-sim 是否正在运行？）"))?;
+    eprintln!("xq-sim：在 {path} 等待 Hub 连接…");
+    server.connect().await?;
+    eprintln!("xq-sim：Hub 已连接");
+    let (r, w) = tokio::io::split(server);
+    serve(r, w, msgs, speed).await
+}
+
+#[cfg(not(windows))]
+async fn serve_pipe(_name: &str, _msgs: Vec<Up>, _speed: f64) -> Result<()> {
+    bail!("命名管道只在 Windows 上可用；请改用 --tcp 127.0.0.1:<端口> 或 --stdout")
+}
+
+async fn load_script(path: &PathBuf) -> Result<Vec<Up>> {
+    let text = tokio::fs::read_to_string(path)
+        .await
+        .with_context(|| format!("读取 {}", path.display()))?;
+    let mut out = Vec::new();
+    let mut last_ts = 0u64;
+    for (i, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let m: Up = serde_json::from_str(line)
+            .with_context(|| format!("{}:{} 不是合法的 XQP 上行消息", path.display(), i + 1))?;
+        if let Some(ts) = m.ts() {
+            if ts < last_ts {
+                bail!("{}:{} ts 倒退（{ts} < {last_ts}）", path.display(), i + 1);
+            }
+            last_ts = ts;
+        }
+        out.push(m);
+    }
+    Ok(out)
+}
+
+async fn read_frame<R: AsyncRead + Unpin>(r: &mut R) -> Result<Option<Vec<u8>>> {
+    let mut prefix = [0u8; 4];
+    match r.read_exact(&mut prefix).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(e) => return Err(e.into()),
+    }
+    let len = xqp::frame_len(prefix)?;
+    let mut body = vec![0u8; len];
+    r.read_exact(&mut body).await?;
+    Ok(Some(body))
+}
+
+async fn send<W: AsyncWrite + Unpin, T: serde::Serialize>(w: &mut W, msg: &T) -> Result<()> {
+    w.write_all(&xqp::encode(msg)?).await?;
+    w.flush().await?;
+    Ok(())
+}
+
+async fn serve<R, W>(mut r: R, mut w: W, msgs: Vec<Up>, speed: f64) -> Result<()>
+where
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin,
+{
+    // 1. 等 Hub hello
+    let body = read_frame(&mut r)
+        .await?
+        .context("Hub 未发送 hello 就断开了")?;
+    match xqp::decode_down(&body)? {
+        Down::Hello { v, hub_ver } if v == xqp::PROTOCOL_VERSION => {
+            eprintln!("xq-sim：Hub hello v{v}（{hub_ver}）");
+        }
+        Down::Hello { v, .. } => {
+            send(
+                &mut w,
+                &Up::Bye {
+                    ts: None,
+                    seq: None,
+                    reason: xqp::ByeReason::Version,
+                },
+            )
+            .await?;
+            bail!("协议主版本不一致：Hub v{v}");
+        }
+        other => bail!("Hub 第一条消息应为 hello，收到 {other:?}"),
+    }
+    // 2. 回 hello（脚本自带 hello 时使用脚本里的）
+    let hello = msgs
+        .iter()
+        .find(|m| matches!(m, Up::Hello { .. }))
+        .cloned()
+        .unwrap_or(Up::Hello {
+            v: xqp::PROTOCOL_VERSION,
+            ime_ver: "xq-sim".into(),
+            session: "xq-sim".into(),
+            caps: vec!["core_keys".into()],
+        });
+    send(&mut w, &hello).await?;
+    // 3. 等 cfg{collect:true}
+    loop {
+        let body = read_frame(&mut r)
+            .await?
+            .context("Hub 未下发 cfg 就断开了")?;
+        let down = xqp::decode_down(&body)?;
+        eprintln!("xq-sim：收到 {}", String::from_utf8_lossy(&body));
+        if let Down::Cfg { collect: true, .. } = down {
+            break;
+        }
+    }
+    // 4. 回放；同时继续读下行消息并打印（tip / mood 等）
+    let reader = tokio::spawn(async move {
+        while let Ok(Some(body)) = read_frame(&mut r).await {
+            eprintln!("xq-sim ← {}", String::from_utf8_lossy(&body));
+        }
+    });
+    let mut seq = 0u32;
+    let mut last_ts = 0u64;
+    let mut next_hb = 5_000u64;
+    for mut m in msgs.into_iter().filter(|m| !matches!(m, Up::Hello { .. })) {
+        let ts = m.ts().unwrap_or(last_ts);
+        while ts >= next_hb {
+            pace(next_hb.saturating_sub(last_ts), speed).await;
+            last_ts = next_hb;
+            seq += 1;
+            send(
+                &mut w,
+                &Up::Hb {
+                    ts: next_hb,
+                    seq: Some(seq),
+                    dropped: 0,
+                    queue: 0,
+                },
+            )
+            .await?;
+            next_hb += 5_000;
+        }
+        pace(ts.saturating_sub(last_ts), speed).await;
+        last_ts = ts;
+        seq += 1;
+        m.set_seq(seq);
+        send(&mut w, &m).await?;
+    }
+    eprintln!("xq-sim：回放完成，共 {seq} 条（含心跳）");
+    send(
+        &mut w,
+        &Up::Bye {
+            ts: Some(last_ts),
+            seq: Some(seq + 1),
+            reason: xqp::ByeReason::Shutdown,
+        },
+    )
+    .await?;
+    reader.abort();
+    Ok(())
+}
+
+async fn pace(delta_ms: u64, speed: f64) {
+    if speed > 0.0 && delta_ms > 0 {
+        tokio::time::sleep(Duration::from_secs_f64(delta_ms as f64 / 1000.0 / speed)).await;
+    }
+}
+
+/// 监听模式：以 Hub 身份连接并录制（FR-DMO-02：自动删除 text）。
+async fn listen(args: &Args, out: &PathBuf) -> Result<()> {
+    let addr = args
+        .tcp
+        .as_ref()
+        .context("监听模式目前需要 --tcp 指定核心地址；Windows 管道客户端在接入核心后补充")?;
+    let stream = tokio::net::TcpStream::connect(addr).await?;
+    let (mut r, mut w) = stream.into_split();
+    send(
+        &mut w,
+        &Down::Hello {
+            v: xqp::PROTOCOL_VERSION,
+            hub_ver: "xq-sim-listen".into(),
+        },
+    )
+    .await?;
+    send(
+        &mut w,
+        &Down::Cfg {
+            collect: true,
+            send_text: false,
+            rewrite: false,
+            app_blocklist: None,
+            app_allowlist: None,
+        },
+    )
+    .await?;
+    let mut file = tokio::fs::File::create(out).await?;
+    let mut n = 0usize;
+    while let Some(body) = read_frame(&mut r).await? {
+        let mut up = xqp::decode_up(&body)?;
+        up.strip_text();
+        file.write_all(serde_json::to_string(&up)?.as_bytes())
+            .await?;
+        file.write_all(b"\n").await?;
+        n += 1;
+        if matches!(up, Up::Bye { .. }) {
+            break;
+        }
+    }
+    eprintln!("xq-sim：已录制 {n} 条到 {}", out.display());
+    Ok(())
+}

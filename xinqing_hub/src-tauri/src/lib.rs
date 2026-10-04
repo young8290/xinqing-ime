@@ -1,0 +1,92 @@
+//! 心晴 Hub 的 Tauri 外壳（17 第 2 节的接口层）：组装基础层与领域服务、注册命令与事件、管理窗口。
+//!
+//! 领域逻辑都在 `xinqing-hub-core`，这里只做参数校验 → 调用领域服务 → 转成 `UiError`（ADR 0007）。
+
+mod args;
+mod commands;
+mod error;
+mod events;
+mod paths;
+mod state;
+mod windows;
+
+use std::path::Path;
+
+use specta_typescript::Typescript;
+use tauri::Manager;
+use tauri_specta::{Builder, collect_commands, collect_events};
+
+pub use args::LaunchArgs;
+pub use error::UiError;
+pub use windows::WindowTarget;
+
+const BINDINGS_HEADER: &str =
+    "// 本文件由 `cargo run -p xinqing-hub --bin export-bindings` 生成，请勿手改。";
+
+/// 命令与事件的唯一登记处：`invoke_handler` 与 TypeScript 绑定都从这里生成，两边不会走样。
+pub fn specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new()
+        .commands(collect_commands![
+            commands::get_status,
+            commands::pause_set,
+            commands::settings_get,
+            commands::settings_set,
+            commands::consent_get,
+            commands::consent_set,
+            commands::open_window,
+        ])
+        .events(collect_events![
+            events::StatusChanged,
+            events::SettingsChanged
+        ])
+}
+
+pub fn export_bindings(path: &Path) -> anyhow::Result<()> {
+    specta_builder().export(Typescript::default().header(BINDINGS_HEADER), path)?;
+    Ok(())
+}
+
+pub fn run() {
+    let launch = LaunchArgs::parse(std::env::args().skip(1));
+    let builder = specta_builder();
+
+    tauri::Builder::default()
+        // 单实例（17 第 2.2 节第 1 步）：第二个实例把参数转交给已运行的实例后退出
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            let again = LaunchArgs::parse(argv.into_iter().skip(1));
+            let target = again.open.unwrap_or(WindowTarget::Widget);
+            if let Err(e) = windows::open(app, target) {
+                eprintln!("打开窗口失败：{e}");
+            }
+        }))
+        .invoke_handler(builder.invoke_handler())
+        .setup(move |app| {
+            builder.mount_events(app);
+            let state = state::AppState::init(&paths::hub_data_dir()?)?;
+            let needs_onboarding = state.needs_onboarding()?;
+            app.manage(state);
+
+            // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
+            // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。
+            if needs_onboarding {
+                windows::open(app.handle(), WindowTarget::Onboarding)?;
+            } else if app.state::<state::AppState>().widget_visible()? {
+                windows::open(app.handle(), WindowTarget::Widget)?;
+            }
+            if let Some(target) = launch.open {
+                windows::open(app.handle(), target)?;
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("心晴 Hub 启动失败")
+        .run(|_app, event| {
+            // Hub 是常驻后台进程（03 第 3.1 节）：关掉最后一个窗口不退出，只有显式退出才结束
+            if let tauri::RunEvent::ExitRequested {
+                code: None, api, ..
+            } = event
+            {
+                api.prevent_exit();
+            }
+        });
+}

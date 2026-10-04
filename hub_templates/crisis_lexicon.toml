@@ -1,0 +1,184 @@
+# 心晴 · 危机表达本地词表（FR-SAF-01、C-ETH-02、R-06）
+# 用途：只检查用户在【心晴对话窗口和情绪日记】中写下的内容（FR-SAF 适用范围）；
+#       温柔改写原文也会经过本表（FR-RWR-05 第 3 条）；不扫描其他应用中的打字。
+# 原则：宁可多报，不可漏报。命中后显示求助卡片（12356 等），不依赖网络和大模型。
+# 修改本文件必须两人评审，其中一人为 E；每次修改后重跑 E-CRISIS 评测集，召回率必须 100%。
+# 版本：v1（初稿，2026-10-04），状态：待评审
+#
+# 判定算法（Hub safety 模块实现）：
+#   1. 预处理：全角转半角、去空格和标点、繁转简；
+#   2. 对每条 entry 做正则匹配，命中得分 = weight；同一 category 只计最高分；
+#   3. 修饰：命中位置前 6 个字内有 negation 词 → 得分 × negation_factor；
+#            句中出现 quote 标记且没有 self_ref 自我认同词 → 得分 × quote_factor；
+#            命中位置与 benign 例外重叠 → 该条不计分；
+#   4. 总分 = 各 category 最高分之和；总分 ≥ threshold 即触发。
+#   5. 用户点“我说的不是这个意思”（FR-SAF-06）后，本会话 threshold 改为 threshold_after_dismiss。
+#   注意：修饰只“降低权重但不排除”——weight 1.0 的条目即使被否定（×0.6）也低于阈值，
+#   所以高危条目（farewell、method）的 weight 设为 1.2 以上，被否定后仍可能触发，交给 Jev 通道复核。
+
+version = 1
+threshold = 1.0
+threshold_after_dismiss = 1.6
+negation_factor = 0.6
+quote_factor = 0.7
+
+negation = ["不会", "不想", "才不", "没有想", "从没想过", "不至于", "怎么可能", "别担心我不会"]
+self_ref = ["我也", "就是我", "我现在", "说的就是我", "我也这么想", "我也是"]
+quote = ["电影里", "小说里", "剧里", "歌词", "他说", "她说", "有人说", "新闻", "书里", "台词", "“", "「"]
+
+# ---------- ideation：自伤或轻生的念头 ----------
+[[entry]]
+category = "ideation"
+pattern = "(不想|不愿|不打算)(再)?活(了|下去|着)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "活(着)?(没|没有)(什么)?(意思|意义|盼头)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "活不下去"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(好|真|很|特别|有点)?想死(了|算了)?"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(想|要|打算)(去)?(自杀|轻生|寻死|了结自己|结束(自己|生命|这一切|一切))"
+weight = 1.2
+[[entry]]
+category = "ideation"
+pattern = "(自杀|轻生|自残|自伤|割自己|伤害自己)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(想|好想|希望自己).{0,4}(消失|不存在|没出生)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "睡.{0,4}(就)?(别|不要|再也不(用|要)?)醒"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(我)?(死了|不在了)(就|会|大家|所有人).{0,8}(轻松|解脱|好过|开心|没人在意)"
+weight = 1.2
+[[entry]]
+category = "ideation"
+pattern = "(没有|没)我(的话)?.{0,6}(会)?(过得)?更(好|轻松|开心)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(撑|熬)不(下去|住)了.{0,10}(不如|干脆|算了)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(一了百了|解脱吧|一死了之)"
+weight = 1.2
+[[entry]]
+category = "ideation"
+pattern = "(不想|不愿)(再)?(撑|坚持|熬)(下去)?了"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(要是|如果|假如)我(消失|不在|走)了"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(明天|天)(不会|别再|不要再)(来|亮)(就好了)?"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(考虑|想|打算).{0,6}(去世|离开这个世界|走了算了)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(我是|我就是|自己就是|自己是)(个)?(累赘|多余的|负担)"
+weight = 0.6
+
+# ---------- method：计划或方法（只用于识别，界面和日志中永不展示匹配内容） ----------
+[[entry]]
+category = "method"
+pattern = "(割腕|跳楼|跳河|跳桥|烧炭|上吊|服毒|喝农药|卧轨)"
+weight = 1.2
+[[entry]]
+category = "method"
+pattern = "(安眠药|药片|药).{0,6}(攒|囤|吞|一把|全吃|吃光|一次吃)"
+weight = 1.2
+[[entry]]
+category = "method"
+pattern = "(想好|计划好|准备好)了?(怎么做|怎么办|用什么|在哪|时间|地方)"
+weight = 1.0
+[[entry]]
+category = "method"
+pattern = "(就差|只差)最后(一步|下决心|的决心)"
+weight = 1.0
+[[entry]]
+category = "method"
+pattern = "(东西|事情|后面的事)(都|已经)?安排好了.{0,10}(结束|走|离开|告别)"
+weight = 1.2
+[[entry]]
+category = "method"
+pattern = "(怎么|如何|什么方法).{0,6}(死|自杀|不痛|没痛苦).{0,4}(离开|结束)?"
+weight = 1.2
+
+# ---------- farewell：告别类表述 ----------
+[[entry]]
+category = "farewell"
+pattern = "(永别|诀别|最后一次(跟|和)你(说|聊))"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "再见了.{0,6}(大家|所有人|世界|这个世界)"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "(下辈子|来世)(再见|再做|见)"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "(遗书|遗言|后事|交代后事)"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "(最后一次)(跟|和|给)?(你|大家)?(说话|聊天|发消息)"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "以后(可能)?(就)?不(用|需要|会)(再)?(陪我|聊|麻烦|打扰).{0,8}再见"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "(以后|再也)不用(再)?等我"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "(以后|再也)不会(再)?(麻烦|打扰|拖累)(你们|大家|任何人)"
+weight = 1.0
+[[entry]]
+category = "farewell"
+pattern = "(帮我|替我)?照顾好(我)?(爸妈|爸爸|妈妈|家人|我的猫|我的狗)"
+weight = 0.8
+[[entry]]
+category = "farewell"
+pattern = "谢谢(你|大家)(一直|这些年|一直以来).{0,14}(再见|别了|走了)"
+weight = 1.2
+
+# ---------- benign：常见夸张说法和口头禅，命中时对应位置不计分 ----------
+[[benign]]
+pattern = "(笑|累|烦|气|热|冷|饿|困|忙|丑|帅|美|尬|吓|馋|酸)死(我|人|了)"
+[[benign]]
+pattern = "想死你(们)?了"
+[[benign]]
+pattern = "(原地消失|原地爆炸|原地升天)"
+[[benign]]
+pattern = "(作业|ddl|DDL|老板|甲方|这破|论文).{0,6}要(我|了我的)命"
+[[benign]]
+pattern = "(社死|社会性死亡|死机|死循环|死锁|进程死了|死线)"
+[[benign]]
+pattern = "(游戏里|角色|boss|BOSS).{0,6}(死了|自杀)"
+
+# 维护说明：
+# - 新增条目先在 E-CRISIS 数据集中补一条对应的正例和一条可能误报的反例，再改词表；
+# - benign 例外只能用于明确的口头禅，不得为了降低误报而删除 ideation / method / farewell 条目；
+# - 误报率门槛 < 10%（FR-SAF-01）；召回率门槛 100%，漏报属于 S1 缺陷（12 第 5 节）。

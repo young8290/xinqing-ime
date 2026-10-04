@@ -1,0 +1,92 @@
+/* 各窗口共用的基础样式。只引用令牌，不写色值。 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--xq-bg);
+  color: var(--xq-text-1);
+  font-family: var(--xq-font);
+  font-size: var(--xq-fs-md);
+  line-height: var(--xq-lh-md);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}
+
+h1 {
+  margin: 0 0 var(--xq-sp-4);
+  font-size: var(--xq-fs-xl);
+  line-height: var(--xq-lh-xl);
+  font-weight: 600;
+}
+
+h2 {
+  margin: 0 0 var(--xq-sp-3);
+  font-size: var(--xq-fs-lg);
+  line-height: var(--xq-lh-lg);
+  font-weight: 500;
+}
+
+p {
+  margin: 0 0 var(--xq-sp-3);
+}
+
+a {
+  color: var(--xq-link);
+}
+
+button {
+  min-width: 32px;
+  min-height: 32px; /* DS-A11Y-03 点击目标 ≥ 32 × 32 */
+  padding: 0 var(--xq-sp-4);
+  border: 1px solid var(--xq-border);
+  border-radius: var(--xq-radius-sm);
+  background: var(--xq-surface);
+  color: var(--xq-text-1);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--xq-dur-micro) var(--xq-ease);
+}
+
+button.primary {
+  border-color: transparent;
+  background: var(--xq-primary);
+  color: var(--xq-on-primary);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* DS-A11Y-01：键盘焦点环清晰可见，2 px */
+:focus-visible {
+  outline: 2px solid var(--xq-focus);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--xq-text-2);
+}
+
+/* DS-MOTION-03：尊重系统“显示动画”设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
+}

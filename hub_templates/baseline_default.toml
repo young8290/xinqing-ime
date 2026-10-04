@@ -1,0 +1,41 @@
+# 心晴 · 冷启动人群默认基线（FR-STA-03）
+# 用途：有效窗口 < 200 时代替个人基线计算 z 分数；eps = 默认标准差的 10%（FR-STA-03 第 2 条）。
+# ⚠ 当前数值是参考公开击键动力学研究和中文拼音输入常见速度给出的【初始估计】，
+#   W4 前由 B 用组员录制的 E-STATE 脚本（去除文本）重新计算并替换，结果记录在 eval/reports/。
+# 单位：ms；kpm 为每分钟按键数；bs_rate 为比例。按白天/夜间分桶。
+# 版本：v0（估计值，待校准），2026-10-04
+
+version = 0
+calibrated = false
+
+[day.kpm]
+med = 220.0
+mad = 55.0
+[day.iki_med]
+med = 190.0
+mad = 45.0
+[day.iki_iqr]
+med = 160.0
+mad = 50.0
+[day.bs_rate]
+med = 0.08
+mad = 0.03
+[day.dwell_med]
+med = 95.0
+mad = 18.0
+
+[night.kpm]
+med = 200.0
+mad = 55.0
+[night.iki_med]
+med = 205.0
+mad = 50.0
+[night.iki_iqr]
+med = 175.0
+mad = 55.0
+[night.bs_rate]
+med = 0.09
+mad = 0.035
+[night.dwell_med]
+med = 100.0
+mad = 20.0

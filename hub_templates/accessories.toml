@@ -1,0 +1,54 @@
+# 心晴 · 小精灵装扮（FR-REV-04、FR-WGT-08，P2）
+# 素材自制（R-12）；asset 为 lottie 叠加图层文件名，需在每种天气动画中对齐锚点 anchor。
+# 版本：v1（初稿，2026-10-04）
+
+version = 1
+
+[[item]]
+id = "straw_hat"
+name = "草帽"
+cost = 20
+asset = "straw_hat.json"
+anchor = "head"
+[[item]]
+id = "scarf"
+name = "围巾"
+cost = 20
+asset = "scarf.json"
+anchor = "neck"
+[[item]]
+id = "headphones"
+name = "耳机"
+cost = 20
+asset = "headphones.json"
+anchor = "head"
+[[item]]
+id = "flower"
+name = "小花"
+cost = 20
+asset = "flower.json"
+anchor = "head_side"
+[[item]]
+id = "glasses"
+name = "眼镜"
+cost = 20
+asset = "glasses.json"
+anchor = "face"
+[[item]]
+id = "beanie"
+name = "毛线帽"
+cost = 20
+asset = "beanie.json"
+anchor = "head"
+[[item]]
+id = "bow"
+name = "蝴蝶结"
+cost = 20
+asset = "bow.json"
+anchor = "head_side"
+[[item]]
+id = "star_clip"
+name = "星星发卡"
+cost = 20
+asset = "star_clip.json"
+anchor = "head_side"

@@ -48,3 +48,16 @@ data/emoji/
 # scripts/lm/ 的分析脚本跑一次就会留字节码缓存
 __pycache__/
 *.pyc
+
+# 心晴：密钥与本地配置（任何真实 API 密钥都不得提交，产品书 14 第 4 节）
+secrets.toml
+secrets.bin
+*.key
+.env
+.env.*
+# 心晴：运行数据与 Hub 构建产物
+*.db
+*.db-*
+recordings/
+node_modules/
+xinqing_hub/src-tauri/gen/

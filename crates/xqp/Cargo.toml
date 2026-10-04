@@ -1,0 +1,17 @@
+[package]
+name = "xqp"
+description = "心晴 XQP 协议 v1：消息类型与帧编解码（契约见 protocol/xqp.schema.json）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+specta = { version = "=2.0.0-rc.25", features = ["derive"], optional = true }
+
+[features]
+# 给 Hub 外壳导出 TypeScript 类型用
+specta = ["dep:specta"]

@@ -1,0 +1,80 @@
+{"id": "T001", "text": "记得去打印简历", "label": 1, "expected": {"title": "打印简历", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T002", "text": "别忘了交水电费", "label": 1, "expected": {"title": "交水电费", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T003", "text": "回头把报销单填了", "label": 1, "expected": {"title": "填报销单", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T004", "text": "待会要去取快递", "label": 1, "expected": {"title": "取快递", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T005", "text": "等下记得回复导师的邮件", "label": 1, "expected": {"title": "回复导师的邮件", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T006", "text": "抽空把图书馆的书还了", "label": 1, "expected": {"title": "还图书馆的书", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": "“还了”算动作词（“还”后不是排除字）"}
+{"id": "T007", "text": "得去校医院预约体检", "label": 1, "expected": {"title": "预约校医院体检", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T008", "text": "需要买一个新的充电器", "label": 1, "expected": {"title": "买新充电器", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T009", "text": "改天得去营业厅缴话费", "label": 1, "expected": {"title": "去营业厅缴话费", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T010", "text": "回头联系一下房东续租的事", "label": 1, "expected": {"title": "联系房东续租", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T011", "text": "记得给奶奶寄点特产回去", "label": 1, "expected": {"title": "给奶奶寄特产", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T012", "text": "别忘了在系统里签到", "label": 1, "expected": {"title": "在系统里签到", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T013", "text": "我得去把学生证补办了", "label": 1, "expected": {"title": "补办学生证", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": "V1.2 起“补办”是动作词"}
+{"id": "T014", "text": "待会把实验数据发给组长", "label": 1, "expected": {"title": "发实验数据给组长", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T015", "text": "等下要改一下简历的格式", "label": 1, "expected": {"title": "改简历格式", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T016", "text": "抽空复习一下线代", "label": 1, "expected": {"title": "复习线代", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T017", "text": "需要准备一份自我介绍", "label": 1, "expected": {"title": "准备自我介绍", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T018", "text": "回头把押金要回来", "label": 1, "expected": {"title": "要回押金", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": "V1.2 起“要回”是动作词"}
+{"id": "T019", "text": "记得去教务处交成绩单复印件", "label": 1, "expected": {"title": "去教务处交成绩单复印件", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T020", "text": "别忘了把U盘还给室友", "label": 1, "expected": {"title": "把U盘还给室友", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T021", "text": "等下去超市买点牛奶和面包", "label": 1, "expected": {"title": "买牛奶和面包", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T022", "text": "回头得把驾照考试报名了", "label": 1, "expected": {"title": "报名驾照考试", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": "含“考试”但无时刻，不走日程"}
+{"id": "T023", "text": "待会记得把快递寄出去", "label": 1, "expected": {"title": "寄快递", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T024", "text": "记得在网上预约下图书馆座位", "label": 1, "expected": {"title": "预约图书馆座位", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T025", "text": "抽空把选修课的作业改完", "label": 1, "expected": {"title": "改完选修课作业", "due_date": null}, "category": "todo_no_due", "l1_route": "todo", "note": ""}
+{"id": "T026", "text": "记得明天去打印简历", "label": 1, "expected": {"title": "打印简历", "due_date": "2026-10-04"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T027", "text": "别忘了周五前把报名表交了", "label": 1, "expected": {"title": "交报名表", "due_date": "2026-10-09"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T028", "text": "明天记得去取快递，快超时了", "label": 1, "expected": {"title": "取快递", "due_date": "2026-10-04"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T029", "text": "下周一之前得把党课心得交了", "label": 1, "expected": {"title": "交党课心得", "due_date": "2026-10-05"}, "category": "todo_with_due", "l1_route": "todo", "note": "“得把”是待办提示词，带日期无时刻，分流到待办"}
+{"id": "T030", "text": "后天记得给导师回复邮件", "label": 1, "expected": {"title": "给导师回复邮件", "due_date": "2026-10-05"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T031", "text": "这周日前记得缴网费", "label": 1, "expected": {"title": "缴网费", "due_date": "2026-10-04"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T032", "text": "下周三前需要准备好答辩PPT", "label": 1, "expected": {"title": "准备答辩PPT", "due_date": "2026-10-07"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T033", "text": "别忘了15号前还图书馆的书", "label": 1, "expected": {"title": "还图书馆的书", "due_date": "2026-10-15"}, "category": "todo_with_due", "l1_route": "todo", "note": "带“别忘了”+“还”，有日期无时刻，分流到待办"}
+{"id": "T034", "text": "下下周一前得去报名普通话考试", "label": 1, "expected": {"title": "报名普通话考试", "due_date": "2026-10-12"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T035", "text": "周二记得去银行签合同", "label": 1, "expected": {"title": "去银行签合同", "due_date": "2026-10-06"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T036", "text": "今晚记得把周报发给老板", "label": 1, "expected": {"title": "把周报发给老板", "due_date": "2026-10-03"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T037", "text": "10月10号前要去学院取成绩单", "label": 1, "expected": {"title": "去学院取成绩单", "due_date": "2026-10-10"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T038", "text": "明天之前记得填好调查问卷", "label": 1, "expected": {"title": "填调查问卷", "due_date": "2026-10-04"}, "category": "todo_with_due", "l1_route": "todo", "note": "FR-SCH-04 补充规则 5：“明天之前”取明天"}
+{"id": "T039", "text": "大后天记得去寄生日礼物", "label": 1, "expected": {"title": "寄生日礼物", "due_date": "2026-10-06"}, "category": "todo_with_due", "l1_route": "todo", "note": ""}
+{"id": "T040", "text": "周四前得联系好实习单位", "label": 1, "expected": {"title": "联系实习单位", "due_date": "2026-10-08"}, "category": "todo_with_due", "l1_route": "schedule", "note": "V1.2 仍分流到日程：“得联系”不是待办提示词（只有得去/得把/得先），只命中日期类"}
+{"id": "T041", "text": "你记得带伞", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "以“你”开头"}
+{"id": "T042", "text": "你回头把钱还我", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "以“你”开头"}
+{"id": "T043", "text": "你别忘了交作业啊", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "以“你”开头"}
+{"id": "T044", "text": "你等下记得回复群消息", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "以“你”开头"}
+{"id": "T045", "text": "你需要买个新手机了", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "以“你”开头"}
+{"id": "T046", "text": "让他记得去取快递", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "V1.2 排除“提醒/叫/让 + 他人”，L1 挡住"}
+{"id": "T047", "text": "提醒室友别忘了交电费", "label": 0, "expected": null, "category": "remind_other", "l1_route": "none", "note": "主要描述他人要做的事，按负例；V1.2 排除“提醒 + 他人”，L1 挡住"}
+{"id": "T048", "text": "爸你记得去寄那个包裹", "label": 0, "expected": null, "category": "remind_other", "l1_route": "todo", "note": "称呼在前，不以“你”开头，L1 放行"}
+{"id": "T049", "text": "我已经交了水电费", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T050", "text": "快递刚才取回来了", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T051", "text": "简历我已经打印好了", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T052", "text": "上周就把报名表交了", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T053", "text": "昨天记得给奶奶寄了特产", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T054", "text": "本来要去还书的，结果昨天顺路还了", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T055", "text": "早就准备好了，不用担心", "label": 0, "expected": null, "category": "past_done", "l1_route": "none", "note": ""}
+{"id": "T056", "text": "记得当时报名的时候排了好久的队", "label": 0, "expected": null, "category": "memory_recall", "l1_route": "todo", "note": "“记得”表示回忆，“当时”不在排除词表，L1 放行"}
+{"id": "T057", "text": "好想去旅游", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "none", "note": ""}
+{"id": "T058", "text": "改天一起吃个饭吧", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "none", "note": "V1.2 去掉提示词后再匹配动作词，“改天”不再自我命中，L1 挡住"}
+{"id": "T059", "text": "真需要买个大房子啊", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "todo", "note": ""}
+{"id": "T060", "text": "什么时候能去趟西藏就好了", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "none", "note": ""}
+{"id": "T061", "text": "回头有钱了要去买辆车", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "todo", "note": ""}
+{"id": "T062", "text": "好想抽空学个吉他", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "none", "note": ""}
+{"id": "T063", "text": "等下辈子再去报名吧哈哈", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "todo", "note": "“等下辈子”含“等下”，L1 放行"}
+{"id": "T064", "text": "需要改变的地方太多了", "label": 0, "expected": null, "category": "vague_wish", "l1_route": "todo", "note": "“需要”+“改变”中的“改”，V1.2 仍放行，靠 L2"}
+{"id": "T065", "text": "明天下午三点开组会", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": "日程，非待办；无待办提示词，分流到日程"}
+{"id": "T066", "text": "下周二上午有高数考试", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": ""}
+{"id": "T067", "text": "周五晚上和朋友聚餐", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": ""}
+{"id": "T068", "text": "10月15号上午九点半面试", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": ""}
+{"id": "T069", "text": "数据库作业DDL是周日晚上", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": ""}
+{"id": "T070", "text": "记得明天下午两点在实验楼开会", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": "含待办提示词但有时刻，V1.2 分流到日程；实为会议日程"}
+{"id": "T071", "text": "别忘了后天上午十点答辩", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": "含待办提示词但有时刻，V1.2 分流到日程；实为日程"}
+{"id": "T072", "text": "下下周三英语口语考试", "label": 0, "expected": null, "category": "schedule_like", "l1_route": "schedule", "note": ""}
+{"id": "T073", "text": "室友需要买个台灯", "label": 0, "expected": null, "category": "third_party", "l1_route": "todo", "note": ""}
+{"id": "T074", "text": "他得去补交材料", "label": 0, "expected": null, "category": "third_party", "l1_route": "todo", "note": ""}
+{"id": "T075", "text": "组长回头会把文档发群里", "label": 0, "expected": null, "category": "third_party", "l1_route": "todo", "note": ""}
+{"id": "T076", "text": "我妈待会要去超市买菜", "label": 0, "expected": null, "category": "third_party", "l1_route": "todo", "note": ""}
+{"id": "T077", "text": "我不记得交没交电费了", "label": 0, "expected": null, "category": "memory_recall", "l1_route": "todo", "note": "判断：表达不确定，不是明确待办"}
+{"id": "T078", "text": "还记得我们一起去报名的那天吗", "label": 0, "expected": null, "category": "memory_recall", "l1_route": "todo", "note": "无问号；去掉提示词“记得”后“还”紧跟“我”仍算动作词，“报名”也命中，L1 放行，靠 L2"}
+{"id": "T079", "text": "需要的话可以联系我", "label": 0, "expected": null, "category": "other", "l1_route": "todo", "note": "对他人的客套"}
+{"id": "T080", "text": "回头看看这一年，改变挺大的", "label": 0, "expected": null, "category": "other", "l1_route": "todo", "note": "“回头”意为回顾；“改变”含“改”，V1.2 仍放行，靠 L2"}

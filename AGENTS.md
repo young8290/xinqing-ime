@@ -15,6 +15,8 @@
 | `../wind-portable` | 绿色版启动器（独立仓库，不存在时构建脚本自动跳过） | — |
 | `../WindInput-Go` | Go 旧版源码（只读参考；docs 旧文档里的 `../WindInput` 指的是它） | — |
 
+**心晴（XinQing）部分**：本仓是清风的私有分支，心晴新增的部分与上游组件并列，见下方「心晴部分」一节。
+
 ## Crate 索引
 
 > workspace 共 20 个 crate（均在 `wind_input/crates/`）。复杂 crate 已配 crate 级 `AGENTS.md`，改动前先读对应文档；新增/重构 crate 时参照同结构补文档。
@@ -406,6 +408,43 @@ cargo test -p wind-rpc --test wind_setting_assets
   圈定，**两个下游按此标记取内容**——文档仓 `scripts/sync_release_notes.py`（官网更新记录）
   与 wind-setting `src/update/notes.rs`（应用内升级提示）。占位文本必须恰好是 `暂未填写`
   （Rust 侧按全等判定），前面加 `>` 之类修饰会让占位符被当成正文弹给用户。
+
+## 心晴部分
+
+本仓是心晴（懂你心情的 AI 输入陪伴）在清风上的私有分支。需求与设计以**产品书**为准，产品书只放在
+[young8290/xinqing](https://github.com/young8290/xinqing/tree/main/docs/product-book)（代码注释里的
+“08 FR-AIG-02”“17 第 2.5 节”都指它）；本仓的入口说明见 [docs/xinqing/README.md](docs/xinqing/README.md)。
+
+| 位置 | 内容 | 文档 |
+|---|---|---|
+| `Cargo.toml`（根目录） | 心晴的 Cargo workspace，与 `wind_input/` 互不包含，edition 2024 | [ADR 0007](docs/adr/0007-Hub核心与外壳分离.md) |
+| `crates/xqp/`、`protocol/` | XQP 协议：Rust 类型与帧编解码、`xqp.schema.json` 契约（Hub、`xq-sim`、将来的 `wind-xinqing-tap` 共用） | — |
+| `xinqing_hub/core/` | Hub 领域层与平台无关的基础层（**禁止**依赖 tauri / windows） | [README](xinqing_hub/core/README.md) |
+| `xinqing_hub/gateway/` | AI 网关的 HTTP 实现（Jev、OpenAI 兼容大模型），core 不依赖它 | [README](xinqing_hub/gateway/README.md) |
+| `xinqing_hub/src-tauri/`、`xinqing_hub/src/` | Hub 的 Tauri 外壳与 Vue 3 前端 | [README](xinqing_hub/README.md) |
+| `hub_templates/` | 出厂模板：危机词表、禁用词表、暖心话、界面文案、提示词 | — |
+| `tools/` | `xq-sim`（扮演核心服务的 XQP 模拟器）、`mock-ai`（模拟 AI 接口）、校验脚本 | — |
+| `eval/` | 评测数据集与危机词表参考实现 | — |
+| `docs/xinqing/`、`docs/adr/` | 身份改造说明、心晴的架构决策记录（0007 起） | — |
+
+构建与测试（在仓库根目录，不需要任何 API 密钥；Linux 上编译 Hub 外壳需要 WebKitGTK，包名见 `xinqing.yml`）：
+
+```bash
+cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
+cargo run -p xinqing-hub --bin export-bindings     # 改了命令或事件后重新生成 xinqing_hub/src/api/bindings.ts
+cargo run -p mock-ai -- --port 18080 --scenario normal   # normal/slow/timeout/500/422/model_not_found/stream_cut
+cargo run -p xq-sim -- --script tools/xq-sim/scripts/hesitant.jsonl --speed 5   # 非 Windows 加 --tcp 127.0.0.1:18765
+cd xinqing_hub && pnpm install && pnpm lint && pnpm test && pnpm tauri dev
+python3 tools/check_templates.py hub_templates && python3 tools/check_xqp_scripts.py && python3 eval/tools/check_crisis.py
+```
+
+心晴部分的约定（上面的提交纪律、格式化规则同样适用）：
+
+- CI：`xinqing.yml` 只在心晴路径变化时跑（Linux 上 fmt / clippy / 测试与前端绑定核对、前端 lint 与 Vitest、Windows 上编译测试并构建 Hub、契约校验）；`xinqing-secrets.yml` 的 gitleaks 每次都跑；上游 `ci.yml` 在只改心晴部分时跳过。
+- **禁止提交任何真实 API 密钥或私有接口地址**，示例只用占位符 `<...>`；本地密钥放 `secrets.toml`（已忽略），模板见 `secrets.example.toml`。
+- 危机词表、禁用词表、提示词的修改至少 2 人评审，其中 1 人是 E（产品书 15 第 5 节）。
+- 改清风原有文件时，在改动处加以 `心晴：` 开头的注释（即产品书 13 第 6.1 节说的 `XINQING:` 标记），合并上游时 `git grep 心晴：` 就能找全；身份改造脚本做的替换不另加注释，合并上游的步骤见 `docs/xinqing/identity.md`。
+- 偏离产品书的实现决定写 `docs/adr/`，并在 ADR 的“影响”里列出产品书要改的章节。
 
 ## Agent skills
 
