@@ -103,6 +103,8 @@ export const zhCN = {
   "error.delete_confirm": "输入“删除”两个字，确认删除全部心晴数据",
   "error.withdraw_notice": "已经发送给第三方服务的数据，我们无法从对方那里撤回。",
   "error.restart_banner": "部分设置需要重启输入法后生效",
+  "error.ai_config_invalid": "地址要以 http:// 或 https:// 开头，模型名也不能空着，改一下再保存吧。",
+  "error.ai_secrets_unsupported": "这台电脑上没法加密保存密钥，晴晴先用离线模式陪着你。",
   "about.fork_notice": "心晴基于开源项目清风输入法（WindInput，MIT 协议）开发，为非官方版本。",
   "about.disclaimer": "本产品不提供任何医疗诊断或治疗。",
   "consent.sense": "感知打字节奏，在本机识别状态（使用心晴的前提）",

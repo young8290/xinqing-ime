@@ -219,7 +219,9 @@ pub struct NetLogEntry {
     pub tokens_out: Option<u32>,
 }
 
+/// 两侧是否可用；也是 `gateway:health` 事件的载荷（10 第 5.2 节）。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct GatewayHealth {
     pub jev: bool,
     pub llm: bool,

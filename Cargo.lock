@@ -5492,6 +5492,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "dirs 6.0.0",
+ "futures",
  "serde",
  "serde_json",
  "specta",
@@ -5504,6 +5505,7 @@ dependencies = [
  "tokio",
  "windows-sys 0.61.2",
  "xinqing-hub-core",
+ "xinqing-hub-gateway",
  "xqp",
  "zeroize",
 ]
@@ -5544,6 +5546,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "toml 0.8.23",
  "xinqing-hub-core",
  "zeroize",
 ]
