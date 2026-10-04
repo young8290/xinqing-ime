@@ -90,3 +90,10 @@ button:disabled {
     transition-duration: 0s !important;
   }
 }
+
+/* DS-MOTION-05：窗口不可见时暂停全部动画，省 CPU（NFR-RES-02）。data-hidden 由 mount.ts 维护 */
+:root[data-hidden] *,
+:root[data-hidden] *::before,
+:root[data-hidden] *::after {
+  animation-play-state: paused !important;
+}
