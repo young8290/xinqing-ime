@@ -731,14 +731,21 @@ mod tests {
         assert_ne!(swapped, text);
         std::fs::write(&sp, swapped).unwrap();
         let (c, _) = coord("cold", &dir);
-        type_str(&c, "uidup");
+        // 心晴：只断言派出构建的那一键（d）。原来连打 uidup 再断言，构建在 d 上就派出去了，
+        // 小码表几毫秒建完，打到 p 时可能已就绪，测试偶发失败。下面的等待循环证明构建确已派出。
+        type_str(&c, "ui");
+        assert!(
+            c.engine_mgr.reverse_index_if_ready(&id).is_none()
+                && !c.engine_mgr.is_building_reverse_index(&id),
+            "还没有键需要直接辅助，不该派构建"
+        );
+        type_str(&c, "d");
         {
             let st = c.state.lock().unwrap();
             assert!(
                 st.candidates.iter().all(|c| !c.is_direct_aux),
                 "未就绪：原样"
             );
-            assert_ne!(st.candidates.first().map(|c| c.text.as_str()), Some("释读"));
         }
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         while c.engine_mgr.reverse_index_if_ready(&id).is_none() {
@@ -748,8 +755,7 @@ mod tests {
             );
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        press(&c, keymap::VK_BACK);
-        type_str(&c, "p");
+        type_str(&c, "up");
         assert_eq!(
             texts(&c).first().map(String::as_str),
             Some("释读"),
