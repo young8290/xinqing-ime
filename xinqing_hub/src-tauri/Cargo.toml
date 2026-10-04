@@ -23,6 +23,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 xinqing-hub-core = { path = "../core", features = ["specta"] }
+xinqing-hub-gateway = { path = "../gateway" }
 xqp = { path = "../../crates/xqp", features = ["specta"] }
 tauri = { version = "2", features = ["specta"] }
 tauri-plugin-single-instance = "2"

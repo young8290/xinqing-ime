@@ -6,6 +6,7 @@ mod args;
 mod commands;
 mod error;
 mod events;
+mod gateway;
 mod paths;
 mod sensing;
 mod state;
@@ -72,6 +73,7 @@ pub fn run() {
             let needs_onboarding = state.needs_onboarding()?;
             let cfg = consent::xqp_cfg(&ConsentState::load(&state.db())?);
             app.manage(state);
+            app.manage(gateway::start(app.handle()));
             // 第 5 步：XQP 客户端与实时感知。Hub 是同意状态的唯一真相源，握手后立即下发 cfg
             let sensing = sensing::start(app.handle(), cfg);
             app.manage(sensing);
