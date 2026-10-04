@@ -7,6 +7,20 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	getStatus: () => typedError<StatusSnapshot, UiError>(__TAURI_INVOKE("get_status")),
+	/**
+	 *  状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；
+	 *  带上时是看板时间线上那个状态点的解释，记录不存在或窗口已清理时为 `null`。
+	 */
+	stateExplain: (moodStateId: number | null) => typedError<{
+	state: MoodState,
+	/**  可能性百分比；只有本地规则或冷启动时为 `None`，界面不显示百分比。 */
+	prob: number | null,
+	/**  最多 [`MAX_SIGNALS`] 条；为空时界面显示 `note.no_signal`。 */
+	signals: Signal[],
+	source: ExplainSource,
+	/**  冷启动期间追加“还在熟悉你的习惯，判断可能不准”。 */
+	cold_start: boolean,
+} | null, UiError>(__TAURI_INVOKE("state_explain", { moodStateId })),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
@@ -50,6 +64,23 @@ export type ConsentState = {
 	items: ConsentEntry[],
 };
 
+/**  判断来源（`explain.toml` 的 `[source]`）。 */
+export type ExplainSource = "jev" | "rule" | 
+/**  自评（FR-STA-10） */
+"self";
+
+/**  一次状态解释（`state_explain` 的返回值，10 第 5.1 节）。 */
+export type Explanation = {
+	state: MoodState,
+	/**  可能性百分比；只有本地规则或冷启动时为 `None`，界面不显示百分比。 */
+	prob: number | null,
+	/**  最多 [`MAX_SIGNALS`] 条；为空时界面显示 `note.no_signal`。 */
+	signals: Signal[],
+	source: ExplainSource,
+	/**  冷启动期间追加“还在熟悉你的习惯，判断可能不准”。 */
+	cold_start: boolean,
+};
+
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
 
@@ -60,6 +91,39 @@ export type SettingValue = boolean | number | null | string;
 export type SettingsChanged = {
 	key: string,
 };
+
+/**  一条说明。`value` 是文案变量（{p} 百分比、{n} 次数、{m} 分钟）的值。 */
+export type Signal = {
+	kind: SignalKind,
+	value: number | null,
+};
+
+/**  说明种类，序列化名就是 `explain.toml` 中 `[signal.*]` 的键。 */
+export type SignalKind = 
+/**  `kpm_z ≤ -1`，值为 {p} */
+"kpm_slow" | 
+/**  `kpm_z ≥ 1`，值为 {p} */
+"kpm_fast" | 
+/**  `iki_med_z ≥ 1` */
+"iki_long" | 
+/**  `iki_iqr_z ≥ 1.5` */
+"iki_messy" | 
+/**  `pause_cnt ≥ 2`，值为 {n} */
+"pause" | 
+/**  `abandon = true` */
+"abandon" | 
+/**  `delete_committed ≥ 5`，值为 {n} */
+"delete_committed" | 
+/**  `bs_rate_z ≥ 1` */
+"bs_more" | 
+/**  `typo_cnt ≥ 2`，值为 {n} */
+"typo" | 
+/**  `page_flips ≥ 3`，值为 {n} */
+"page_flips" | 
+/**  `session_min ≥ 45`，值为 {m} */
+"session" | 
+/**  R5 命中 */
+"late";
 
 /**  `status:changed`：载荷同 `get_status`。 */
 export type StatusChanged = StatusSnapshot;

@@ -8,7 +8,8 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use xqp::MoodState;
 
-use crate::domain::features::WindowFeatures;
+use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
+use crate::domain::features::{Baseline, WindowFeatures};
 use crate::domain::fusion::Source;
 use crate::domain::rules::Hints;
 use crate::infra::gateway::NetLogEntry;
@@ -111,6 +112,88 @@ impl Db {
             params![ts, window_id, state.as_str(), shown.as_str(), source],
         )?;
         Ok(self.conn.last_insert_rowid())
+    }
+
+    /// 一个已存特征窗口的特征和规则提示。
+    fn window_evidence(&self, id: i64) -> Result<Option<(WindowFeatures, Hints)>, StoreError> {
+        let row: Option<(String, String)> = self
+            .conn
+            .query_row(
+                "SELECT features_json, hints FROM window_features WHERE id = ?1",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?;
+        row.map(|(json, hints)| Ok((serde_json::from_str(&json)?, Hints::parse(&hints))))
+            .transpose()
+    }
+
+    /// 看板时间线上某个状态点的解释（`state_explain(mood_state_id)`，FR-STA-09）。
+    ///
+    /// 不另存解释：从 `mood_state.window_id` 找回那个窗口和它的上一个窗口，重新生成一次。
+    /// 冷启动按“截至该窗口已存的窗口数”判断；`{p}` 用传入的（当前）基线中位数。
+    /// 记录不存在或没有关联窗口（窗口已被清理）时返回 `None`。
+    pub fn explain_mood_state(
+        &self,
+        mood_state_id: i64,
+        baseline: &Baseline,
+    ) -> Result<Option<Explanation>, StoreError> {
+        let row: Option<(Option<i64>, String, String, Option<String>)> = self
+            .conn
+            .query_row(
+                "SELECT window_id, shown_state, source, probs_json FROM mood_state WHERE id = ?1",
+                [mood_state_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .optional()?;
+        let Some((Some(window_id), shown, source, probs)) = row else {
+            return Ok(None);
+        };
+        let Ok(shown) = serde_json::from_value::<MoodState>(serde_json::Value::String(shown))
+        else {
+            return Ok(None);
+        };
+        let Some(cur) = self.window_evidence(window_id)? else {
+            return Ok(None);
+        };
+        let prev_id: Option<i64> = self.conn.query_row(
+            "SELECT max(id) FROM window_features WHERE id < ?1",
+            [window_id],
+            |r| r.get(0),
+        )?;
+        let prev = match prev_id {
+            Some(id) => self.window_evidence(id)?,
+            None => None,
+        };
+        let windows: i64 = self.conn.query_row(
+            "SELECT count(*) FROM window_features WHERE id <= ?1",
+            [window_id],
+            |r| r.get(0),
+        )?;
+        let mut baseline = baseline.clone();
+        baseline.windows = u32::try_from(windows).unwrap_or(u32::MAX);
+        let source = if source == "jev" {
+            ExplainSource::Jev
+        } else {
+            ExplainSource::Rule
+        };
+        let prob = probs
+            .and_then(|j| {
+                serde_json::from_str::<std::collections::HashMap<MoodState, f64>>(&j).ok()
+            })
+            .and_then(|m| m.get(&shown).copied());
+        Ok(Some(explain::build(
+            shown,
+            prob,
+            source,
+            Evidence {
+                features: &cur.0,
+                hints: &cur.1,
+            },
+            prev.as_ref()
+                .map(|(features, hints)| Evidence { features, hints }),
+            &baseline,
+        )))
     }
 
     pub fn settings_get(&self, key: &str) -> Result<Option<String>, StoreError> {
@@ -321,6 +404,78 @@ mod tests {
             )
             .unwrap();
         assert_eq!(row, (w, "hesitant".into(), "fluent".into(), "rule".into()));
+    }
+
+    #[test]
+    fn explain_stored_mood_state() {
+        use crate::domain::explain::SignalKind;
+        use crate::domain::rules::Hint;
+        use crate::infra::templates::{BaselineDefault, TemplateDirs};
+
+        let dirs = TemplateDirs::factory_only(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates"),
+        );
+        let base = Baseline::from_defaults(&BaselineDefault::load(&dirs).unwrap());
+        let db = Db::open_in_memory().unwrap();
+        let prev = WindowFeatures {
+            abandon: 1,
+            ..Default::default()
+        };
+        let cur = WindowFeatures {
+            pause_cnt: 3,
+            kpm: Some(120.0),
+            kpm_z: Some(0.2),
+            ..Default::default()
+        };
+        let h = Hints(vec![Hint::HesitationHint]);
+        let w1 = db.insert_window(0, 1, AppCat::Chat, &prev, &h).unwrap();
+        let w2 = db.insert_window(2, 3, AppCat::Chat, &cur, &h).unwrap();
+        db.insert_mood_state(
+            1,
+            Some(w1),
+            MoodState::Hesitant,
+            MoodState::Fluent,
+            Source::Rule,
+        )
+        .unwrap();
+        let id = db
+            .insert_mood_state(
+                3,
+                Some(w2),
+                MoodState::Hesitant,
+                MoodState::Hesitant,
+                Source::Rule,
+            )
+            .unwrap();
+
+        let e = db.explain_mood_state(id, &base).unwrap().unwrap();
+        assert_eq!(e.state, MoodState::Hesitant);
+        assert_eq!(e.source, ExplainSource::Rule);
+        assert_eq!(e.prob, None);
+        assert!(e.cold_start);
+        let kinds: Vec<_> = e.signals.iter().map(|s| (s.kind, s.value)).collect();
+        assert_eq!(
+            kinds,
+            vec![(SignalKind::Pause, Some(3)), (SignalKind::Abandon, None)],
+            "停顿来自触发窗口，“打了又删”来自上一个窗口"
+        );
+
+        // Jev 记录带概率
+        db.conn()
+            .execute(
+                "UPDATE mood_state SET source = 'jev', probs_json = '{\"hesitant\":0.83}' WHERE id = ?1",
+                [id],
+            )
+            .unwrap();
+        let e = db.explain_mood_state(id, &base).unwrap().unwrap();
+        assert_eq!((e.source, e.prob), (ExplainSource::Jev, Some(83)));
+
+        // 不存在、没有关联窗口时为 None
+        assert_eq!(db.explain_mood_state(999, &base).unwrap(), None);
+        let orphan = db
+            .insert_mood_state(4, None, MoodState::Low, MoodState::Low, Source::Rule)
+            .unwrap();
+        assert_eq!(db.explain_mood_state(orphan, &base).unwrap(), None);
     }
 
     #[test]

@@ -5,6 +5,7 @@ use tauri::{AppHandle, State};
 use tauri_specta::Event;
 use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
+use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
 
@@ -24,6 +25,25 @@ pub(crate) fn emit_status(app: &AppHandle, snap: StatusSnapshot) {
 #[specta::specta]
 pub fn get_status(state: State<'_, AppState>) -> Result<StatusSnapshot, UiError> {
     Ok(state.status())
+}
+
+/// 状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；
+/// 带上时是看板时间线上那个状态点的解释，记录不存在或窗口已清理时为 `null`。
+#[tauri::command]
+#[specta::specta]
+pub fn state_explain(
+    state: State<'_, AppState>,
+    sensing: State<'_, Sensing>,
+    // specta 不导出 i64（前端 number 会丢精度）；状态记录的行号用 u32 足够
+    mood_state_id: Option<u32>,
+) -> Result<Option<Explanation>, UiError> {
+    let Some(id) = mood_state_id else {
+        return Ok(state.explanation());
+    };
+    let Some(baseline) = &sensing.baseline else {
+        return Ok(None);
+    };
+    Ok(state.db().explain_mood_state(i64::from(id), baseline)?)
 }
 
 /// 暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。

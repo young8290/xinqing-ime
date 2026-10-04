@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, RwLock};
 
 use xinqing_hub_core::domain::consent::ConsentState;
+use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::store::{Db, StoreError};
@@ -16,6 +17,8 @@ pub const DB_FILE: &str = "xinqing.db";
 pub struct AppState {
     db: Mutex<Db>,
     pub status: RwLock<StatusSnapshot>,
+    /// 最近一次状态切换的解释（FR-STA-09），由感知任务写入，缓存到下一次切换。
+    explanation: RwLock<Option<Explanation>>,
     /// 本次启动时数据库损坏并已重建（FR-DAT-01）。界面提示 `error.db_rebuilt` 随小组件一句话区（D-02）接入
     #[allow(dead_code)]
     pub db_rebuilt: bool,
@@ -28,6 +31,7 @@ impl AppState {
         Ok(Self {
             db: Mutex::new(db),
             status: RwLock::new(StatusSnapshot::default()),
+            explanation: RwLock::new(None),
             db_rebuilt,
         })
     }
@@ -52,6 +56,17 @@ impl AppState {
         let mut s = self.status.write().unwrap_or_else(|e| e.into_inner());
         let changed = f(&mut s);
         (s.clone(), changed)
+    }
+
+    pub fn explanation(&self) -> Option<Explanation> {
+        self.explanation
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    pub fn set_explanation(&self, e: Explanation) {
+        *self.explanation.write().unwrap_or_else(|e| e.into_inner()) = Some(e);
     }
 
     pub fn needs_onboarding(&self) -> Result<bool, UiError> {
