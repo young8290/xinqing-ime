@@ -62,11 +62,11 @@
 #
 # 部署目标 (在 scripts\deploy.local.ps1 覆盖, PowerShell 赋值格式):
 #   ── 系统安装 (注册 COM/写自启; 默认在 Program Files 下, 部署自动 UAC 提权)
-#   WIND_DIR_RELEASE          = C:\Program Files\WindInput      # p1 / pm* 目标
-#   WIND_DIR_DEV              = C:\Program Files\WindInputDev   # pd1 / pdm* 目标
+#   WIND_DIR_RELEASE          = C:\Program Files\XinQing      # p1 / pm* 目标
+#   WIND_DIR_DEV              = C:\Program Files\XinQingDev   # pd1 / pdm* 目标
 #   ── 便携部署 (纯复制, 免注册免自启; 无需管理员)
-#   WIND_DIR_PORTABLE_RELEASE = D:\WindInputPortable            # pb1 / pbm* 目标
-#   WIND_DIR_PORTABLE_DEV     = D:\WindInputPortableDev         # pbd1 / pbdm* 目标
+#   WIND_DIR_PORTABLE_RELEASE = D:\XinQingPortable            # pb1 / pbm* 目标
+#   WIND_DIR_PORTABLE_DEV     = D:\XinQingPortableDev         # pbd1 / pbdm* 目标
 #   注: 便携目录【不可】落在 Program Files\ 或 Windows\ 下 —— wind_portable 的
 #       is_protected_dir (layout.rs) 会拒绝在系统保护目录启动便携模式。
 #   注: 便携用户数据在 <便携目录>\userdata\, 重新部署与卸载均保留该目录。
@@ -135,13 +135,13 @@ $CacheDir      = "$ProductRoot\.cache"        # 外部下载/生成 (不入库)
 $DistDir       = "$ProductRoot\dist"          # 安装包输出目录 (gitignore)
 
 # ---------- 部署目标 (Go 便携式: 复制到指定本地目录) ----------
-$WIND_DIR_RELEASE = "C:\Program Files\WindInput"
-$WIND_DIR_DEV     = "C:\Program Files\WindInputDev"
+$WIND_DIR_RELEASE = "C:\Program Files\XinQing"
+$WIND_DIR_DEV     = "C:\Program Files\XinQingDev"
 # 便携部署目标 (绿色版: 纯复制 + 便携标记, 不注册 COM/不写自启, 无需管理员)。
 # 默认放 D:\ 而非 Program Files —— wind_portable 探测到自身位于系统保护目录会直接拒绝
 # 启动便携模式 (wind-portable\src\layout.rs is_protected_dir), 故此处不能沿用安装目录。
-$WIND_DIR_PORTABLE_RELEASE = "D:\WindInputPortable"
-$WIND_DIR_PORTABLE_DEV     = "D:\WindInputPortableDev"
+$WIND_DIR_PORTABLE_RELEASE = "D:\XinQingPortable"
+$WIND_DIR_PORTABLE_DEV     = "D:\XinQingPortableDev"
 # 便携标记文件名与用户数据目录名: 真源是 wind-config\src\variant.rs 的 PORTABLE_MARKER_NAME
 # / PORTABLE_DATA_DIR 常量。标记名已与 config\app.toml 的 portable_marker (安装器侧字段)
 # 统一 —— 此前两侧各叫各的, 安装包便携模式装出的目录主程序不认, 数据落回 %APPDATA%。
@@ -1007,7 +1007,7 @@ function Get-TsfSystemDir ([string]$suffix, [bool]$wow64) {
     if (-not [Environment]::Is64BitProcess) {
         throw "Get-TsfSystemDir 需在 64 位 PowerShell 中运行 (32 位进程访问 System32 会被 WOW64 重定向)"
     }
-    $app  = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $app  = if ($suffix) { "XinQingDev" } else { "XinQing" }
     $root = if ($wow64)  { "SysWOW64" }     else { "System32" }
     return (Join-Path $env:SystemRoot "$root\IME\$app")
 }
@@ -1015,7 +1015,7 @@ function Get-TsfSystemDir ([string]$suffix, [bool]$wow64) {
 # 应用注册表键 HKLM\Software\<AppName>。与安装器清单 [app] id、Rust 侧
 # wind-config::variant::app_dir_name()、C++ 侧 WIND_APP_NAME 同名 (四处无编译期约束)。
 function Get-AppRegKey ([string]$suffix) {
-    $app = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $app = if ($suffix) { "XinQingDev" } else { "XinQing" }
     return "HKLM:\Software\$app"
 }
 
@@ -1108,9 +1108,9 @@ function Register-Tsf ([string]$dir, [string]$suffix) {
 # 注3: 部署在管理员令牌下运行; 同账户 UAC 提升时 HKCU 仍指向本人, 故对当前用户生效。
 function Enable-TsfForUser ([string]$profile) {
     if ($profile -eq "dev") {
-        $tip = "0804:{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62DEB0-5ECF-413A-A476-48D1F29E827C}{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
     } else {
-        $tip = "0804:{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62EE30-5ECF-413A-A476-48D1F29E827C}{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
     }
     try {
         $list = Get-WinUserLanguageList
@@ -1158,7 +1158,7 @@ function Install-WubiFont ([string]$dir) {
 
 # 写开机自启 (HKCU Run; 免管理员)。
 function Set-AutoStart ([string]$dir, [string]$suffix) {
-    $name = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $name = if ($suffix) { "XinQingDev" } else { "XinQing" }
     $exe  = Join-Path $dir "wind_input$suffix.exe"
     try {
         Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -Value "`"$exe`"" -Force
@@ -1220,11 +1220,11 @@ function Stop-WindService ([string]$suffix) {
 # 没有任何编译期约束能发现这条部署路径漏接。
 #
 # 注: 键按变体分开 —— DLL 读的是 WIND_APP_REGKEY = Software\<WIND_APP_NAME>
-# (wind_tsf\include\Globals.h), dev 变体即 Software\WindInputDev。此前这里写死
+# (wind_tsf\include\Globals.h), dev 变体即 Software\XinQingDev。此前这里写死
 # Software\WindInput, 部署 dev 时闸门写错了键、dev DLL 照样抢跑拉起旧 exe
 # (2026-09-24 靶机实锤, dev.sh 侧同症见 remote_deploy_guard)。
 function Set-InstallerRunning ([bool]$on, [string]$profile = "release") {
-    $app = if ($profile -eq "dev") { "WindInputDev" } else { "WindInput" }
+    $app = if ($profile -eq "dev") { "XinQingDev" } else { "XinQing" }
     $key = "HKLM:\Software\$app"
     try {
         if ($on) {
@@ -1323,7 +1323,7 @@ function Deploy-Full ([string]$profile = "release") {
         $exe = Join-Path $targetDir "wind_input$suffix.exe"
         Start-Process -FilePath $exe; Gray "  - 已启动 wind_input$suffix.exe"
         Say "`n系统安装完成 ($profile) → $targetDir"
-        Say "提示: 按 Win+Space 切换到清风输入法$(if($suffix){' (Dev)'})。"
+        Say "提示: 按 Win+Space 切换到心晴输入法$(if($suffix){' (Dev)'})。"
         return $true
     }
     finally {
@@ -1423,7 +1423,7 @@ function Test-PortableRoot ([string]$root, [string]$profile = "release") {
             ErrMsg "便携目录不能位于系统保护目录下: $root"
             ErrMsg "  (命中前缀: $p) —— wind_portable 会拒绝在此启动便携模式。"
             $varName = if ($profile -eq 'dev') { 'WIND_DIR_PORTABLE_DEV' } else { 'WIND_DIR_PORTABLE_RELEASE' }
-            ErrMsg "请在 scripts\deploy.local.ps1 中把 `$$varName 改到普通目录, 如 D:\WindInputPortable。"
+            ErrMsg "请在 scripts\deploy.local.ps1 中把 `$$varName 改到普通目录, 如 D:\XinQingPortable。"
             return $false
         }
     }
@@ -1580,9 +1580,9 @@ function Uninstall-Portable ([string]$profile = "release") {
 # 从当前用户中文输入法列表移除本变体 TIP (Enable-TsfForUser 的逆操作)。
 function Disable-TsfForUser ([string]$profile) {
     if ($profile -eq "dev") {
-        $tip = "0804:{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62DEB0-5ECF-413A-A476-48D1F29E827C}{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
     } else {
-        $tip = "0804:{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62EE30-5ECF-413A-A476-48D1F29E827C}{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
     }
     try {
         $list = Get-WinUserLanguageList
@@ -1597,7 +1597,7 @@ function Disable-TsfForUser ([string]$profile) {
 
 # 移除开机自启 (HKCU Run; Set-AutoStart 的逆操作)。
 function Remove-AutoStart ([string]$suffix) {
-    $name = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $name = if ($suffix) { "XinQingDev" } else { "XinQing" }
     Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
     Gray "  - 已移除开机自启 ($name)"
 }
@@ -1668,7 +1668,7 @@ function Uninstall-Full ([string]$profile = "release") {
         }
     } else { Gray "  - 目录不存在, 跳过" }
     Say "`n系统卸载完成 ($profile)。"
-    $appName = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $appName = if ($suffix) { "XinQingDev" } else { "XinQing" }
     Warn "提示: 个人数据已保留, 如需彻底清除请手动删除:"
     Warn "  漫游配置/词库: $env:APPDATA\$appName"
     Warn "  本机缓存/日志: $env:LOCALAPPDATA\$appName"
@@ -1721,21 +1721,21 @@ function Set-TomlKeysInSection ([string]$text, [string]$section, [hashtable]$kv)
 # 不会被 packer 递归打进包)。GUID 必须与 wind_tsf\src\Globals.cpp 一致 (dev=DEB0/DEB1, release=EE30/EE31)。
 function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPath, [string]$assetsDir) {
     if ($profile -eq "dev") {
-        $id = "WindInputDev"; $disp = "清风输入法 (开发版)"; $mainExe = "wind_input_dev.exe"
-        $menu = "清风输入法 (开发版)"; $title = "清风输入法 (开发版) 安装向导"; $proto = "windinputdev"
+        $id = "XinQingDev"; $disp = "心晴输入法 (开发版)"; $mainExe = "wind_input_dev.exe"
+        $menu = "心晴输入法 (开发版)"; $title = "心晴输入法 (开发版) 安装向导"; $proto = "xinqingdev"
         $settingExe = "wind_setting_dev.exe"
         $procs = '["wind_setting_dev", "wind_portable", "wind_input_dev"]'
         $acl   = '["wind_tsf_dev.dll", "wind_tsf_x86_dev.dll"]'
-        $clsid = "{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}"; $prof = "{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}"
-        $dllX64 = "wind_tsf_dev.dll"; $dllX86 = "wind_tsf_x86_dev.dll"; $outName = "WindInputDev-Setup"
+        $clsid = "{EF62DEB0-5ECF-413A-A476-48D1F29E827C}"; $prof = "{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
+        $dllX64 = "wind_tsf_dev.dll"; $dllX86 = "wind_tsf_x86_dev.dll"; $outName = "XinQingDev-Setup"
     } else {
-        $id = "WindInput"; $disp = "清风输入法"; $mainExe = "wind_input.exe"
-        $menu = "清风输入法"; $title = "清风输入法 安装向导"; $proto = "windinput"
+        $id = "XinQing"; $disp = "心晴输入法"; $mainExe = "wind_input.exe"
+        $menu = "心晴输入法"; $title = "心晴输入法 安装向导"; $proto = "xinqing"
         $settingExe = "wind_setting.exe"
         $procs = '["wind_setting", "wind_portable", "wind_input"]'
         $acl   = '["wind_tsf.dll", "wind_tsf_x86.dll"]'
-        $clsid = "{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}"; $prof = "{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
-        $dllX64 = "wind_tsf.dll"; $dllX86 = "wind_tsf_x86.dll"; $outName = "WindInput-Setup"
+        $clsid = "{EF62EE30-5ECF-413A-A476-48D1F29E827C}"; $prof = "{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
+        $dllX64 = "wind_tsf.dll"; $dllX86 = "wind_tsf_x86.dll"; $outName = "XinQing-Setup"
     }
     # 设置程序为可选模块: ../wind-setting 不存在时 Build-Setting 会跳过, build/ 里就没有产物。
     # 此时必须置空 setting_exe, 否则安装器会为不存在的文件建开始菜单快捷方式。
@@ -1762,7 +1762,7 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
 id                = "$id"
 display_name      = "$disp"
 version           = "$Version"
-publisher         = "清风输入法 项目"
+publisher         = "心晴输入法 项目"
 description       = "轻量开源输入法"
 main_exe          = "$mainExe"
 setting_exe       = "$settingExe"
@@ -1817,7 +1817,7 @@ icon        = "$iconFwd"
 function New-UpdateManifest ([string]$profile, [string]$setupPath) {
     $isDev    = ($profile -eq "dev")
     $channel  = if ($isDev) { "dev" } else { "stable" }
-    $base     = if ($isDev) { "WindInputDev" } else { "WindInput" }
+    $base     = if ($isDev) { "XinQingDev" } else { "XinQing" }
     $jsonName = if ($isDev) { "latest-dev.json" } else { "latest.json" }
 
     $item = Get-Item $setupPath
@@ -1855,7 +1855,7 @@ function New-UpdateManifest ([string]$profile, [string]$setupPath) {
 #   分两次调用 (-PrepOnly / -SkipPrep), 中间夹一次签名 —— 卸载器加工完即为终态, 只有
 #   这个窗口能签它; 详见 Do-Installer 第 4a 步。
 # 打包是纯文件 IO + cargo 构建, 不需管理员 (故未纳入 UAC 提权命令)。
-# 便携版压缩包: build[_dev]\ → dist\WindInput[Dev]-Portable-<版本>.zip (+ .sha256)
+# 便携版压缩包: build[_dev]\ → dist\XinQing[Dev]-Portable-<版本>.zip (+ .sha256)
 # 与 dev.sh 的 9/portable-zip 同口径 (同名、同结构), 两边产物可互换。
 # 内容依据 Deploy-Portable (便携部署的权威定义): 程序文件 + data\ + 便携标记。
 # 【不含 userdata\】—— 那是便携版的用户数据目录 (配置/词频/用户词库), 打进包等于把
@@ -1870,7 +1870,7 @@ function Do-PortableZip ([string]$profile = "release", [bool]$skipBuild = $false
         return $false
     }
 
-    $base  = if ($profile -eq "dev") { "WindInputDev" } else { "WindInput" }
+    $base  = if ($profile -eq "dev") { "XinQingDev" } else { "XinQing" }
     $name  = "$base-$Version"                       # zip 内顶层目录, 避免解压散落
     $zip   = Join-Path $DistDir "$base-Portable-$Version.zip"
     $stage = Join-Path $DistDir ".portable-stage"
@@ -1953,7 +1953,7 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
 
     # 3. 生成变体 app.toml → dist\ (在 source 之外)
     New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
-    $cfgName = if ($profile -eq "dev") { "WindInputDev.app.toml" } else { "WindInput.app.toml" }
+    $cfgName = if ($profile -eq "dev") { "XinQingDev.app.toml" } else { "XinQing.app.toml" }
     $cfg = Join-Path $DistDir $cfgName
     New-InstallerConfig $profile $outdir $cfg $assetsDir
 
@@ -2011,7 +2011,7 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
         Remove-Item $uninstExe -Force -ErrorAction SilentlyContinue
     }
 
-    $setup = Join-Path $DistDir "$(if($profile -eq 'dev'){'WindInputDev-Setup'}else{'WindInput-Setup'})-$Version.exe"
+    $setup = Join-Path $DistDir "$(if($profile -eq 'dev'){'XinQingDev-Setup'}else{'XinQing-Setup'})-$Version.exe"
     if (Test-Path $setup) {
         $sz = [math]::Round((Get-Item $setup).Length / 1MB, 1)
         Say "`n安装包已生成: $setup (${sz}MB)"
@@ -2064,7 +2064,7 @@ function Do-Stage ([string]$profile = "release") {
         return $false
     }
 
-    $base  = if ($profile -eq "dev") { "WindInputDev" } else { "WindInput" }
+    $base  = if ($profile -eq "dev") { "XinQingDev" } else { "XinQing" }
     $zip   = Join-Path $DistDir "$base-Stage-$Version.zip"
     $stage = Join-Path $DistDir ".stage-pack"
 
@@ -2306,7 +2306,7 @@ function Show-Menu {
     Write-Host "`n  便携包 (免安装 zip, 不依赖 wind-installer):" -ForegroundColor Yellow
     Write-Host "    9    生成便携包 (release)       d9    生成便携包 (dev)"
     Write-Host "    9s   跳过重建直接打包 (release)  d9s   跳过重建直接打包 (dev)"
-    Write-Host "      输出 → $DistDir\WindInput[Dev]-Portable-$Version.zip" -ForegroundColor DarkGray
+    Write-Host "      输出 → $DistDir\XinQing[Dev]-Portable-$Version.zip" -ForegroundColor DarkGray
     Write-Host "`n  发布中转 (CI 编译 → 本机签名打包):" -ForegroundColor Yellow
     Write-Host "    stage          打包中转产物 (build\ + 安装器三件套), CI 上跑"
     Write-Host "    unstage <zip>  还原中转产物, 本机跑; 之后 sign 8s / sign 9s"

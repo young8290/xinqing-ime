@@ -519,7 +519,7 @@ impl PopupMenu {
     /// 确保窗口池至少有 n 个窗口（新窗口绑定共享 MenuState 处理器）。
     fn ensure_windows(&mut self, n: usize) -> Result<(), String> {
         while self.windows.len() < n {
-            let w = LayeredWindow::create(None, 160, 120, "WindInputPopupMenu")?;
+            let w = LayeredWindow::create(None, 160, 120, "XinQingPopupMenu")?;
             w.register_mouse(self.state.clone());
             self.windows.push(w);
         }
@@ -2265,8 +2265,8 @@ mod clipboard_tests {
     #[test]
     #[ignore = "真写系统剪贴板，会覆盖使用者当前内容；须在 Windows 本机手动跑"]
     fn clipboard_cache_invalidates_on_change() {
-        const A: &str = "WindInput-clip-cache-A";
-        const B: &str = "WindInput-clip-cache-B";
+        const A: &str = "XinQing-clip-cache-A";
+        const B: &str = "XinQing-clip-cache-B";
         let original = get_clipboard_text();
 
         set_clipboard_text(A);
@@ -2477,8 +2477,8 @@ mod clipboard_tests_macos {
     #[test]
     #[ignore = "真写系统剪贴板，会覆盖使用者当前内容；须在 macOS 本机手动跑"]
     fn clipboard_cache_invalidates_on_change_macos() {
-        const A: &str = "WindInput-clip-cache-A";
-        const B: &str = "WindInput-clip-cache-B";
+        const A: &str = "XinQing-clip-cache-A";
+        const B: &str = "XinQing-clip-cache-B";
         let original = get_clipboard_text();
 
         set_clipboard_text(A);

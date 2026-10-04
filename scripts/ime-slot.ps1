@@ -17,8 +17,8 @@
 $ErrorActionPreference = "Stop"
 
 $variants = @(
-    @{ Name = "release"; Clsid = "{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}"; Note = "日常在用 + 对比验证, 不要占用" },
-    @{ Name = "dev    "; Clsid = "{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}"; Note = "公共测试槽, 各 worktree 交替使用" }
+    @{ Name = "release"; Clsid = "{EF62EE30-5ECF-413A-A476-48D1F29E827C}"; Note = "日常在用 + 对比验证, 不要占用" },
+    @{ Name = "dev    "; Clsid = "{EF62DEB0-5ECF-413A-A476-48D1F29E827C}"; Note = "公共测试槽, 各 worktree 交替使用" }
 )
 
 function Get-Inproc ([string]$clsid, [bool]$wow) {

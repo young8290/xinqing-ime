@@ -71,7 +71,7 @@ impl BridgeServer {
     /// 靠 SID 后缀按用户隔离（详见 [`crate::pipe_scope`]）。C++ TSF 端算同一名字。
     pub fn pipe_name(&self) -> String {
         format!(
-            r"\\.\pipe\wind_input{}{}",
+            r"\\.\pipe\xinqing{}{}",
             self.config.suffix,
             crate::pipe_scope::user_scope_suffix()
         )

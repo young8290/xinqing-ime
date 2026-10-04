@@ -61,14 +61,14 @@ pub struct HostRenderManager {
 
 fn shm_name_for(suffix: &str, kind: u32) -> String {
     format!(
-        "Local\\WindInput_SHM{}{}",
+        "Local\\XinQing_SHM{}{}",
         suffix, KIND_SUFFIXES[kind as usize]
     )
 }
 
 fn event_name_for(suffix: &str, conn_id: u32, kind: u32) -> String {
     format!(
-        "Local\\WindInput_EVT{}_C{}{}",
+        "Local\\XinQing_EVT{}_C{}{}",
         suffix, conn_id, KIND_SUFFIXES[kind as usize]
     )
 }

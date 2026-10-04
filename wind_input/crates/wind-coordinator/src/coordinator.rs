@@ -14932,16 +14932,16 @@ mod initial_mode_tests {
         };
 
         set(true, false);
-        assert_eq!(c.langbar_tooltip(), "清风输入法 - 中文模式");
+        assert_eq!(c.langbar_tooltip(), "心晴输入法 - 中文模式");
         set(true, true);
         assert_eq!(
             c.langbar_tooltip(),
-            "清风输入法 - 英文大写 (中文模式, Caps Lock)"
+            "心晴输入法 - 英文大写 (中文模式, Caps Lock)"
         );
         set(false, true);
-        assert_eq!(c.langbar_tooltip(), "清风输入法 - 英文模式 (Caps Lock 开)");
+        assert_eq!(c.langbar_tooltip(), "心晴输入法 - 英文模式 (Caps Lock 开)");
         set(false, false);
-        assert_eq!(c.langbar_tooltip(), "清风输入法 - 英文模式 (Caps Lock 关)");
+        assert_eq!(c.langbar_tooltip(), "心晴输入法 - 英文模式 (Caps Lock 关)");
 
         // ★★ 不可输入那两档要先稳够 INPUT_BLOCK_DELAY 才呈现——tooltip 与图标读**同一个**
         // effective_input_block，所以文案也跟着迟滞。这是对的：图标还显着方案标签、
@@ -14951,27 +14951,27 @@ mod initial_mode_tests {
         set(true, false);
         assert_eq!(
             c.langbar_tooltip(),
-            "清风输入法 - 中文模式",
+            "心晴输入法 - 中文模式",
             "迟滞期内仍说旧文案，与图标同步"
         );
         std::thread::sleep(INPUT_BLOCK_DELAY + std::time::Duration::from_millis(30));
-        assert_eq!(c.langbar_tooltip(), "清风输入法 - 密码框，已切英文");
+        assert_eq!(c.langbar_tooltip(), "心晴输入法 - 密码框，已切英文");
         c.password_suppress
             .store(false, std::sync::atomic::Ordering::Relaxed);
         assert_eq!(
             c.langbar_tooltip(),
-            "清风输入法 - 中文模式",
+            "心晴输入法 - 中文模式",
             "恢复方向不迟滞，立即回到常态文案"
         );
 
         c.last_input_diag.lock().unwrap().disabled = true;
         let _ = c.langbar_tooltip(); // 起计时
         std::thread::sleep(INPUT_BLOCK_DELAY + std::time::Duration::from_millis(30));
-        assert_eq!(c.langbar_tooltip(), "清风输入法 - 已禁用");
+        assert_eq!(c.langbar_tooltip(), "心晴输入法 - 已禁用");
         c.last_input_diag.lock().unwrap().disabled = false;
         // 先让闸门回到 None 再测下一档：从「已禁用」直接转向另一个非 None 档走的是
         // **进入**方向，仍会呈现旧值——那是闸门的正确行为，不是本条要测的东西。
-        assert_eq!(c.langbar_tooltip(), "清风输入法 - 中文模式");
+        assert_eq!(c.langbar_tooltip(), "心晴输入法 - 中文模式");
 
         // NoEditContext 刻意**不**单独成档：它已不再让图标显「英」（是日常状态），
         // tooltip 再提就与看到的对不上。**必须等稳够之后再断言**——迟滞期内不变是
@@ -14986,7 +14986,7 @@ mod initial_mode_tests {
         );
         assert_eq!(
             c.langbar_tooltip(),
-            "清风输入法 - 中文模式",
+            "心晴输入法 - 中文模式",
             "无可编辑上下文不该改变文案——图标此时也没变"
         );
     }
@@ -15004,7 +15004,7 @@ mod initial_mode_tests {
         // 首次广播：缓存为空 ⇒ 必发
         c.push_langbar_tooltip(0);
         let first = c.last_langbar_tooltip.lock().unwrap().clone();
-        assert_eq!(first, "清风输入法 - 中文模式");
+        assert_eq!(first, "心晴输入法 - 中文模式");
 
         // 文案没变 ⇒ 缓存不动（下游是否真的发送由 push_server 决定，这里钉的是判据）
         c.push_langbar_tooltip(0);
@@ -15015,7 +15015,7 @@ mod initial_mode_tests {
         c.push_langbar_tooltip(0);
         assert_eq!(
             *c.last_langbar_tooltip.lock().unwrap(),
-            "清风输入法 - 英文模式 (Caps Lock 关)"
+            "心晴输入法 - 英文模式 (Caps Lock 关)"
         );
 
         // 握手（token != 0）绕过去重、也不写缓存：新连接手里没有任何文本，被全局去重

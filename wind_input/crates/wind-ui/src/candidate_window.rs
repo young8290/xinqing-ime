@@ -472,7 +472,7 @@ pub struct CandidateWindow {
 
 impl CandidateWindow {
     pub fn new(config: CandidateWindowConfig, events: Sender<UiEvent>) -> Result<Self, String> {
-        let window = LayeredWindow::create(None, 400, 200, "WindInputCandidate")?;
+        let window = LayeredWindow::create(None, 400, 200, "XinQingCandidate")?;
         let text_renderer = TextRenderer::new(DEFAULT_FONT_FAMILY, config.font_size)?;
         let tooltip_events = events.clone();
         let self_events = events.clone();

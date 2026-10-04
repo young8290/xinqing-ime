@@ -43,7 +43,7 @@ fn main() {
     );
     let ver_u64 = ((maj as u64) << 48) | ((min as u64) << 32) | ((pat as u64) << 16);
 
-    let product_name = "清风输入法";
+    let product_name = "心晴输入法";
     let original_filename = "wind_input.exe";
 
     // manifest：asInvoker + PerMonitorV2 DPI 感知 + win10 + 长路径（对齐旧项目）。
@@ -75,11 +75,11 @@ fn main() {
     let mut res = winresource::WindowsResource::new();
     res.set_icon(icon.to_str().expect("icon 路径含非 UTF-8"));
     res.set("ProductName", product_name);
-    res.set("CompanyName", "清风输入法");
-    res.set("FileDescription", "清风输入法服务");
+    res.set("CompanyName", "心晴输入法");
+    res.set("FileDescription", "心晴输入法服务");
     res.set("InternalName", "wind_input");
     res.set("OriginalFilename", original_filename);
-    res.set("LegalCopyright", "Copyright © 清风输入法");
+    res.set("LegalCopyright", "Copyright © 心晴输入法");
     res.set("ProductVersion", &ver_str);
     res.set("FileVersion", &ver_str);
     res.set_version_info(winresource::VersionInfo::FILEVERSION, ver_u64);

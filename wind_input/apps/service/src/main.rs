@@ -949,7 +949,7 @@ fn check_singleton() -> SingletonCheck {
     }
 
     let mutex_name = format!(
-        "Local\\WindInputIMEService{}",
+        "Local\\XinQingIMEService{}",
         wind_config::variant::pipe_suffix()
     );
     let wide_name: Vec<u16> = mutex_name

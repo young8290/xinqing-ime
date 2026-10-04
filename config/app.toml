@@ -1,7 +1,7 @@
 # ============================================================================
 #  WindInput 安装器清单（供 wind-packer 使用）
 # ============================================================================
-#  本文件归属 WindInput 仓库，描述清风输入法的完整安装配置。
+#  本文件归属 WindInput 仓库，描述心晴输入法的完整安装配置。
 #
 #  动态字段由构建脚本通过 CLI 参数注入，无需修改本文件：
 #    wind-packer build \
@@ -12,16 +12,16 @@
 # ============================================================================
 
 [app]
-id              = "WindInput"
-display_name    = "清风输入法"
+id              = "XinQing"
+display_name    = "心晴输入法"
 version         = "0.0.0"           # 构建时由 --version 覆盖，此处为占位
-publisher       = "清风输入法 项目"
+publisher       = "心晴输入法 项目"
 description     = "轻量开源输入法"
 main_exe        = "wind_input.exe"
 setting_exe     = "wind_setting.exe"
-start_menu_folder = "清风输入法"
-window_title    = "清风输入法 安装向导"
-url_protocol    = "windinput"
+start_menu_folder = "心晴输入法"
+window_title    = "心晴输入法 安装向导"
+url_protocol    = "xinqing"
 agreement_url   = ""
 portable_marker = "portable_mode"
 process_names   = ["wind_setting", "wind_portable", "wind_input"]
@@ -34,8 +34,8 @@ install_win   = { w = 520, h = 420 }
 uninstall_win = { w = 480, h = 420 }
 
 [ime]
-clsid        = "{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}"
-profile_guid = "{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
+clsid        = "{EF62EE30-5ECF-413A-A476-48D1F29E827C}"
+profile_guid = "{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
 lang_id      = "0804"
 dll_x64      = "wind_tsf.dll"
 dll_x86      = "wind_tsf_x86.dll"
@@ -53,7 +53,7 @@ sweep_residue = true
 # ⚠️ 置此项还要求 DLL 已代码签名，两个条件缺一不可——游戏侧同时校验路径与签名。
 # ⚠️ 置此项后安装器会一并写 HKLM\Software\<[app] id>\InstallDir：DLL 搬离安装目录后
 #    只能靠它回指（读端 wind_tsf/src/IPCClient.cpp 的 _ResolveAppBaseDir），缺了拉不起服务。
-system_subdir = "IME/WindInput"
+system_subdir = "IME/XinQing"
 
 [[font]]
 file         = "HeiTiZiGen.ttf"
@@ -141,10 +141,10 @@ icon        = "../assets/installer.ico"
 
 # ── PE 资源版本信息（供 wind-packer 在打包期注入安装程序/卸载程序的详细信息）──
 [package.version_info]
-company_name      = "清风输入法项目"
-file_description  = "清风输入法安装程序"
+company_name      = "心晴输入法项目"
+file_description  = "心晴输入法安装程序"
 # file_version      = "0.0.0.0"       # 缺省时自动读取 app.version (会被 CLI --version 覆盖并格式化为4位)
-product_name      = "清风输入法"
+product_name      = "心晴输入法"
 # product_version   = "0.0.0.0"       # 缺省时自动读取 app.version (会被 CLI --version 覆盖并格式化为4位)
-copyright         = "Copyright (C) 清风输入法"
+copyright         = "Copyright (C) 心晴输入法"
 # original_filename = "WindInput-Setup.exe" # 缺省时自动生成

@@ -190,8 +190,8 @@ impl PushServer {
     /// 获取推送管道名称
     ///
     /// 必须与 Go/TSF 一致：后缀插在 `wind_input` 与 `_push` 之间。
-    /// Go `endpoint_windows.go`: `\\.\pipe\wind_input` + Suffix + `_push`；
-    /// TSF `Globals.h` dev 变体: `\\.\pipe\wind_input_push_dev`。
+    /// Go `endpoint_windows.go`: `\\.\pipe\xinqing` + Suffix + `_push`；
+    /// TSF `Globals.h` dev 变体: `\\.\pipe\xinqing_push_dev`。
     /// 此前误写成 `wind_input_push{suffix}` (= wind_input_push_dev)，
     /// 导致 TSF 永远连不上 push 管道、收不到热键白名单 → Shift/Ctrl+Shift+E 不被转发。
     /// 尾部再追加 per-user SID 后缀（`_S-1-...`）：管道名字空间是机器级的，靠它按
@@ -199,7 +199,7 @@ impl PushServer {
     /// `wind_input_push{变体后缀}{SID 后缀}`。
     pub fn pipe_name(&self) -> String {
         format!(
-            r"\\.\pipe\wind_input_push{}{}",
+            r"\\.\pipe\xinqing_push{}{}",
             self.config.suffix,
             crate::pipe_scope::user_scope_suffix()
         )
@@ -618,7 +618,7 @@ mod tests {
         });
         let dev_name = dev.pipe_name();
         assert!(
-            dev_name.starts_with(r"\\.\pipe\wind_input_push_dev"),
+            dev_name.starts_with(r"\\.\pipe\xinqing_push_dev"),
             "变体后缀须紧跟 wind_input_push，实得 {dev_name}"
         );
 
@@ -628,7 +628,7 @@ mod tests {
         });
         let rel_name = release.pipe_name();
         assert!(
-            rel_name.starts_with(r"\\.\pipe\wind_input_push"),
+            rel_name.starts_with(r"\\.\pipe\xinqing_push"),
             "实得 {rel_name}"
         );
 

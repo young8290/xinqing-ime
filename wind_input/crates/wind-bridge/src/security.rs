@@ -76,7 +76,7 @@ impl SecurityDescriptor {
 }
 
 /// 与命名管道同款的安全描述符，供本 crate 之外的命名内核对象复用
-/// （目前：服务的全局单例互斥体 `Global\WindInputIMEService*`）。
+/// （目前：服务的全局单例互斥体 `Global\XinQingIMEService*`）。
 ///
 /// 单例互斥体此前不带安全描述符，拿的是令牌默认 DACL——实测形如
 /// `O:BA D:(A;;0x1f0001;;;SY)(A;;0x1f0001;;;BA)(A;;0x120001;;;<登录会话SID>)`，

@@ -36,12 +36,12 @@ pub fn pipe_suffix() -> &'static str {
     if is_dev() { "_dev" } else { "" }
 }
 
-/// 应用数据目录名：dev `WindInputDev`，release `WindInput`。
+/// 应用数据目录名：dev `XinQingDev`，release `XinQing`（心晴身份改造，见 docs/xinqing/identity.md）。
 pub fn app_dir_name() -> &'static str {
     if is_dev() {
-        "WindInputDev"
+        "XinQingDev"
     } else {
-        "WindInput"
+        "XinQing"
     }
 }
 
@@ -270,7 +270,7 @@ mod tests {
     /// 安装器写的就是一行裸路径，尾随换行由 trim 吃掉。
     #[test]
     fn datadir_conf_plain_path_accepted() {
-        let p = abs("WindInput");
+        let p = abs("XinQing");
         assert_eq!(parse_datadir_conf(&p), Some(PathBuf::from(&p)));
         assert_eq!(
             parse_datadir_conf(&format!("{p}\r\n")),
@@ -307,7 +307,7 @@ mod tests {
     /// 普通相对路径两平台都该拒。
     #[test]
     fn datadir_conf_relative_rejected() {
-        assert_eq!(parse_datadir_conf(r"data\WindInput"), None);
+        assert_eq!(parse_datadir_conf(r"data\XinQing"), None);
         assert_eq!(parse_datadir_conf("data/WindInput"), None);
     }
 

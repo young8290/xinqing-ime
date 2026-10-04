@@ -514,7 +514,7 @@ pub struct Tooltip {
 impl Tooltip {
     pub fn new(events: Sender<UiEvent>) -> Result<Self, String> {
         let scale = dpi_scale();
-        let window = LayeredWindow::create(None, 120, 40, "WindInputTooltip")?;
+        let window = LayeredWindow::create(None, 120, 40, "XinQingTooltip")?;
         let renderer = TextRenderer::new("Microsoft YaHei UI", FONT_PX * scale)?;
         let mouse_over = Rc::new(Cell::new(false));
         let suppress_hide = Rc::new(Cell::new(false));

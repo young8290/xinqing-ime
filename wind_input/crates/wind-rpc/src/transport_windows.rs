@@ -3,7 +3,7 @@
 //! 参考 wind-bridge/server.rs（CreateNamedPipe + PIPE_UNLIMITED_INSTANCES + 每连接一线程）
 //! 与 push.rs（单向 writer 线程）。线路帧统一为 4 字节大端长度前缀 + JSON 载荷。
 //!
-//! 管道名：控制 `\\.\pipe\wind_input{suffix}_ctrl`，事件 `\\.\pipe\wind_input{suffix}_events`。
+//! 管道名：控制 `\\.\pipe\xinqing_rpc{suffix}_ctrl`，事件 `\\.\pipe\xinqing_rpc{suffix}_events`。
 //! 本地授权靠 OS ACL（SDDL，见 security.rs），不再需要 token/Origin/CORS。
 
 use std::ffi::CString;

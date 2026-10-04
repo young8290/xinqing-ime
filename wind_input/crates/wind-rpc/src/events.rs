@@ -4,7 +4,7 @@
 //! [`EventSink`] 是广播句柄（可 clone，跨线程），core/dispatch 经它 `emit_*` 推事件。
 //!
 //! 传输：
-//! - Windows: 单向 named pipe `\\.\pipe\wind_input{suffix}_events`（参考 push.rs）。
+//! - Windows: 单向 named pipe `\\.\pipe\xinqing_rpc{suffix}_events`（参考 push.rs）。
 //! - unix(macOS/Linux): unix socket `..._events.sock`（见 transport.rs 的接线点）。
 //!
 //! 线路帧复用 wind-ipc 的 4 字节大端长度前缀 + JSON（[`EventMessage`]）。

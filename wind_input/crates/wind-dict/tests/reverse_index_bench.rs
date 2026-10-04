@@ -8,7 +8,7 @@
 //!
 //! 跑法（目录里放该方案的全部 `.wdat`）：
 //! ```text
-//! WIND_REVERSE_BENCH='C:\Users\me\AppData\Local\WindInputDev\cache\feihuzj2' \
+//! WIND_REVERSE_BENCH='C:\Users\me\AppData\Local\XinQingDev\cache\feihuzj2' \
 //!   cargo test -p wind-dict --test reverse_index_bench -- --ignored --nocapture
 //! ```
 

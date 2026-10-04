@@ -48,7 +48,7 @@ use wind_engine::pinyin::syllable::SyllableTrie;
 fn merged_wdat() -> PathBuf {
     let local = std::env::var("LOCALAPPDATA").unwrap_or_default();
     let candidates = [
-        PathBuf::from(&local).join("WindInputDev/cache/pinyin/rime_frost.merged.wdat"),
+        PathBuf::from(&local).join("XinQingDev/cache/pinyin/rime_frost.merged.wdat"),
         PathBuf::from(&local).join("WindInput/cache/pinyin/rime_frost.merged.wdat"),
     ];
     for c in &candidates {

@@ -414,7 +414,7 @@ impl SoftKeyboard {
 
     pub fn new(events: Sender<UiEvent>) -> Result<Self, String> {
         let scale = crate::dpi::scale_for_point(0, 0);
-        let window = PanelWindow::create(None, 700, 300, "WindInputSoftKeyboard")?;
+        let window = PanelWindow::create(None, 700, 300, "XinQingSoftKeyboard")?;
         let renderer = TextRenderer::new("Microsoft YaHei UI", Self::DEFAULT_FONT_PX * scale)?;
         let mouse = Rc::new(RefCell::new(SoftMouse {
             hover: -1,

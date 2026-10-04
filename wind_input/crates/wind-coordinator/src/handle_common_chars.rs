@@ -671,7 +671,7 @@ impl crate::Coordinator {
         let (common_text, common_seq) = partition_for_export(&common);
         let (rare_text, rare_seq) = partition_for_export(&rare);
         let mut out = format!(
-            "# 清风输入法 · 常用字调整（只记录与默认不同的字）\n\
+            "# 心晴输入法 · 常用字调整（只记录与默认不同的字）\n\
              # common = 判为常用；rare = 判为生僻\n\
              {COMMON_CHARS_FILE_TAG} = 1\n\
              common = {}\n\

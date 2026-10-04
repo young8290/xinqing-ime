@@ -158,28 +158,28 @@ struct WindHostProcessInfo
 };
 
 // GUID 定义
-// {99C2EE30-5C57-45A2-9C63-FB54B34FD90A}
+// {EF62EE30-5ECF-413A-A476-48D1F29E827C}
 extern const CLSID c_clsidTextService;
 
-// {99C2EE31-5C57-45A2-9C63-FB54B34FD90A}
+// {EF62EE31-5ECF-413A-A476-48D1F29E827C}
 extern const GUID c_guidProfile;
 
-// {99C2EE32-5C57-45A2-9C63-FB54B34FD90A}
+// {EF62EE32-5ECF-413A-A476-48D1F29E827C}
 extern const GUID c_guidLangBarItemButton;
 
-// {99C2EE33-5C57-45A2-9C63-FB54B34FD90A}
+// {EF62EE33-5ECF-413A-A476-48D1F29E827C}
 extern const GUID c_guidDisplayAttributeInput;
 
-// {99C2EE34-5C57-45A2-9C63-FB54B34FD90A}
+// {EF62EE34-5ECF-413A-A476-48D1F29E827C}
 extern const GUID c_guidDisplayAttributeConverted;
 
 // 输入法名称
 #ifdef WIND_DEV_VARIANT
-#define TEXTSERVICE_NAME        L"清风输入法 (开发版)"
-#define TEXTSERVICE_DESC        L"清风输入法 Dev (WindInputDev)"
+#define TEXTSERVICE_NAME        L"心晴输入法 (开发版)"
+#define TEXTSERVICE_DESC        L"心晴输入法 Dev (XinQingDev)"
 #else
-#define TEXTSERVICE_NAME        L"清风输入法"
-#define TEXTSERVICE_DESC        L"清风输入法 (WindInput)"
+#define TEXTSERVICE_NAME        L"心晴输入法"
+#define TEXTSERVICE_DESC        L"心晴输入法 (XinQing)"
 #endif
 #define TEXTSERVICE_ICON_INDEX  0
 
@@ -206,10 +206,10 @@ extern const GUID c_guidDisplayAttributeConverted;
 // GetModuleFileName 取到的是系统副本路径，**推不出安装目录**。三个部署方
 // （wind-installer / scripts\dev.ps1 / wind-portable）在注册 COM 前都必须写该值。
 #ifdef WIND_DEV_VARIANT
-#define WIND_APP_NAME           L"WindInputDev"
+#define WIND_APP_NAME           L"XinQingDev"
 #define WIND_SERVICE_EXE        L"wind_input_dev.exe"
 #else
-#define WIND_APP_NAME           L"WindInput"
+#define WIND_APP_NAME           L"XinQing"
 #define WIND_SERVICE_EXE        L"wind_input.exe"
 #endif
 #define WIND_APP_REGKEY         L"Software\\" WIND_APP_NAME
@@ -248,9 +248,9 @@ const wchar_t* WindPushPipeName();
 // 漏改的后果：打不开 → 图标永远停在「加载中」，日志里没有错误。
 // IconShmReader.cpp 有一条 static_assert 会在 ICON_SHM_VERSION 变动时编译失败。
 #ifdef WIND_DEV_VARIANT
-#define WIND_ICON_SHM_NAME      L"Local\\WindInput_IconShm_v1_dev"
+#define WIND_ICON_SHM_NAME      L"Local\\XinQing_IconShm_v1_dev"
 #else
-#define WIND_ICON_SHM_NAME      L"Local\\WindInput_IconShm_v1"
+#define WIND_ICON_SHM_NAME      L"Local\\XinQing_IconShm_v1"
 #endif
 
 // Modifier key flags (using KEY_ prefix to avoid Windows macro conflicts)

@@ -11,9 +11,9 @@
 // 只会让两版本的排查步骤（找哪个文件、写哪个配置）无谓地不一致。
 // 故文件名与配置名两版本一律同名，切换变体时排查命令原样可用。
 #ifdef WIND_DEV_VARIANT
-#define WIND_LOG_DIR_NAME       L"WindInputDev"
+#define WIND_LOG_DIR_NAME       L"XinQingDev"
 #else
-#define WIND_LOG_DIR_NAME       L"WindInput"
+#define WIND_LOG_DIR_NAME       L"XinQing"
 #endif
 // 日志文件名前缀。实际文件是 `<前缀>.<宿主名>.<pid>.log`（轮转产物再加 `.old`）——
 // 每进程一个，见 CFileLogger::_BuildPaths。core 侧清理旧日志时按这个前缀匹配。
