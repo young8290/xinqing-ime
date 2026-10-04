@@ -61,6 +61,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
@@ -103,6 +104,21 @@ export type BudgetKind =
 "schedule_prefilter" | 
 /**  温柔改写 */
 "rewrite";
+
+/**
+ *  `comfort:new`：晴晴说了一句暖心话（FR-CMF-04）。小组件一句话区显示；`ai_generated` 时句尾加 `AI 生成` 标签，
+ *  模板句不加。
+ */
+export type ComfortNew = {
+	/**  `comfort_log` 的行号，反馈（FR-CMF-05）时用 */
+	id: number,
+	text: string,
+	source: ComfortSource,
+	ai_generated: boolean,
+};
+
+/**  暖心话从哪里来：大模型生成的要标 `AI 生成`，模板句不标（FR-CMF-04 第 2 条、FR-CMF-03 第 3 条）。 */
+export type ComfortSource = "llm" | "template";
 
 export type ConsentEntry = {
 	item: ConsentItem,

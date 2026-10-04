@@ -16,9 +16,9 @@ export interface ExplainLines {
 }
 
 /** 可能性（0–100 的整数）转成标题行。 */
-export function explainHeader(state: MoodState, prob: number | null): string {
+export function explainHeader(state: MoodState, probPct: number | null): string {
   const h = hedge(state)
-  return prob === null ? h : t('widget.prob_hint', { hedge: h, pct: prob })
+  return probPct === null ? h : t('widget.prob_hint', { hedge: h, pct: probPct })
 }
 
 export function explainLines(e: Explanation): ExplainLines {

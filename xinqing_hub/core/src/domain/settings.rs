@@ -24,6 +24,13 @@ impl SettingValue {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            SettingValue::Text(s) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 impl From<bool> for SettingValue {
@@ -89,6 +96,12 @@ pub const KEYS: &[KeySpec] = &[
         key: "widget.autohide",
         kind: Kind::Bool,
         default: || false.into(),
+    },
+    // 主动关怀频率（FR-CMF-06）：多一些 / 适中 / 少一些 / 关闭
+    KeySpec {
+        key: "care.level",
+        kind: Kind::Choice(&["more", "normal", "less", "off"]),
+        default: || "normal".into(),
     },
     KeySpec {
         key: "care.style",

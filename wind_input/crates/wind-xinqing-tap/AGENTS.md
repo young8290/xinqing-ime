@@ -35,9 +35,11 @@ A-07 接上了主菜单“心晴”分组、`tip` 气泡和工具栏天气按钮
 协调器进入时调 `take_recent()`（同意 ⑥ 但还没同意时用 `rewrite_consented()` 区分提示）、`send_rewrite_req`、
 `send_rewrite_done`，下行 `rewrite_result` / `rewrite_fail` 交给协调器；选区变化调 `hook_selection_changed()`。
 
+安全桌面（C-PLT-05）：协调器在每次焦点事件里先调 `set_secure_desktop`（进程名是 LogonUI / consent，
+或输入桌面不是 `Default`），再报焦点。
+
 还没接的：
 
-- 安全桌面（`set_secure_desktop` 没有调用方）。
 - 小精灵闭眼（Hub 侧）。
 - 组字长度只看 `input_buffer`，临时拼音、临时英文等独占模式的缓冲不计。
 

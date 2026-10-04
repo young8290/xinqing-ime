@@ -42,7 +42,8 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
-windows = { workspace = true }
+# 心晴：局部追加 StationsAndDesktops，判断输入桌面是不是安全桌面（xinqing.rs）
+windows = { workspace = true, features = ["Win32_System_StationsAndDesktops"] }
 # DirectSwitchHotkeys 注册表同步（direct_switch.rs）
 winreg = "0.52"
 

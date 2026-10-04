@@ -1,5 +1,6 @@
 //! 领域层：只依赖基础层的 trait，禁止 use tauri / windows（NFR-MNT-03）。
 
+pub mod comfort;
 pub mod consent;
 pub mod explain;
 pub mod features;

@@ -364,6 +364,40 @@ function Build-Portable ([string]$profile = "release", [string]$outdir = $null) 
     return $true
 }
 
+# ---------- 构建: 心晴 Hub (xinqing_hub.exe + hub_templates\) ----------
+# 心晴：Hub 是仓库根目录心晴工作区里的 Tauri 应用 (前端要 Node 22 + pnpm)。只出可执行文件,
+# 不用 Tauri 自己的安装包 (产品书 03 第 7 节), 由本仓安装器一起打包 (A-10)。出厂模板放在 exe
+# 旁边的 hub_templates\, Hub 从那里读 (xinqing_hub\src-tauri\src\paths.rs 的 templates_dir)。
+# 没装 pnpm 时跳过并警告; 设了 XQ_REQUIRE_HUB=1 (发版流水线) 则直接失败, 不出缺 Hub 的安装包。
+# Hub 还没有 dev 变体, 两个 profile 都放 release 构建。
+function Build-Hub ([string]$profile = "release", [string]$outdir = $null) {
+    if (-not $outdir) { $outdir = Out-For $profile }
+    if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+        if ($env:XQ_REQUIRE_HUB -eq "1") { ErrMsg "未找到 pnpm, 无法构建心晴 Hub (XQ_REQUIRE_HUB=1)。"; return $false }
+        Warn "未找到 pnpm, 跳过心晴 Hub (产物里将没有 xinqing_hub.exe)。"; return $true
+    }
+    New-Item -ItemType Directory -Path $outdir -Force | Out-Null
+    Say "`n[hub] 构建心晴 Hub (release)..."
+    Push-Location (Join-Path $ProductRoot "xinqing_hub")
+    try {
+        # pnpm 的输出走标准输出, 不 Out-Host 就会混进本函数的返回值: 调用方拿到的是
+        # @(输出..., $false), 非空数组为真, 构建失败被吞掉, 报错原文也看不到。
+        pnpm install --frozen-lockfile | Out-Host
+        if ($LASTEXITCODE -ne 0) { ErrMsg "Hub 前端依赖安装失败!"; return $false }
+        pnpm tauri build --no-bundle | Out-Host
+        if ($LASTEXITCODE -ne 0) { ErrMsg "心晴 Hub 构建失败!"; return $false }
+    } finally { Pop-Location }
+    $exe = Join-Path (Get-CargoTargetDir $ProductRoot) "release\xinqing_hub.exe"
+    if (-not (Test-Path $exe)) { ErrMsg "未找到产物: $exe"; return $false }
+    Copy-Item $exe "$outdir\xinqing_hub.exe" -Force
+    $tpl = "$outdir\hub_templates"
+    if (Test-Path $tpl) { Remove-Item -Recurse -Force $tpl }
+    Copy-Item (Join-Path $ProductRoot "hub_templates") $tpl -Recurse -Force
+    $sz = [math]::Round((Get-Item "$outdir\xinqing_hub.exe").Length / 1MB, 1)
+    Gray "已构建: xinqing_hub.exe (${sz}MB) + hub_templates\"
+    return $true
+}
+
 # ---------- 代码质量 ----------
 function Do-Check  { Say "`n正在运行 cargo check (全工作区)...";  Push-Location $ProjectRoot; try { cargo check --workspace }  finally { Pop-Location } }
 # -Deny 把警告升为错误(CI 走这条)。本地 `dev.ps1 l` 不带, 迭代中途的 warning 不该中断。
@@ -905,6 +939,8 @@ function Do-Full ([string]$profile = "release") {
     if (-not (Build-Setting  $profile $outdir)) { return $false }   # wind_setting[_dev].exe (可选)
     if (-not (Build-Portable $profile $outdir)) { return $false }   # wind_portable.exe (可选)
     }
+    # 心晴：Hub 在仓库根目录的另一个 cargo 工作区, 不进上面的并行分叉, 单独串行构建
+    if (-not (Build-Hub      $profile $outdir)) { return $false }   # xinqing_hub.exe + hub_templates\ (可选)
     if (-not (Do-GenData     $outdir))          { return $false }   # data/
     if (-not (Verify-DistData $outdir))         { return $false }   # 硬门禁
     # 签 outdir 根层的 exe/dll。放在这里而不是各 Build-* 里: 并行构建时四路各签各的会
@@ -1733,7 +1769,8 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
         $id = "XinQingDev"; $disp = "心晴输入法 (开发版)"; $mainExe = "xinqing_core_dev.exe"
         $menu = "心晴输入法 (开发版)"; $title = "心晴输入法 (开发版) 安装向导"; $proto = "xinqingdev"
         $settingExe = "wind_setting_dev.exe"
-        $procs = '["wind_setting_dev", "wind_portable", "xinqing_core_dev"]'
+        # 心晴：Hub 还没有 dev 变体，两个变体都是 xinqing_hub
+        $procs = '["wind_setting_dev", "wind_portable", "xinqing_core_dev", "xinqing_hub"]'
         $acl   = '["xinqing_tsf_dev.dll", "xinqing_tsf_x86_dev.dll"]'
         $clsid = "{EF62DEB0-5ECF-413A-A476-48D1F29E827C}"; $prof = "{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
         $dllX64 = "xinqing_tsf_dev.dll"; $dllX86 = "xinqing_tsf_x86_dev.dll"; $outName = "XinQingDev-Setup"
@@ -1741,7 +1778,7 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
         $id = "XinQing"; $disp = "心晴输入法"; $mainExe = "xinqing_core.exe"
         $menu = "心晴输入法"; $title = "心晴输入法 安装向导"; $proto = "xinqing"
         $settingExe = "wind_setting.exe"
-        $procs = '["wind_setting", "wind_portable", "xinqing_core"]'
+        $procs = '["wind_setting", "wind_portable", "xinqing_core", "xinqing_hub"]'
         $acl   = '["xinqing_tsf.dll", "xinqing_tsf_x86.dll"]'
         $clsid = "{EF62EE30-5ECF-413A-A476-48D1F29E827C}"; $prof = "{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
         $dllX64 = "xinqing_tsf.dll"; $dllX86 = "xinqing_tsf_x86.dll"; $outName = "XinQing-Setup"
@@ -1752,6 +1789,9 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
         Warn "未找到 $outdir\$settingExe, 本次打包不含设置程序 (setting_exe 置空)"
         $settingExe = ""
     }
+    # 心晴：Hub 同理 —— 没装 pnpm 时 Build-Hub 会跳过, 不能给不存在的 xinqing_hub.exe 建快捷方式
+    $hubMissing = -not (Test-Path (Join-Path $outdir "xinqing_hub.exe"))
+    if ($hubMissing) { Warn "未找到 $outdir\xinqing_hub.exe, 本次打包不含心晴 Hub (去掉它的快捷方式)" }
     $srcFwd  = $outdir.Replace('\', '/')
     $distFwd = $DistDir.Replace('\', '/')
     $logoFwd = (Join-Path $assetsDir "logo.png").Replace('\', '/')
@@ -1765,6 +1805,9 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
     $baseCfg = Join-Path $ProductRoot "config\app.toml"
     if (-not (Test-Path $baseCfg)) { ErrMsg "未找到清单基底: $baseCfg"; throw "缺少 config\app.toml" }
     $base = Get-Content $baseCfg -Raw
+    if ($hubMissing) {
+        $base = [regex]::Replace($base, '(?ms)^\[\[shortcut\]\]\r?\ntarget\s*=\s*"xinqing_hub\.exe".*?(?=^\[)', '')
+    }
 
     $appSec = @"
 [app]
@@ -1772,7 +1815,7 @@ id                = "$id"
 display_name      = "$disp"
 version           = "$Version"
 publisher         = "心晴输入法 项目"
-description       = "轻量开源输入法"
+description       = "懂你心情的 AI 输入陪伴"
 main_exe          = "$mainExe"
 setting_exe       = "$settingExe"
 start_menu_folder = "$menu"

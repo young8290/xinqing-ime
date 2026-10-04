@@ -16,7 +16,7 @@ id              = "XinQing"
 display_name    = "心晴输入法"
 version         = "0.0.0"           # 构建时由 --version 覆盖，此处为占位
 publisher       = "心晴输入法 项目"
-description     = "轻量开源输入法"
+description     = "懂你心情的 AI 输入陪伴"
 main_exe        = "xinqing_core.exe"
 setting_exe     = "wind_setting.exe"
 start_menu_folder = "心晴输入法"
@@ -24,7 +24,8 @@ window_title    = "心晴输入法 安装向导"
 url_protocol    = "xinqing"
 agreement_url   = ""
 portable_marker = "portable_mode"
-process_names   = ["wind_setting", "wind_portable", "xinqing_core"]
+# 心晴：xinqing_hub 是心晴主程序（Hub），升级、卸载前要和核心一起结束（11 FR-OPS-02）
+process_names   = ["wind_setting", "wind_portable", "xinqing_core", "xinqing_hub"]
 acl_dlls        = ["xinqing_tsf.dll", "xinqing_tsf_x86.dll"]
 legacy_files    = []
 legacy_dirs     = []
@@ -68,6 +69,14 @@ enabled = true
 # ── 快捷方式：整段缺省即一个都不创建 ─────────────────────────────────────────
 #    target/name 用占位符 {setting_exe}/{main_exe}/{display_name}，安装器运行期按
 #    [app] 字段替换 —— 一份配置对 dev/release 通用。{setting_exe} 未配置时该项自动跳过。
+# 心晴：开始菜单里的“心晴”打开 Hub（11 FR-OPS-01）。Windows 通知要求快捷方式带应用标识
+# （AppUserModelID），安装器的快捷方式段还不支持写这一属性，见 docs/xinqing/handover/A-输入法.md。
+[[shortcut]]
+target      = "xinqing_hub.exe"
+name        = "心晴"
+location    = "start_menu"
+description = "和晴晴聊聊、看看心情、管理日程"
+
 [[shortcut]]
 target   = "{setting_exe}"
 name     = "{display_name} 设置"
@@ -112,9 +121,11 @@ markers = ["config.toml", "compat.toml", "userdata.redb", "wind_setting.toml", "
 #      userdata.redb     **旧布局遗留**。现役位置在用户数据目录（见 [datadir].markers），
 #                        但 2026-06 之前的版本把它写在这里，老机器上仍有一份。
 #                        列在这里只为清掉那份历史残留，不影响现役路径。
+#    心晴：hub 是心晴主程序的数据目录（数据库、对话、日程、密钥，03 第 5.2 节），跟随
+#          「删除用户数据」勾选；那个勾选在卸载向导里默认不选中（11 FR-OPS-02）。
 [localdata]
 cache_dirs  = ["cache", "logs"]
-state_files = ["state.toml", "user_config.seen", "userdata.redb"]
+state_files = ["state.toml", "user_config.seen", "userdata.redb", "hub"]
 remove_dir_when_empty = true
 
 # ── 界面文案：留空即用中性默认（不含「输入法」「词库」字样）──────────────────
@@ -123,9 +134,9 @@ remove_dir_when_empty = true
 data_dir_hint       = "词库、配置路径"
 mode_hint           = "标准安装注册输入法到系统；便捷模式仅解压文件，不修改系统"
 agreement_text      = "《用户服务协议》"
-user_data_label     = "删除用户词库和配置数据"
+user_data_label     = "删除心晴数据、用户词库和配置数据"
 cache_label         = "清除本地词库缓存"
-delete_data_confirm = "将永久删除 {path} 下的所有词库和配置数据，卸载后无法恢复。\n\n确定要勾选删除吗？"
+delete_data_confirm = "将永久删除 {path} 下的所有词库和配置数据，以及心晴的心情记录、日程、对话和设置，卸载后无法恢复。\n心晴数据不在备份范围内。\n\n确定要勾选删除吗？"
 
 # ── 打包参数 ──────────────────────────────────────────────────────────────────
 # source_dir 和 version 由构建脚本通过 CLI 覆盖；此处为本地开发默认值。
