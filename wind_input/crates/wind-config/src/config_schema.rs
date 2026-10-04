@@ -706,6 +706,7 @@ static REGISTRY: &[ConfigField] = &[
     f("xinqing.app_blocklist", StrList),
     f("xinqing.app_allowlist", StrList),
     f("xinqing.pause_hotkey", Str),
+    f("xinqing.rewrite_hotkey", Str),
     f("xinqing.remember_pause", Bool),
     f("xinqing.hub_autostart", Bool),
     // -- debug（调试）--

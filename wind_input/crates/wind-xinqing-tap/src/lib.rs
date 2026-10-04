@@ -24,7 +24,7 @@ pub use gate::{AppFilter, BUILTIN_EXCLUDED, DEFAULT_BLOCKLIST};
 pub use recent::RecentText;
 pub use xqp::{
     ByeReason, CandOp, CompOp, Down, KeyKind, MoodState, OpenTarget, PIPE_NAME, PIPE_NAME_DEV,
-    PauseBy, RewriteOutcome, RewriteSource, RewriteStyle, Scope,
+    PauseBy, RewriteFailReason, RewriteOutcome, RewriteSource, RewriteStyle, Scope,
 };
 
 use gate::Gate;
@@ -183,6 +183,11 @@ impl Tap {
     /// 改写能否使用；为假时改写快捷键只弹一次同意询问（10 第 2.5 节 `cfg.rewrite`）。
     pub fn rewrite_enabled(&self) -> bool {
         self.shared.gate.rewrite() && self.shared.is_linked()
+    }
+
+    /// 用户是否在 Hub 里同意过温柔改写（同意 ⑥），不管当前场景。
+    pub fn rewrite_consented(&self) -> bool {
+        self.shared.gate.rewrite_consented()
     }
 
     // —— 钩子：只做闸门判断 + try_send ——

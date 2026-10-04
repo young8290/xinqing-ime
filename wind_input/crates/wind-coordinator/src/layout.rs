@@ -116,6 +116,10 @@ pub(crate) fn orientation_for(
 impl Coordinator {
     /// 当前生效的布局意图（[`intent_for`] 的取值包装）。
     pub(crate) fn layout_intent(&self, state: &State) -> LayoutIntent {
+        // 心晴：改写候选一条一句、可能折成几行，只能竖排（FR-RWR-03）
+        if state.xq_rewrite.is_some() {
+            return LayoutIntent::Vertical;
+        }
         let rt = self.rt();
         intent_for(
             &rt.config,

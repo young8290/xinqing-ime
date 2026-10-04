@@ -67,6 +67,11 @@ impl Gate {
         self.enabled.load(RELAXED)
     }
 
+    /// 只看同意 ⑥（Hub 下发的 `cfg.rewrite`），不看场景：改写快捷键据此区分“没同意”与“这里不能用”。
+    pub fn rewrite_consented(&self) -> bool {
+        self.rewrite.load(RELAXED)
+    }
+
     pub fn paused(&self) -> bool {
         self.paused.load(RELAXED)
     }

@@ -31,9 +31,13 @@ Hub 下发的 `pause` 也会记进 state.toml。握手完成时核心若处于�
 A-06 接上了 Hub 守护（`xinqing.hub_autostart`，与总开关一起决定要不要 Hub）和下行处理：`mood`、`badge`、
 `pending` 记进协调器的 `xinqing::hub_view()`；Hub 发的 `bye` 在断开后交给回调，守护据此不重拉。
 
+A-07 接上了主菜单“心晴”分组、`tip` 气泡和工具栏天气按钮（无痕时淡显）。A-08 接上了改写模式：
+协调器进入时调 `take_recent()`（同意 ⑥ 但还没同意时用 `rewrite_consented()` 区分提示）、`send_rewrite_req`、
+`send_rewrite_done`，下行 `rewrite_result` / `rewrite_fail` 交给协调器；选区变化调 `hook_selection_changed()`。
+
 还没接的：
 
-- 改写结果与改写模式（A-08）、安全桌面。A-07 已接上主菜单“心晴”分组、`tip` 气泡和工具栏天气按钮（无痕时淡显）。
+- 安全桌面（`set_secure_desktop` 没有调用方）。
 - 小精灵闭眼（Hub 侧）。
 - 组字长度只看 `input_buffer`，临时拼音、临时英文等独占模式的缓冲不计。
 
