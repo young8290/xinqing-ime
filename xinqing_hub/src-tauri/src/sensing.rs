@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tokio::sync::{broadcast, mpsc};
 use xinqing_hub_core::bus::{self, HubEvent};
+use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::features::Baseline;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::clock::SystemClock;
@@ -30,6 +31,8 @@ pub struct Sensing {
     pub xqp: XqpHandle,
     pub cmds: mpsc::Sender<SenseCmd>,
     pub bus: broadcast::Sender<HubEvent>,
+    /// 与感知任务同一份基线（B-04 持久化前是出厂默认值），重建历史状态的解释时用；模板加载失败时为 `None`。
+    pub baseline: Option<Baseline>,
 }
 
 impl Sensing {
@@ -65,15 +68,22 @@ pub fn start(app: &AppHandle, cfg: Down) -> Sensing {
             (XqpHandle::pair().0, mpsc::channel(1).1)
         }
     };
+    let mut baseline = None;
     match load_pipeline() {
         Ok(p) => {
+            baseline = Some(p.baseline().clone());
             let port = Arc::new(ShellPort { app: app.clone() });
             let sense = Sense::new(p, port, xqp.clone(), bus.clone(), Arc::new(SystemClock));
             tauri::async_runtime::spawn(sense.run(link_rx, cmd_rx));
         }
         Err(e) => eprintln!("状态识别不可用：{e}"),
     }
-    Sensing { xqp, cmds, bus }
+    Sensing {
+        xqp,
+        cmds,
+        bus,
+        baseline,
+    }
 }
 
 fn connector() -> Option<Box<dyn Connector>> {
@@ -164,5 +174,9 @@ impl SensePort for ShellPort {
 
     fn note(&self, msg: &str) {
         eprintln!("{msg}");
+    }
+
+    fn explained(&self, e: &Explanation) {
+        self.app.state::<AppState>().set_explanation(e.clone());
     }
 }

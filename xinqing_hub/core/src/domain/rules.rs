@@ -20,6 +20,14 @@ pub enum Hint {
 }
 
 impl Hint {
+    pub const ALL: [Hint; 5] = [
+        Hint::HesitationHint,
+        Hint::AgitationHint,
+        Hint::FatigueHint,
+        Hint::LateNight,
+        Hint::LowHint,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Hint::HesitationHint => "hesitation_hint",
@@ -37,6 +45,16 @@ pub struct Hints(pub Vec<Hint>);
 impl Hints {
     pub fn has(&self, h: Hint) -> bool {
         self.0.contains(&h)
+    }
+
+    /// 读回 `window_features.hints`；不认识的名字跳过。
+    pub fn parse(joined: &str) -> Self {
+        Hints(
+            joined
+                .split(',')
+                .filter_map(|s| Hint::ALL.into_iter().find(|h| h.as_str() == s.trim()))
+                .collect(),
+        )
     }
 
     /// 写入 `window_features.hints` 的逗号分隔串。
@@ -112,6 +130,14 @@ mod tests {
             minute_of_day: 14 * 60,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn hints_round_trip() {
+        let h = Hints(vec![Hint::HesitationHint, Hint::LateNight]);
+        assert_eq!(Hints::parse(&h.joined()), h);
+        assert_eq!(Hints::parse(""), Hints::default());
+        assert_eq!(Hints::parse("low_hint,unknown"), Hints(vec![Hint::LowHint]));
     }
 
     #[test]

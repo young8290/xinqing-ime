@@ -2,7 +2,7 @@
 //!
 //! 依赖 FR-SEN-08（`tsf` 来源）的特征在未启用时为 `None`，不得用 0 代替。
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use xqp::{CandOp, CompOp, KeyKind, KeySrc};
 
 use super::baseline::{Baseline, Bucket};
@@ -14,7 +14,9 @@ pub const GAP_MS: u64 = 2_000;
 pub const COMP_PAUSE_MS: u64 = 3_000;
 
 /// 一个窗口的全部数值特征（写入 `window_features.features_json`，只含数值和 null）。
-#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+/// 读回时缺少的字段取默认值，以后新增特征不影响旧记录。
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WindowFeatures {
     pub n_keys: u32,
     pub active_ms: u64,

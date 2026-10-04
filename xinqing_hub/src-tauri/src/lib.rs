@@ -32,6 +32,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             commands::get_status,
+            commands::state_explain,
             commands::pause_set,
             commands::settings_get,
             commands::settings_set,
