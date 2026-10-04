@@ -1590,8 +1590,11 @@ mod menu_id_tests {
             MenuCmd::ScreenshotCandidateToClipboard,
             MenuCmd::ToggleInputDiagnostics,
             MenuCmd::TogglePasswordSuppress,
-            MenuCmd::XinqingTogglePause, // 心晴
-            MenuCmd::XinqingRetryHub,    // 心晴
+            MenuCmd::XinqingTogglePause,   // 心晴
+            MenuCmd::XinqingRetryHub,      // 心晴
+            MenuCmd::XinqingToggleEnabled, // 心晴
+            MenuCmd::XinqingOpen(0),       // 心晴
+            MenuCmd::XinqingOpen(3),       // 心晴
             MenuCmd::FirstShowMode(0),
             MenuCmd::FirstShowMode(1),
             MenuCmd::FirstShowMode(2),

@@ -6,13 +6,14 @@
 //! 钩子只调 Tap 的非阻塞方法（闸门判断 + `try_send`），可以在 `state` 锁内调用。
 //!
 //! Hub 守护（A-06，17 第 1.5 节）也在这里装：`start` 时起 `xq-hub-guard`，配置热重载时更新
-//! 是否需要 Hub。下行的 `mood`、`badge`、`pending` 记进 [`hub_view`]，工具栏与菜单（A-07）
-//! 从那里读；`tip` 的光标旁气泡也在 A-07。
+//! 是否需要 Hub。下行的 `mood`、`badge`、`pending` 记进 [`hub_view`]，菜单与工具栏从那里读。
+//! 输入法里的心晴入口（A-07）：主菜单“心晴”分组、`tip` 的光标旁气泡。
 
 use std::cell::Cell;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
+use std::time::{Duration, Instant};
 
 use wind_bridge::handler::KeyEventData;
 use wind_config::XinqingConfig;
@@ -26,12 +27,12 @@ use wind_keys::keymap::{
 use wind_store::stats::CommitSource;
 use wind_xinqing_tap::guard::{ExeLauncher, GuardState, HubGuard};
 use wind_xinqing_tap::{
-    CandOp, CommitHook, CompOp, Down, Endpoint, FocusHook, KeyHook, KeyKind, MoodState, PIPE_NAME,
-    PIPE_NAME_DEV, PauseBy, Scope, Tap, TapConfig,
+    CandOp, CommitHook, CompOp, Down, Endpoint, FocusHook, KeyHook, KeyKind, MoodState, OpenTarget,
+    PIPE_NAME, PIPE_NAME_DEV, PauseBy, Scope, Tap, TapConfig,
 };
 
 use crate::coordinator::Coordinator;
-use wind_ui_types::{ToastKind, ToastPosition};
+use wind_ui_types::{MenuCmd, MenuItemSpec, MenuKind, ToastKind, ToastPosition};
 
 use crate::input_diag::InputDiagReason;
 use crate::key_convert::numpad_char;
@@ -59,6 +60,10 @@ static HUB_VIEW: Mutex<HubView> = Mutex::new(HubView {
     pending: 0,
 });
 
+/// 光标旁气泡 10 秒内最多 1 条（FR-ENT-03）。
+const TIP_GAP: Duration = Duration::from_secs(10);
+static LAST_TIP: Mutex<Option<Instant>> = Mutex::new(None);
+
 /// Hub 下发的、要在输入法界面上显示的状态（10 第 2.5 节）。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct HubView {
@@ -80,7 +85,7 @@ pub fn start(c: &Arc<Coordinator>, ime_ver: &str, pipe_suffix: &str) {
     if TAP.get().is_some() {
         return;
     }
-    let _ = COORD.set(Arc::downgrade(c));
+    attach(c);
     let endpoint = match std::env::var(XQP_TCP_ENV) {
         Ok(addr) => match addr.parse::<SocketAddr>() {
             Ok(a) => Endpoint::Tcp(a),
@@ -157,15 +162,25 @@ pub(crate) fn apply_config(cfg: &XinqingConfig) {
     }
 }
 
-/// 菜单要不要显示“心晴组件未运行，点击重试”：守护放弃了，或 Hub 自己退出了。
-pub(crate) fn hub_needs_retry() -> bool {
-    GUARD.get().is_some_and(|g| g.state().needs_retry())
-}
-
 /// 菜单“心晴组件未运行，点击重试”。
 pub(crate) fn retry_hub() {
     if let Some(g) = GUARD.get() {
         g.retry();
+    }
+}
+
+/// 菜单“心晴”分组里请 Hub 打开的窗口，下标即 `MenuCmd::XinqingOpen` 的参数。
+pub const OPEN_TARGETS: [OpenTarget; 4] = [
+    OpenTarget::Chat,
+    OpenTarget::Dashboard,
+    OpenTarget::Schedule,
+    OpenTarget::Settings,
+];
+
+/// 菜单“和晴晴聊聊”等：请 Hub 打开窗口（XQP `open`）。Hub 没连着时菜单项是灰的。
+pub(crate) fn open(idx: u8) {
+    if let (Some(t), Some(target)) = (tap(), OPEN_TARGETS.get(usize::from(idx))) {
+        t.send_open(*target);
     }
 }
 
@@ -183,17 +198,17 @@ pub fn hub_view() -> HubView {
     }
 }
 
-/// 无痕模式是否开着；没装 Tap 时 `None`（菜单据此不显示心晴项）。
-pub(crate) fn paused() -> Option<bool> {
-    tap().map(|t| t.paused())
-}
-
 /// 切换无痕模式，返回切换后的状态；没装 Tap 时 `None`。
 pub(crate) fn toggle_pause(by: PauseBy) -> Option<bool> {
     let t = tap()?;
     let on = !t.paused();
     t.set_paused(on, by);
     Some(on)
+}
+
+/// 让下行回调能找回协调器（Hub 发来的无痕、提示气泡）。`start` 里已调用；测试自己装 Tap 时调。
+pub fn attach(c: &Arc<Coordinator>) {
+    let _ = COORD.set(Arc::downgrade(c));
 }
 
 /// 测试用：安装一个已启动的 Tap。进程内只能装一次，已装过返回假。
@@ -234,6 +249,97 @@ impl Coordinator {
     pub(crate) fn xinqing_store_pause(&self, on: bool) {
         self.state_writer
             .schedule("xinqing_pause", move |rs| rs.xinqing_paused = on);
+    }
+
+    /// 菜单“开启 / 关闭心晴功能”（FR-IME-02）：写用户配置并即时生效。关掉时 Tap 发
+    /// `bye{disabled}`、停止监听，守护不再拉起 Hub；打开时立即拉起。
+    pub(crate) fn xinqing_toggle_enabled(&self) {
+        let next = !self.rt().config.xinqing.enabled;
+        if let Err(e) =
+            wind_config::Config::set_user_value(&["xinqing", "enabled"], toml::Value::Boolean(next))
+        {
+            tracing::warn!("写入 xinqing.enabled 失败：{e}");
+        }
+        self.refresh_config_in_memory(|c| c.xinqing.enabled = next);
+        self.show_toast(
+            if next {
+                "已开启心晴功能"
+            } else {
+                "已关闭心晴功能"
+            },
+            ToastPosition::BottomCenter,
+            ToastKind::Info,
+        );
+    }
+
+    /// Hub 的 `tip`（FR-ENT-03）：只在没有组字时显示，10 秒内最多 1 条，时长限定 1.5–2.5 秒。
+    fn xinqing_tip(&self, text: &str, ms: u32) {
+        if self.has_active_session() {
+            tracing::debug!("心晴提示：正在组字，不显示");
+            return;
+        }
+        {
+            let mut last = LAST_TIP.lock().unwrap_or_else(|e| e.into_inner());
+            let now = Instant::now();
+            if last.is_some_and(|t| now.duration_since(t) < TIP_GAP) {
+                tracing::debug!("心晴提示：10 秒内已显示过，跳过");
+                return;
+            }
+            *last = Some(now);
+        }
+        // 10 第 2.5 节：≤ 16 字。Hub 发送前已校验，这里只防万一
+        let text: String = text.chars().take(16).collect();
+        self.show_xinqing_tip(&text, u64::from(ms.clamp(1500, 2500)));
+    }
+
+    /// 主菜单“心晴”分组（FR-ENT-01）。心晴没启动时为空；总开关关着时只剩“开启心晴功能”；
+    /// Hub 没连上时，除“暂停感知”和总开关外都置灰，并多一项“心晴组件未运行，点击重试”。
+    pub(crate) fn xinqing_menu_group(&self) -> Vec<MenuItemSpec> {
+        let Some(t) = tap() else {
+            return Vec::new();
+        };
+        let cmd = |c: MenuCmd| MenuKind::Command(c);
+        let leaf = |label: &str, c: MenuCmd, enabled: bool| {
+            MenuItemSpec::leaf(label.to_string(), cmd(c), enabled, false)
+        };
+        if !self.rt().config.xinqing.enabled {
+            return vec![
+                leaf("开启心晴功能", MenuCmd::XinqingToggleEnabled, true),
+                MenuItemSpec::separator(),
+            ];
+        }
+        let linked = t.is_linked();
+        let pending = hub_view().pending;
+        let schedule = if pending > 0 {
+            format!("待确认日程与待办（{pending}）")
+        } else {
+            "待确认日程与待办".to_string()
+        };
+        let mut v = vec![
+            leaf("和晴晴聊聊", MenuCmd::XinqingOpen(0), linked),
+            leaf("情绪看板", MenuCmd::XinqingOpen(1), linked),
+            leaf(&schedule, MenuCmd::XinqingOpen(2), linked),
+            leaf(
+                if t.paused() {
+                    "恢复感知"
+                } else {
+                    "暂停感知"
+                },
+                MenuCmd::XinqingTogglePause,
+                true,
+            ),
+            leaf("心晴设置", MenuCmd::XinqingOpen(3), linked),
+            leaf("关闭心晴功能", MenuCmd::XinqingToggleEnabled, true),
+        ];
+        if !linked {
+            v.push(leaf(
+                "心晴组件未运行，点击重试",
+                MenuCmd::XinqingRetryHub,
+                true,
+            ));
+        }
+        v.push(MenuItemSpec::separator());
+        v
     }
 
     /// 菜单与 Ctrl+Alt+P 的共同出口（FR-SEN-05/06）：切换、记住、气泡提示。
@@ -279,8 +385,11 @@ pub fn downlink(msg: Down) {
             }
             *HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()) = HubView::default();
         }
-        // tip 的光标旁气泡、改写结果在 A-07/A-08；内容可能是提示文字，只记类型
-        Down::Tip { .. } => tracing::debug!("XQP 下行：tip（A-07 显示）"),
+        Down::Tip { text, ms } => {
+            if let Some(c) = COORD.get().and_then(Weak::upgrade) {
+                c.xinqing_tip(&text, ms);
+            }
+        }
         Down::RewriteResult { .. } | Down::RewriteFail { .. } => {
             tracing::debug!("XQP 下行：rewrite（A-08 处理）");
         }

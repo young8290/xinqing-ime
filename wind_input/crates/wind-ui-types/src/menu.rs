@@ -134,6 +134,11 @@ pub enum MenuCmd {
     XinqingTogglePause,
     /// 心晴：Hub 守护放弃或 Hub 自己退出后，“心晴组件未运行，点击重试”（FR-OPS-03）。id 901。
     XinqingRetryHub,
+    /// 心晴：开启 / 关闭心晴功能（`xinqing.enabled`，FR-IME-02）。id 902。
+    XinqingToggleEnabled,
+    /// 心晴：请 Hub 打开窗口（FR-ENT-01）。0 对话 / 1 看板 / 2 待确认日程与待办 / 3 设置，
+    /// 见 wind-coordinator 的 `xinqing::OPEN_TARGETS`。id 910+。
+    XinqingOpen(u8),
     /// 悬停提示：复制全部（取原始行，未截断、未折行）
     TooltipCopy,
     /// 悬停提示：复制右键点中的那一段（原始行，不含段名）
@@ -294,6 +299,8 @@ impl MenuKind {
                 MenuCmd::TooltipCommitLine => 136,
                 MenuCmd::XinqingTogglePause => 900,
                 MenuCmd::XinqingRetryHub => 901,
+                MenuCmd::XinqingToggleEnabled => 902,
+                MenuCmd::XinqingOpen(i) => 910 + i as i32,
                 MenuCmd::IconBadgeStyle(i) => 10000 + i as i32,
                 MenuCmd::SoftKeyboardPage(i) => 11000 + i as i32,
                 MenuCmd::InputDiagToggleSection(i) => 8000 + i as i32,
@@ -365,6 +372,8 @@ impl MenuKind {
             136 => MenuCmd::TooltipCommitLine,
             900 => MenuCmd::XinqingTogglePause,
             901 => MenuCmd::XinqingRetryHub,
+            902 => MenuCmd::XinqingToggleEnabled,
+            910..=919 => MenuCmd::XinqingOpen((id - 910) as u8),
             10000..=10099 => MenuCmd::IconBadgeStyle((id - 10000) as u8),
             11000..=11999 => MenuCmd::SoftKeyboardPage((id - 11000) as usize),
             8000..=8999 => MenuCmd::InputDiagToggleSection((id - 8000) as u8),

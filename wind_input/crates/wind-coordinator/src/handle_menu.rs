@@ -290,6 +290,8 @@ impl Coordinator {
                 let _ = self.xinqing_toggle_pause(wind_xinqing_tap::PauseBy::Menu);
             }
             MenuCmd::XinqingRetryHub => crate::xinqing::retry_hub(),
+            MenuCmd::XinqingToggleEnabled => self.xinqing_toggle_enabled(),
+            MenuCmd::XinqingOpen(i) => crate::xinqing::open(i),
             MenuCmd::FirstShowMode(m) => self.set_first_show_mode(m),
             MenuCmd::AutoPairRule(m) => self.set_auto_pair_rule(m),
             MenuCmd::CompatRuleEnabled(m) => self.set_compat_rule_enabled(m == 1),
@@ -2041,30 +2043,9 @@ impl Coordinator {
             M::submenu("检索范围", filter_children),
             M::separator(),
         ];
+        // 心晴：“心晴”分组（FR-ENT-01，自带结尾分隔线），心晴没启动时为空。
+        items.extend(self.xinqing_menu_group());
         items.extend(display_toggles);
-        // 心晴：无痕模式开关（FR-SEN-06 / FR-ENT-01）。心晴没启动时不显示。
-        // 「心晴」分组的其余项（和晴晴聊聊、情绪看板等）在 A-07 补齐。
-        if let Some(paused) = crate::xinqing::paused() {
-            items.push(M::leaf(
-                if paused {
-                    "恢复感知"
-                } else {
-                    "暂停感知"
-                },
-                cmd(MenuCmd::XinqingTogglePause),
-                true,
-                false,
-            ));
-        }
-        // 心晴：守护放弃重拉、或 Hub 自己退出了（FR-OPS-03）。
-        if crate::xinqing::hub_needs_retry() {
-            items.push(M::leaf(
-                "心晴组件未运行，点击重试",
-                cmd(MenuCmd::XinqingRetryHub),
-                true,
-                false,
-            ));
-        }
         items.extend([
             M::submenu("主题", theme_children),
             M::separator(),

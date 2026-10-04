@@ -7366,7 +7366,7 @@ impl Coordinator {
 
     /// 状态泡的发送本体（caret 由调用方给出）。**不取 state 锁**。
     fn show_tip_at(&self, text: &str, raw_x: i32, raw_y: i32, raw_h: i32) {
-        self.show_tip_with(text, raw_x, raw_y, raw_h, None);
+        self.show_tip_with(text, raw_x, raw_y, raw_h, None, None);
     }
 
     /// 以指定定位弹状态泡（焦点气泡的锚点超时用），光标仍从 state 里取（选屏参考）。
@@ -7375,7 +7375,18 @@ impl Coordinator {
             let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
             (s.caret_x, s.caret_y, s.caret_height)
         };
-        self.show_tip_with(text, raw_x, raw_y, raw_h, Some(placement));
+        self.show_tip_with(text, raw_x, raw_y, raw_h, Some(placement), None);
+    }
+
+    /// 心晴：Hub 发来的光标旁气泡（FR-ENT-03，`tip`）。与状态泡同一个窗口、同一套定位，
+    /// 区别是时长由 Hub 给（10 第 2.5 节限定 1.5–2.5 秒），且不受 `ui.status.enabled`
+    /// 管——那是清风状态泡的开关，关掉它不等于不要心晴的提示。
+    pub(crate) fn show_xinqing_tip(&self, text: &str, ms: u64) {
+        let (raw_x, raw_y, raw_h) = {
+            let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+            (s.caret_x, s.caret_y, s.caret_height)
+        };
+        self.show_tip_with(text, raw_x, raw_y, raw_h, None, Some(ms));
     }
 
     /// `forced = None` 时按 [`Self::status_position`] + 原始坐标可信度解析定位（见
@@ -7387,10 +7398,12 @@ impl Coordinator {
         raw_y: i32,
         raw_h: i32,
         forced: Option<wind_ui_types::StatusTipPlacement>,
+        // 心晴：`Some` = 心晴提示的时长，不看 `ui.status.enabled`（见 `show_xinqing_tip`）
+        xinqing_ms: Option<u64>,
     ) {
         let bundle = self.rt();
         let si = &bundle.config.ui.status;
-        if !si.enabled {
+        if !si.enabled && xinqing_ms.is_none() {
             return;
         }
         if let Some(reason) = self.ui_suppressed_by_host() {
@@ -7406,7 +7419,9 @@ impl Coordinator {
         // resolve 照调：它顺带刷新 last_valid_caret，兜底 `last` 依赖这份记录。
         let (x, y, caret_height, _valid) = self.resolve_caret_for_ui(raw_x, raw_y, raw_h);
         // 常驻(always)→ duration_ms=0(UI 不自动隐藏);否则按 duration 自动隐藏。对齐 Go display_mode。
-        let duration_ms = if si.display_mode.eq_ignore_ascii_case("always") {
+        let duration_ms = if let Some(ms) = xinqing_ms {
+            ms
+        } else if si.display_mode.eq_ignore_ascii_case("always") {
             0
         } else {
             si.duration.max(1) as u64
