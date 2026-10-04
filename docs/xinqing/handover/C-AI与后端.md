@@ -12,7 +12,7 @@
 | C-01 | Hub 骨架：分层、事件总线、SQLite 迁移 v1、单写线程、settings | 大部分完成 | `core/src/bus.rs`、`core/migrations/`（0001、0002）、`core/src/infra/store/`、`core/src/domain/settings.rs`（设置键 `KEYS`、内部键 `INTERNAL_KEYS`） | 单写线程 `DbWriter`（17 第 2.9 节）没做，外壳现在用 `Mutex<Db>` 串行；设置键只登记了 8 个（10 第 6.2 节列的 `care.*`、`ai.*`、`rest.*` 等随各功能补）；D-08 的表单生成器要一个“键注册表 → schema”的命令，待和 D 约定（契约 PR） |
 | C-02 | mock-ai（Jev 三类、OpenAI 兼容含 SSE、各故障场景） | 完成 | `tools/mock-ai/` | 16 第 3 节建议移给 E，W1 评审会还没定 |
 | C-03 | AI 网关：trait、Jev/LLM 客户端、熔断、重试、健康检查、隐私过滤、密钥 DPAPI、预算 | 主体完成 | HTTP 实现：`xinqing_hub/gateway/`；trait、熔断、预算、脱敏：`core/src/infra/gateway/`；接入外壳：[xinqing-ime#21](https://github.com/young8290/xinqing-ime/pull/21)（已合并，含 Hu-yiye 的 [#7](https://github.com/young8290/xinqing-ime/pull/7)），ADR 0012 | 见第 3.2 节 |
-| C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **进行中（后端基本完成）** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：本 PR（`claude/magical-gates-im12h5`）；ADR 0015 | 见第 3.1 节 |
+| C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **进行中（后端基本完成）** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)；ADR 0015 | 见第 3.1 节 |
 | C-05 | 日程识别：L1/L2/L3、代码校验、去重、提醒调度、冲突 | 未开始 | `hub_templates/schedule_patterns.toml`、`prompts/schedule.md`、评测集 `eval/datasets/e_plan.jsonl`、`e_extract.jsonl` | 计划 W7–W8；提醒调度 `scheduler` 也给 B-04（04:00 重算基线）用 |
 | C-06 | 待办识别与清单、提醒 | 未开始 | `prompts/todo.md`、`eval/datasets/e_todo.jsonl` | 计划 W8（P1） |
 | C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | 未开始 | `prompts/chat.md`、`chat_safe.md`；网关的 `stream` 已可用 | 计划 W7–W8；D-06 对话窗口在等命令和 `chat:*` 事件 |
