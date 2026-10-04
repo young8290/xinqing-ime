@@ -38,11 +38,7 @@ pub fn pipe_suffix() -> &'static str {
 
 /// 应用数据目录名：dev `XinQingDev`，release `XinQing`（心晴身份改造，见 docs/xinqing/identity.md）。
 pub fn app_dir_name() -> &'static str {
-    if is_dev() {
-        "XinQingDev"
-    } else {
-        "XinQing"
-    }
+    if is_dev() { "XinQingDev" } else { "XinQing" }
 }
 
 /// 便携模式标记文件名。
