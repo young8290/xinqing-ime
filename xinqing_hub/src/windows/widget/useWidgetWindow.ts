@@ -1,4 +1,4 @@
-// 小组件窗口行为（07 FR-WGT-01）：启动时回到记住的位置；拖动停下后吸附并记住；
+// 小组件窗口行为（07 FR-WGT-01）：启动时回到记住的位置再显示；拖动停下后吸附并记住；
 // 吸附在左右边缘且开了贴边隐藏时，鼠标离开 3 秒收成小标签，移入展开；置顶跟随设置。
 // 位置计算都在 placement.ts（纯函数，有单测），这里只管调 Tauri 窗口接口。
 import { nextTick, onBeforeUnmount, ref, watch, type Ref } from 'vue'
@@ -144,14 +144,19 @@ export function useWidgetWindow(opts: WidgetWindowOptions) {
 
   async function start(): Promise<void> {
     const w = win() // 先取窗口：它同步抛错时不要留下已经发出、没人接的显示器查询
-    const [monitors, primary, size] = await Promise.all([
-      availableMonitors(),
-      primaryMonitor(),
-      w.outerSize(),
-    ])
-    const screens = monitors.map((m) => toScreen(m, primary))
-    const pos = restore(load(), screens, { w: size.width, h: size.height })
-    if (pos) await w.setPosition(new PhysicalPosition(pos.x, pos.y))
+    try {
+      const [monitors, primary, size] = await Promise.all([
+        availableMonitors(),
+        primaryMonitor(),
+        w.outerSize(),
+      ])
+      const screens = monitors.map((m) => toScreen(m, primary))
+      const pos = restore(load(), screens, { w: size.width, h: size.height })
+      if (pos) await w.setPosition(new PhysicalPosition(pos.x, pos.y))
+    } finally {
+      // 外壳建小组件时不显示（tauri.conf.json 的 visible: false），挪到位再露面，免得闪一下；定位失败也照样显示
+      await w.show()
+    }
     await settle()
     unlisten = await w.onMoved(() => {
       clearTimeout(settleTimer)
