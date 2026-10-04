@@ -32,6 +32,7 @@ cold_start = "正在熟悉你的打字习惯（{pct}%）"
 waiting_ime = "等待输入法连接…"
 self_reported = "你说的：{weather}"
 self_report_prompt = "我现在…"
+self_report_note = "补一句也行（选填，只存在这台电脑上）"   # 备注只存本地（FR-STA-10 第 4 条）
 care_reduced = "我会少打扰你一些"
 prob_hint = "{hedge}（可能性 {pct}%）"     # 悬停状态行时才显示概率（DS-COPY-02）
 sprite_label = "心晴：{weather}"           # 读屏播报（DS-A11Y-02）
@@ -217,6 +218,7 @@ widget_opacity = "小组件不透明度"
 privacy_about = "隐私与关于"           # 07 FR-SET-01 的分类名
 
 [common]
+close = "关闭"
 coming_soon = "这里还在准备中，很快就来。"
 
 [routine]
