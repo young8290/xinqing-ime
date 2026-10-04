@@ -25,7 +25,11 @@ export async function loadExplain(s: StatusSnapshot | null): Promise<ExplainLine
   return { header: explainHeader(s.state, Math.round(s.prob * 100)), signals: [], footer: '' }
 }
 
-export function useExplain(snapshot: Ref<StatusSnapshot | null>) {
+/** `blocked` 为真时不打开（自评覆盖期：显示的是用户自己说的，没有可解释的判断，FR-STA-10） */
+export function useExplain(
+  snapshot: Ref<StatusSnapshot | null>,
+  blocked: Readonly<Ref<boolean>> = ref(false),
+) {
   const lines = ref<ExplainLines | null>(null)
   /** 当前这个状态已经点过“准 / 不准”：面板里改为显示致谢，状态变了再重新问 */
   const voted = ref(false)
@@ -37,7 +41,7 @@ export function useExplain(snapshot: Ref<StatusSnapshot | null>) {
     clearTimeout(openTimer)
     clearTimeout(closeTimer)
     const mine = ++seq
-    const l = await loadExplain(snapshot.value)
+    const l = blocked.value ? null : await loadExplain(snapshot.value)
     // 等结果的时候已经移开或又打开了一次，以最后一次为准
     if (mine === seq) lines.value = l
   }

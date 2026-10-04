@@ -32,4 +32,15 @@ describe('statusLine', () => {
     const l = statusLine({ ...ready, paused: true })
     expect(l.weather).toBe('cloudy')
   })
+
+  it('自评覆盖期：显示“你说的：有点累”，天气用自评的（FR-STA-10）', () => {
+    const self = { weather: 'night' as const, until: 1 }
+    const l = statusLine(ready, self)
+    expect(l.text).toBe('🌙 你说的：有点累')
+    expect(l.weather).toBe('night')
+    // 压过冷启动，但暂停、未连接时不显示心情
+    expect(statusLine({ ...ready, baseline_progress: 10 }, self).text).toBe('🌙 你说的：有点累')
+    expect(statusLine({ ...ready, paused: true }, self).text).toBe('休息中，不看你打字啦')
+    expect(statusLine({ ...ready, connected: false }, self).text).toBe('等待输入法连接…')
+  })
 })

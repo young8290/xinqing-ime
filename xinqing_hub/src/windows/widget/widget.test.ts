@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import type { Explanation, StatusSnapshot } from '@/api'
+import type { Explanation, SelfReportChanged, SelfReportItem, StatusSnapshot } from '@/api'
 import { t } from '@/i18n'
 
 type Item = { id: string; text: string; action: () => void }
@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   stateExplain: vi.fn(),
   submitFeedback: vi.fn(),
   emitStatus: null as null | ((s: StatusSnapshot) => void),
+  selfReportSet: vi.fn(),
+  selfReportList: [] as SelfReportItem[],
+  emitSelfReport: null as null | ((e: SelfReportChanged) => void),
 }))
 const ok = (data: unknown = null) => Promise.resolve({ status: 'ok', data })
 
@@ -29,6 +32,8 @@ vi.mock('@/api', async (orig) => ({
     pauseSet: mocks.pauseSet,
     stateExplain: mocks.stateExplain,
     submitFeedback: mocks.submitFeedback,
+    selfReportSet: mocks.selfReportSet,
+    selfReportList: () => ok(mocks.selfReportList),
   },
   events: {
     statusChanged: {
@@ -38,6 +43,12 @@ vi.mock('@/api', async (orig) => ({
       },
     },
     settingsChanged: { listen: async () => () => {} },
+    selfReportChanged: {
+      listen: async (cb: (e: { payload: SelfReportChanged }) => void) => {
+        mocks.emitSelfReport = (payload) => cb({ payload })
+        return () => {}
+      },
+    },
   },
 }))
 vi.mock('@tauri-apps/api/window', () => ({
@@ -97,7 +108,13 @@ describe('小组件', () => {
     const w = await mountWidget()
     await w.find('main').trigger('keydown', { key: 'F10', shiftKey: true })
     await flushPromises()
-    expect(mocks.menuItems.map((i) => i.text)).toEqual(['暂停感知', '打开看板', '设置', '隐藏小组件'])
+    expect(mocks.menuItems.map((i) => i.text)).toEqual([
+      '我现在…',
+      '暂停感知',
+      '打开看板',
+      '设置',
+      '隐藏小组件',
+    ])
     expect(mocks.popup).toHaveBeenCalledWith(expect.objectContaining({ x: 16, y: 16 }))
   })
 
@@ -121,9 +138,9 @@ describe('小组件', () => {
     const w = await mountWidget()
     await w.find('main').trigger('contextmenu')
     await flushPromises()
-    mocks.menuItems[0]!.action()
+    mocks.menuItems[1]!.action()
     await flushPromises()
-    expect(mocks.menuItems[0]!.text).toBe('恢复感知')
+    expect(mocks.menuItems[1]!.text).toBe('恢复感知')
     expect(mocks.pauseSet).toHaveBeenCalledWith(false)
   })
 
@@ -312,5 +329,122 @@ describe('悬停状态行显示解释（FR-WGT-06、FR-STA-09）', () => {
       expect(w.find('.message').text()).toBe(t('error.generic'))
       expect(buttons(w)).toHaveLength(2)
     })
+  })
+})
+
+describe('“我现在…”自评（FR-STA-10、FR-WGT-06）', () => {
+  const NOW = 1_700_000_000_000
+  const HOUR = 60 * 60 * 1000
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.snapshot = {
+      state: 'fluent',
+      weather: 'sunny',
+      prob: 0.9,
+      offline: false,
+      paused: false,
+      connected: true,
+      baseline_progress: 100,
+    }
+    mocks.setAlwaysOnTop.mockReset().mockResolvedValue(undefined)
+    mocks.show.mockReset().mockResolvedValue(undefined)
+    mocks.openWindow.mockReset().mockReturnValue(ok())
+    mocks.stateExplain.mockReset().mockReturnValue(ok(null))
+    mocks.selfReportSet.mockReset().mockReturnValue(ok())
+    mocks.selfReportList = []
+    vi.useFakeTimers({ now: NOW, toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  const status = (w: Awaited<ReturnType<typeof mountWidget>>) => w.find('.status').text()
+
+  it('点状态行的 ✎ 打开面板：六个选项，备注选填；点选项就提交并关面板，不会打开对话', async () => {
+    const w = await mountWidget()
+    await w.find('button.pen').trigger('click')
+    const dialog = w.find('[role=dialog]')
+    expect(dialog.attributes('aria-label')).toBe('我现在…')
+    expect(dialog.findAll('button.option').map((b) => b.text())).toEqual([
+      '☀️ 挺好',
+      '⛅ 有点犹豫',
+      '🌧 有点低落',
+      '⛈ 有点烦',
+      '🌙 有点累',
+      '🤷 说不上来',
+    ])
+    expect(dialog.find('input').attributes('maxlength')).toBe('50')
+    await dialog.find('input').setValue('  加班到现在  ')
+    await dialog.find('button.option[data-weather=night]').trigger('click')
+    await flushPromises()
+    expect(mocks.selfReportSet).toHaveBeenCalledWith('night', '加班到现在')
+    expect(w.find('[role=dialog]').exists()).toBe(false)
+    expect(mocks.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('不填备注时传 null；右键菜单的“我现在…”也打开面板', async () => {
+    const w = await mountWidget()
+    await w.find('main').trigger('contextmenu')
+    await flushPromises()
+    mocks.menuItems[0]!.action()
+    await flushPromises()
+    await w.find('button.option[data-weather=sunny]').trigger('click')
+    await flushPromises()
+    expect(mocks.selfReportSet).toHaveBeenCalledWith('sunny', null)
+  })
+
+  it('面板里 Esc 关闭、Enter 不会打开对话', async () => {
+    const w = await mountWidget()
+    await w.find('button.pen').trigger('click')
+    await w.find('[role=dialog] input').trigger('keydown', { key: 'Enter' })
+    expect(mocks.openWindow).not.toHaveBeenCalled()
+    await w.find('[role=dialog]').trigger('keydown', { key: 'Escape' })
+    expect(w.find('[role=dialog]').exists()).toBe(false)
+  })
+
+  it('收到 self_report:changed：状态行显示“你说的”，到期自动回到自动判断', async () => {
+    const w = await mountWidget()
+    mocks.emitSelfReport!({ weather: 'night', until_ts: NOW + HOUR })
+    await flushPromises()
+    expect(status(w)).toBe('🌙 你说的：有点累')
+    await vi.advanceTimersByTimeAsync(HOUR)
+    expect(status(w)).toBe('☀️ 晴 · 看起来挺顺的')
+  })
+
+  it('“说不上来”不覆盖显示', async () => {
+    const w = await mountWidget()
+    mocks.emitSelfReport!({ weather: 'unsure', until_ts: NOW })
+    await flushPromises()
+    expect(status(w)).toBe('☀️ 晴 · 看起来挺顺的')
+  })
+
+  it('窗口打开时由当天的自评记录接上覆盖期', async () => {
+    mocks.selfReportList = [
+      { id: 3, ts: NOW - 10 * 60 * 1000, weather: 'rain', note: null, auto_state: 'fluent' },
+    ]
+    const w = await mountWidget()
+    expect(status(w)).toBe('🌧 你说的：有点低落')
+  })
+
+  it('覆盖期内悬停状态行不弹解释（显示的是用户自己说的）', async () => {
+    const w = await mountWidget()
+    mocks.emitSelfReport!({ weather: 'night', until_ts: NOW + HOUR })
+    await flushPromises()
+    await w.find('.status').trigger('focus')
+    await flushPromises()
+    expect(w.find('[role=tooltip]').exists()).toBe(false)
+  })
+
+  it('提交失败：一句话区给可读提示，面板留着可以重试', async () => {
+    mocks.selfReportSet.mockReturnValue(
+      ok().then(() => ({ status: 'error', error: { code: 'x', message_key: 'nope' } })),
+    )
+    const w = await mountWidget()
+    await w.find('button.pen').trigger('click')
+    await w.find('button.option[data-weather=rain]').trigger('click')
+    await flushPromises()
+    expect(w.find('.message').text()).toBe(t('error.generic'))
+    expect(w.find('[role=dialog]').exists()).toBe(true)
   })
 })
