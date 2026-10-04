@@ -87,6 +87,10 @@ pub trait ComfortPort: Send + Sync {
     fn dnd(&self) -> bool {
         false
     }
+    /// 用户点了 🔕 之后，主动关怀停到什么时候（Unix 毫秒，FR-CMF-05）。
+    fn muted_until(&self) -> Option<i64> {
+        None
+    }
     /// 最近 10 条暖心话（从旧到新）。
     fn recent_texts(&self) -> Vec<String>;
     /// 用户标记过“不合适”的模板句 id。
@@ -219,6 +223,7 @@ impl ComfortService {
             last_ms,
             paused: self.paused,
             dnd: self.port.dnd() || self.app.as_deref().is_some_and(comfort::is_dnd_app),
+            muted: self.port.muted_until().is_some_and(|until| ts < until),
         }
     }
 
@@ -415,6 +420,7 @@ mod tests {
         level: Mutex<CareLevel>,
         llm: bool,
         dnd: Mutex<bool>,
+        muted: Mutex<Option<i64>>,
         shown: Mutex<Vec<Comfort>>,
     }
 
@@ -425,6 +431,7 @@ mod tests {
                 level: Mutex::new(CareLevel::Normal),
                 llm,
                 dnd: Mutex::new(false),
+                muted: Mutex::new(None),
                 shown: Mutex::new(Vec::new()),
             })
         }
@@ -442,6 +449,9 @@ mod tests {
         }
         fn dnd(&self) -> bool {
             *self.dnd.lock().unwrap()
+        }
+        fn muted_until(&self) -> Option<i64> {
+            *self.muted.lock().unwrap()
         }
         fn recent_texts(&self) -> Vec<String> {
             self.db.lock().unwrap().comfort_recent_texts(10).unwrap()
@@ -570,6 +580,24 @@ mod tests {
         assert!(low_for(&mut s, start_ms() + 10 * MIN, 5).await.is_empty());
         *port.dnd.lock().unwrap() = false;
         assert_eq!(low_for(&mut s, start_ms() + 20 * MIN, 2).await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn mute_stops_proactive_care_but_not_self_report_replies() {
+        let port = FakePort::new(false);
+        *port.muted.lock().unwrap() = Some(start_ms() + 60 * MIN);
+        let mut s = service(port, FakeLlm::with(&[]));
+        assert!(low_for(&mut s, start_ms(), 60).await.is_empty());
+        assert!(
+            s.on_event(HubEvent::SelfReport {
+                weather: SelfWeather::Rain,
+                until: 0,
+            })
+            .await
+            .is_some(),
+            "🔕 只停主动关怀"
+        );
+        assert_eq!(low_for(&mut s, start_ms() + 60 * MIN, 1).await.len(), 1);
     }
 
     #[tokio::test]
