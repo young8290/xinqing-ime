@@ -7,6 +7,7 @@ pub mod feedback;
 pub mod fusion;
 pub mod rules;
 pub mod safety;
+pub mod self_report;
 pub mod settings;
 pub mod status;
 pub mod validate;

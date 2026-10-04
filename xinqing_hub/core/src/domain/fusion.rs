@@ -198,10 +198,16 @@ impl Fusion {
         }
         if q.len() >= 3 {
             q.clear();
-            let cur = self.bump(s, now_ms);
-            let next = (cur + BUMP).min(BUMP_CAP - P_IMMEDIATE);
-            self.bumps.insert(s, (next, now_ms + BUMP_DAYS_MS));
+            self.raise(s, now_ms);
         }
+    }
+
+    /// 某状态的个人阈值上调一档（+0.05，上限 0.95），从 `now_ms` 起持续 7 天。
+    /// “不准”凑满 3 次（[`Self::record_unfit`]）或自评连续 3 次与自动判断不同（FR-STA-10）时调用。
+    pub fn raise(&mut self, s: MoodState, now_ms: i64) {
+        let cur = self.bump(s, now_ms);
+        let next = (cur + BUMP).min(BUMP_CAP - P_IMMEDIATE);
+        self.bumps.insert(s, (next, now_ms + BUMP_DAYS_MS));
     }
 }
 

@@ -21,6 +21,7 @@ use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
 use crate::domain::features::WindowFeatures;
 use crate::domain::fusion::{FusionOut, Source};
 use crate::domain::rules::Hints;
+use crate::domain::self_report::{self, SelfWeather};
 use crate::domain::status::StatusSnapshot;
 use crate::infra::clock::Clock;
 use crate::infra::xqp::{LinkEvent, XqpHandle};
@@ -59,6 +60,12 @@ pub enum SenseCmd {
     Pause(bool),
     /// 用户对某个显示状态点了“不准”（FR-STA-07），`ts` 为 Unix 毫秒；已由外壳写入 `feedback` 表。
     Unfit { state: MoodState, ts: i64 },
+    /// 用户自评（FR-STA-10），已由外壳写入 `self_report` 表。`raise` 是连续差异满 3 次时要上调阈值的自动状态。
+    SelfReport {
+        weather: SelfWeather,
+        ts: i64,
+        raise: Option<MoodState>,
+    },
 }
 
 pub struct Sense {
@@ -81,6 +88,8 @@ pub struct Sense {
     prev_window: Option<(WindowFeatures, Hints)>,
     /// 最近一次切换的状态解释，缓存到下一次切换。
     explanation: Option<Explanation>,
+    /// 自评的显示覆盖：(用户说的状态, 到期 Unix 毫秒)。期间自动判断照常运行，但不改显示。
+    self_shown: Option<(MoodState, i64)>,
 }
 
 impl Sense {
@@ -104,10 +113,11 @@ impl Sense {
             gate_closed: false,
             prev_window: None,
             explanation: None,
+            self_shown: None,
         }
     }
 
-    /// 最近一次状态切换的解释；还没切换过时为 `None`。
+    /// 最近一次自动判断切换的解释（自评期间也是自动判断的）；还没切换过时为 `None`。
     pub fn explanation(&self) -> Option<&Explanation> {
         self.explanation.as_ref()
     }
@@ -180,10 +190,12 @@ impl Sense {
                 self.xqp.send(Down::Pause { on });
             }
             SenseCmd::Unfit { state, ts } => self.pipeline.fusion_mut().record_unfit(state, ts),
+            SenseCmd::SelfReport { weather, ts, raise } => self.on_self_report(weather, ts, raise),
         }
     }
 
     pub fn on_tick(&mut self, now: Instant) {
+        self.expire_self_report();
         if self.user_paused {
             return;
         }
@@ -193,6 +205,64 @@ impl Sense {
         let now_ts = ts + now.saturating_duration_since(at).as_millis() as u64;
         let outs = self.pipeline.tick(now_ts);
         self.handle(outs);
+    }
+
+    /// 自评（FR-STA-10）：之后 60 分钟显示用户说的状态；“说不上来”结束之前的覆盖、回到自动判断。
+    fn on_self_report(&mut self, weather: SelfWeather, ts: i64, raise: Option<MoodState>) {
+        if let Some(s) = raise {
+            self.pipeline.fusion_mut().raise(s, ts);
+        }
+        let until = match weather.state() {
+            Some(state) => {
+                let until = ts + self_report::OVERRIDE_MS;
+                self.self_shown = Some((state, until));
+                self.port.explained(&Explanation::self_report(state));
+                self.show(state);
+                until
+            }
+            None => {
+                self.end_self_report();
+                ts
+            }
+        };
+        let _ = self.bus.send(HubEvent::SelfReport { weather, until });
+    }
+
+    fn self_report_active(&self) -> bool {
+        let now = self.clock.now().timestamp_millis();
+        self.self_shown.is_some_and(|(_, until)| now < until)
+    }
+
+    fn expire_self_report(&mut self) {
+        if self.self_shown.is_some() && !self.self_report_active() {
+            self.end_self_report();
+        }
+    }
+
+    /// 结束自评覆盖，显示回到自动判断及其解释。
+    fn end_self_report(&mut self) {
+        if self.self_shown.take().is_none() {
+            return;
+        }
+        if let Some(e) = &self.explanation {
+            self.port.explained(e);
+        }
+        let auto = self.pipeline.fusion_mut().shown();
+        self.show(auto);
+    }
+
+    /// 更新显示状态，变化时下发给输入法（工具栏天气按钮，FR-ENT-02）。
+    fn show(&mut self, state: MoodState) {
+        let mut offline = true;
+        let mut changed = false;
+        self.port.update_status(&mut |s| {
+            offline = s.offline;
+            changed = s.state != state;
+            s.apply_mood(state, None)
+        });
+        if changed {
+            self.xqp.send(Down::Mood { state, offline });
+        }
     }
 
     fn paused(&self) -> bool {
@@ -287,13 +357,6 @@ impl Sense {
             ts,
             out: fusion.clone(),
         }));
-        let progress = self.pipeline.baseline().progress_pct();
-        let mut offline = true;
-        self.port.update_status(&mut |s| {
-            offline = s.offline;
-            s.apply_mood(fusion.shown, None)
-                | StatusSnapshot::set(&mut s.baseline_progress, progress)
-        });
         if fusion.changed {
             // 可能性随 Jev 接入后给出；只有本地规则时界面不显示百分比
             let source = match fusion.source {
@@ -313,16 +376,41 @@ impl Sense {
                     .map(|(features, hints)| Evidence { features, hints }),
                 self.pipeline.baseline(),
             );
-            self.port.explained(&e);
             self.explanation = Some(e);
-            let _ = self.bus.send(HubEvent::Mood(MoodEvent::StateChanged {
-                ts,
-                state: fusion.shown,
-            }));
+        }
+        self.expire_self_report();
+        let self_active = self.self_shown.is_some();
+        // 先交出解释再推送状态：界面收到 status:changed 后取到的一定是同一次切换的解释
+        if fusion.changed
+            && !self_active
+            && let Some(e) = &self.explanation
+        {
+            self.port.explained(e);
+        }
+        let progress = self.pipeline.baseline().progress_pct();
+        let shown = (!self_active).then_some(fusion.shown);
+        let mut offline = true;
+        let mut moved = false;
+        self.port.update_status(&mut |s| {
+            offline = s.offline;
+            let mut changed = StatusSnapshot::set(&mut s.baseline_progress, progress);
+            if let Some(state) = shown {
+                moved = s.state != state;
+                changed |= s.apply_mood(state, None);
+            }
+            changed
+        });
+        if moved {
             self.xqp.send(Down::Mood {
                 state: fusion.shown,
                 offline,
             });
+        }
+        if fusion.changed {
+            let _ = self.bus.send(HubEvent::Mood(MoodEvent::StateChanged {
+                ts,
+                state: fusion.shown,
+            }));
         }
         self.prev_window = Some((w.features, w.hints));
     }
@@ -377,6 +465,7 @@ mod tests {
         port: Arc<FakePort>,
         down: mpsc::Receiver<Down>,
         bus: broadcast::Receiver<HubEvent>,
+        clock: Arc<ManualClock>,
         t0: Instant,
     }
 
@@ -391,12 +480,13 @@ mod tests {
         let (xqp, down) = XqpHandle::pair();
         let (bus_tx, bus) = crate::bus::channel();
         let clock = Arc::new(ManualClock::new(start));
-        let sense = Sense::new(pipeline, port.clone(), xqp, bus_tx, clock);
+        let sense = Sense::new(pipeline, port.clone(), xqp, bus_tx, clock.clone());
         Rig {
             sense,
             port,
             down,
             bus,
+            clock,
             t0: Instant::now(),
         }
     }
@@ -443,6 +533,39 @@ mod tests {
         }
         fn status(&self) -> StatusSnapshot {
             self.port.status.lock().unwrap().clone()
+        }
+        /// 按真实节奏回放一个合成脚本，返回其间自动判断的切换序列（StateChanged）。
+        fn play(&mut self, name: &str) -> Vec<MoodState> {
+            let text = std::fs::read_to_string(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join(format!("../../tools/xq-sim/scripts/{name}.jsonl")),
+            )
+            .unwrap();
+            let mut changes = Vec::new();
+            // 边回放边读总线，脚本事件多于总线容量
+            let mut drain = |bus: &mut broadcast::Receiver<HubEvent>| {
+                while let Ok(ev) = bus.try_recv() {
+                    if let HubEvent::Mood(MoodEvent::StateChanged { state, .. }) = ev {
+                        changes.push(state);
+                    }
+                }
+            };
+            let mut last = 0;
+            for line in text.lines() {
+                let ev: Up = serde_json::from_str(line).unwrap();
+                if let Some(ts) = ev.ts() {
+                    for t in (last..ts).step_by(250).skip(1) {
+                        self.sense.on_tick(self.t0 + Duration::from_millis(t));
+                    }
+                    last = ts;
+                }
+                self.up(ev);
+                drain(&mut self.bus);
+            }
+            self.sense
+                .on_tick(self.t0 + Duration::from_millis(last + 5_000));
+            drain(&mut self.bus);
+            changes
         }
     }
 
@@ -494,34 +617,7 @@ mod tests {
         // 回放合成的犹豫脚本（只有本地规则），每次切换都带解释（FR-STA-09、KPI-10）
         let mut r = rig();
         r.sense.on_link(connected("s1"), r.t0);
-        let text = std::fs::read_to_string(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../../tools/xq-sim/scripts/hesitant.jsonl"),
-        )
-        .unwrap();
-        let mut changes = Vec::new();
-        // 边回放边读总线，脚本事件多于总线容量
-        let mut drain = |bus: &mut broadcast::Receiver<HubEvent>| {
-            while let Ok(ev) = bus.try_recv() {
-                if let HubEvent::Mood(MoodEvent::StateChanged { state, .. }) = ev {
-                    changes.push(state);
-                }
-            }
-        };
-        let mut last = 0;
-        for line in text.lines() {
-            let ev: Up = serde_json::from_str(line).unwrap();
-            if let Some(ts) = ev.ts() {
-                for t in (last..ts).step_by(250).skip(1) {
-                    r.sense.on_tick(r.t0 + Duration::from_millis(t));
-                }
-                last = ts;
-            }
-            r.up(ev);
-            drain(&mut r.bus);
-        }
-        r.sense.on_tick(r.t0 + Duration::from_millis(last + 5_000));
-        drain(&mut r.bus);
+        let changes = r.play("hesitant");
 
         let explained = r.port.explained.lock().unwrap().clone();
         assert!(changes.contains(&MoodState::Hesitant), "{changes:?}");
@@ -535,8 +631,83 @@ mod tests {
             .unwrap();
         assert!(!hesitant.signals.is_empty());
         assert_eq!(hesitant.source, ExplainSource::Rule);
-        assert_eq!(hesitant.prob, None);
+        assert_eq!(hesitant.prob_pct, None);
         assert_eq!(r.sense.explanation(), explained.last());
+    }
+
+    #[test]
+    fn self_report_overrides_display_for_an_hour() {
+        // FR-STA-10：自评后 60 分钟显示用户说的状态，自动判断照常在后台运行
+        let mut r = rig();
+        r.sense.on_link(connected("s1"), r.t0);
+        let now = r.clock.now().timestamp_millis();
+        r.sense.on_cmd(SenseCmd::SelfReport {
+            weather: SelfWeather::Night,
+            ts: now,
+            raise: Some(MoodState::Hesitant),
+        });
+        assert_eq!(r.status().state, MoodState::Tired);
+        assert_eq!(
+            r.port.explained.lock().unwrap().last(),
+            Some(&Explanation::self_report(MoodState::Tired))
+        );
+        assert!(downs(&mut r.down).contains(&Down::Mood {
+            state: MoodState::Tired,
+            offline: true
+        }));
+        let mut until = None;
+        while let Ok(ev) = r.bus.try_recv() {
+            if let HubEvent::SelfReport { weather, until: u } = ev {
+                assert_eq!(weather, SelfWeather::Night);
+                until = Some(u);
+            }
+        }
+        assert_eq!(until, Some(now + self_report::OVERRIDE_MS));
+        // 连续差异满 3 次：被否定的自动状态阈值上调
+        assert!(r.sense.pipeline.fusion_mut().bump(MoodState::Hesitant, now) > 0.0);
+
+        // 覆盖期间自动判断切到犹豫又回来，显示不变、解释不被覆盖
+        let auto = r.play("hesitant");
+        assert!(auto.contains(&MoodState::Hesitant));
+        assert_eq!(r.status().state, MoodState::Tired);
+        assert_eq!(
+            r.port.explained.lock().unwrap().last().map(|e| e.source),
+            Some(ExplainSource::SelfReport)
+        );
+
+        // 60 分钟后回到自动判断，并交出自动判断的解释
+        r.clock.advance_ms(self_report::OVERRIDE_MS + 1);
+        r.sense.on_tick(r.t0 + Duration::from_secs(600));
+        assert_eq!(r.status().state, r.sense.pipeline.fusion_mut().shown());
+        assert_eq!(
+            r.port.explained.lock().unwrap().last(),
+            r.sense.explanation()
+        );
+    }
+
+    #[test]
+    fn unsure_ends_the_override() {
+        let mut r = rig();
+        let now = r.clock.now().timestamp_millis();
+        r.sense.on_cmd(SenseCmd::SelfReport {
+            weather: SelfWeather::Storm,
+            ts: now,
+            raise: None,
+        });
+        assert_eq!(r.status().state, MoodState::Agitated);
+        r.sense.on_cmd(SenseCmd::SelfReport {
+            weather: SelfWeather::Unsure,
+            ts: now + 1_000,
+            raise: None,
+        });
+        assert_eq!(r.status().state, MoodState::Fluent);
+        // “说不上来”本身不覆盖显示
+        r.sense.on_cmd(SenseCmd::SelfReport {
+            weather: SelfWeather::Unsure,
+            ts: now + 2_000,
+            raise: None,
+        });
+        assert_eq!(r.status().state, MoodState::Fluent);
     }
 
     #[test]

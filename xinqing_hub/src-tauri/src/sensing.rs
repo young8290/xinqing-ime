@@ -169,6 +169,7 @@ impl SensePort for ShellPort {
 
     fn save_window(&self, rec: &WindowRecord<'_>) {
         let state = self.app.state::<AppState>();
+        state.set_auto_state(rec.fusion.shown);
         let db = state.db();
         let w = rec.window;
         let saved = db

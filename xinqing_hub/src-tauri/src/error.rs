@@ -3,6 +3,7 @@
 
 use serde::Serialize;
 use specta::Type;
+use xinqing_hub_core::domain::self_report::SelfReportError;
 use xinqing_hub_core::domain::settings::SettingsError;
 use xinqing_hub_core::infra::store::StoreError;
 
@@ -44,6 +45,17 @@ impl From<SettingsError> for UiError {
                 UiError::new("settings.out_of_range", "error.generic")
             }
             SettingsError::Store(e) => e.into(),
+        }
+    }
+}
+
+impl From<SelfReportError> for UiError {
+    fn from(e: SelfReportError) -> Self {
+        match e {
+            SelfReportError::NoteTooLong => {
+                UiError::new("self_report.note_too_long", "error.generic")
+            }
+            SelfReportError::Store(e) => e.into(),
         }
     }
 }
