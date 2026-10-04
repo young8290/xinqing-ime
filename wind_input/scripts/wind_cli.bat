@@ -1,10 +1,10 @@
 @echo off
 setlocal
 
-if exist "%~dp0wind_input_dev.exe" (
-    set "TARGET=%~dp0wind_input_dev.exe"
+if exist "%~dp0xinqing_core_dev.exe" (
+    set "TARGET=%~dp0xinqing_core_dev.exe"
 ) else (
-    set "TARGET=%~dp0wind_input.exe"
+    set "TARGET=%~dp0xinqing_core.exe"
 )
 
 if not exist "%TARGET%" (

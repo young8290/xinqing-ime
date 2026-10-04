@@ -15,9 +15,9 @@ option(WIND_DEV_VARIANT "Build debug variant with separate CLSID/pipe names" OFF
 
 if(WIND_DEV_VARIANT)
     add_definitions(-DWIND_DEV_VARIANT)
-    set(TSF_TARGET_NAME "wind_tsf_dev")
+    set(TSF_TARGET_NAME "xinqing_tsf_dev")
 else()
-    set(TSF_TARGET_NAME "wind_tsf")
+    set(TSF_TARGET_NAME "xinqing_tsf")
 endif()
 
 # 版本信息（由构建脚本通过 -D 传入，默认为开发版本）

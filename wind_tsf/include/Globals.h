@@ -207,10 +207,10 @@ extern const GUID c_guidDisplayAttributeConverted;
 // （wind-installer / scripts\dev.ps1 / wind-portable）在注册 COM 前都必须写该值。
 #ifdef WIND_DEV_VARIANT
 #define WIND_APP_NAME           L"XinQingDev"
-#define WIND_SERVICE_EXE        L"wind_input_dev.exe"
+#define WIND_SERVICE_EXE        L"xinqing_core_dev.exe"
 #else
 #define WIND_APP_NAME           L"XinQing"
-#define WIND_SERVICE_EXE        L"wind_input.exe"
+#define WIND_SERVICE_EXE        L"xinqing_core.exe"
 #endif
 #define WIND_APP_REGKEY         L"Software\\" WIND_APP_NAME
 

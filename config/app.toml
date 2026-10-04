@@ -17,15 +17,15 @@ display_name    = "心晴输入法"
 version         = "0.0.0"           # 构建时由 --version 覆盖，此处为占位
 publisher       = "心晴输入法 项目"
 description     = "轻量开源输入法"
-main_exe        = "wind_input.exe"
+main_exe        = "xinqing_core.exe"
 setting_exe     = "wind_setting.exe"
 start_menu_folder = "心晴输入法"
 window_title    = "心晴输入法 安装向导"
 url_protocol    = "xinqing"
 agreement_url   = ""
 portable_marker = "portable_mode"
-process_names   = ["wind_setting", "wind_portable", "wind_input"]
-acl_dlls        = ["wind_tsf.dll", "wind_tsf_x86.dll"]
+process_names   = ["wind_setting", "wind_portable", "xinqing_core"]
+acl_dlls        = ["xinqing_tsf.dll", "xinqing_tsf_x86.dll"]
 legacy_files    = []
 legacy_dirs     = []
 
@@ -37,8 +37,8 @@ uninstall_win = { w = 480, h = 420 }
 clsid        = "{EF62EE30-5ECF-413A-A476-48D1F29E827C}"
 profile_guid = "{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
 lang_id      = "0804"
-dll_x64      = "wind_tsf.dll"
-dll_x86      = "wind_tsf_x86.dll"
+dll_x64      = "xinqing_tsf.dll"
+dll_x86      = "xinqing_tsf_x86.dll"
 # 安装前清扫「指向已消失 DLL 的悬空注册」：旧版（含同 CLSID 的 Go 版）卸载不净时，
 # HKCR\CLSID、CTF\TIP、旧 NSIS 的 RunOnce 会残留并指向已删 DLL，导致部分应用无法开启输入法。
 # 缺省 false（通用安装器不擅自改注册表）；只删悬空项，按本段 clsid/profile 变体隔离，

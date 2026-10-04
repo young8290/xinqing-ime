@@ -13,7 +13,7 @@
 #   已配置时想单次走本机, 也可以直接 `dev.ps1` 加这个环境变量前缀。
 #
 # ── 为什么编译机必须是 Windows + 原生 MSVC ────────────────────────────────────
-# clang / cargo-xwin 交叉编译出的 wind_tsf.dll 在带安全加固的宿主 (企业微信 / TIM /
+# clang / cargo-xwin 交叉编译出的 xinqing_tsf.dll 在带安全加固的宿主 (企业微信 / TIM /
 # QQ 部分进程 / UU浏览器) 里 COM 激活失败, 同 commit 的本机 MSVC 版正常 —— 已由 A/B 实测
 # 把唯一变量锁定在工具链上 (6dbc8595 因此把发布链从 ubuntu 交叉编译改回 windows-latest)。
 # 由此:
@@ -408,8 +408,8 @@ function Sync-Tree ([string]$src, [string]$remoteDir, [string]$label) {
 # 按命令只取该模块产出的文件 —— dm2 只需 1 个 exe (20 MB), 没必要连 data\ 22 MB 一起拉。
 # 全构建 (1/d1/8/9) 才整目录打包回传。
 $ArtifactMap = @{
-    'm1'  = @('wind_tsf.dll', 'wind_tsf_x86.dll');       'dm1' = @('wind_tsf_dev.dll', 'wind_tsf_x86_dev.dll')
-    'm2'  = @('wind_input.exe', 'wind_cli.bat');         'dm2' = @('wind_input_dev.exe', 'wind_cli.bat')
+    'm1'  = @('xinqing_tsf.dll', 'xinqing_tsf_x86.dll');       'dm1' = @('xinqing_tsf_dev.dll', 'xinqing_tsf_x86_dev.dll')
+    'm2'  = @('xinqing_core.exe', 'wind_cli.bat');         'dm2' = @('xinqing_core_dev.exe', 'wind_cli.bat')
     'm3'  = @('wind_setting.exe');                       'dm3' = @('wind_setting_dev.exe')
     'm4'  = @('wind_portable.exe');                      'dm4' = @('wind_portable.exe')
 }

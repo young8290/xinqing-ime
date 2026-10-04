@@ -7,7 +7,7 @@
 # 因此互相排队而不是互相踩踏。
 #
 # ── 为什么 Linux 侧必须把编译推出去 ──────────────────────────────────────────
-# clang / cargo-xwin 交叉编出的 wind_tsf.dll 在带安全加固的宿主 (企业微信 / TIM / QQ /
+# clang / cargo-xwin 交叉编出的 xinqing_tsf.dll 在带安全加固的宿主 (企业微信 / TIM / QQ /
 # UU浏览器) 里 COM 激活失败, 同 commit 的原生 MSVC 版正常 —— A/B 实测把唯一变量锁定在
 # 工具链上 (6dbc8595)。实测两份 DLL 的 PE 安全元数据 (DllCharacteristics/SafeSEH) 逐位
 # 相同, 差异落在【代码生成层】, 换 cargo-xwin 的用法或版本都无效。
@@ -148,10 +148,10 @@ rbuild_outdir_name() {
 # dm2 只需 1 个 exe (20 MB), 没必要连 data/ 22 MB 一起拉。
 rbuild_artifacts_for() {
     case "$1" in
-        m1)     echo "wind_tsf.dll wind_tsf_x86.dll" ;;
-        dm1)    echo "wind_tsf_dev.dll wind_tsf_x86_dev.dll" ;;
-        m2)     echo "wind_input.exe wind_cli.bat" ;;
-        dm2)    echo "wind_input_dev.exe wind_cli.bat" ;;
+        m1)     echo "xinqing_tsf.dll xinqing_tsf_x86.dll" ;;
+        dm1)    echo "xinqing_tsf_dev.dll xinqing_tsf_x86_dev.dll" ;;
+        m2)     echo "xinqing_core.exe wind_cli.bat" ;;
+        dm2)    echo "xinqing_core_dev.exe wind_cli.bat" ;;
         m3)     echo "wind_setting.exe" ;;
         dm3)    echo "wind_setting_dev.exe" ;;
         m4|dm4) echo "wind_portable.exe" ;;
@@ -212,7 +212,7 @@ rbuild_require_ready() {
     if [ -z "$WIND_BUILD_REMOTE" ] || [ -z "$WIND_BUILD_ROOT" ]; then
         err "'$cmd' 需要 Windows 编译机, 但未配置。"
         err "  cp scripts/build.local.example scripts/build.local  然后填 WIND_BUILD_REMOTE / WIND_BUILD_ROOT"
-        err "  为什么不能在 Linux 上编: clang/cargo-xwin 出的 wind_tsf.dll 在加固宿主 COM 激活失败"
+        err "  为什么不能在 Linux 上编: clang/cargo-xwin 出的 xinqing_tsf.dll 在加固宿主 COM 激活失败"
         err "  (6dbc8595, 根因在工具链代码生成层)。Linux 侧只剩 check/clippy 一个正当用途。"
         return 1
     fi

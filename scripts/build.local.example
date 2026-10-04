@@ -6,7 +6,7 @@
 # Linux 上编出来的东西按下述理由不能用, 安静地回落只会产出一堆废品。
 #
 # ── 为什么 Linux 不能自己编 ────────────────────────────────────────────────
-# clang / cargo-xwin 交叉编出的 wind_tsf.dll 在带安全加固的宿主 (企业微信 / TIM / QQ /
+# clang / cargo-xwin 交叉编出的 xinqing_tsf.dll 在带安全加固的宿主 (企业微信 / TIM / QQ /
 # UU浏览器) 里 COM 激活失败, 同 commit 的原生 MSVC 版正常 —— A/B 实测把唯一变量锁定在
 # 工具链上 (6dbc8595)。两份 DLL 的 PE 安全元数据 (DllCharacteristics/SafeSEH) 逐位相同,
 # 差异落在【代码生成层】, 换 cargo-xwin 的用法或版本都无效, 也不是 32 位专有问题。

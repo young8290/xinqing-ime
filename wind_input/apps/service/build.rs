@@ -1,4 +1,4 @@
-// 为 wind_input.exe 嵌入 Windows 资源：图标 / 版本信息 / manifest（DPI 感知）。
+// 为 xinqing_core.exe 嵌入 Windows 资源：图标 / 版本信息 / manifest（DPI 感知）。
 // 字段值与原 Go 项目 winres/winres.json 基本一致（产品名/版权/描述/图标）。
 // 版本号取 docs/VERSION（与 release tag、旧项目单一 VERSION 真值源一致），
 // 而非 Cargo 版本（二者当前不同步）。仅 Windows 目标生效，其它目标为空操作。
@@ -44,7 +44,7 @@ fn main() {
     let ver_u64 = ((maj as u64) << 48) | ((min as u64) << 32) | ((pat as u64) << 16);
 
     let product_name = "心晴输入法";
-    let original_filename = "wind_input.exe";
+    let original_filename = "xinqing_core.exe";
 
     // manifest：asInvoker + PerMonitorV2 DPI 感知 + win10 + 长路径（对齐旧项目）。
     let manifest = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -77,7 +77,7 @@ fn main() {
     res.set("ProductName", product_name);
     res.set("CompanyName", "心晴输入法");
     res.set("FileDescription", "心晴输入法服务");
-    res.set("InternalName", "wind_input");
+    res.set("InternalName", "xinqing_core");
     res.set("OriginalFilename", original_filename);
     res.set("LegalCopyright", "Copyright © 心晴输入法");
     res.set("ProductVersion", &ver_str);

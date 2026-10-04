@@ -25,9 +25,9 @@ BEGIN
             VALUE "CompanyName",      "心晴输入法"
             VALUE "FileDescription",  "心晴输入法 TSF 模块"
             VALUE "FileVersion",      "@APP_VERSION_STR@.@APP_VERSION_BUILD@"
-            VALUE "InternalName",     "wind_tsf"
+            VALUE "InternalName",     "xinqing_tsf"
             VALUE "LegalCopyright",   "Copyright © 心晴输入法"
-            VALUE "OriginalFilename", "wind_tsf.dll"
+            VALUE "OriginalFilename", "xinqing_tsf.dll"
             VALUE "ProductName",      "心晴输入法"
             VALUE "ProductVersion",   "@APP_VERSION_STR@"
         END

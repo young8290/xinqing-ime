@@ -1,4 +1,4 @@
-LIBRARY "wind_tsf"
+LIBRARY "xinqing_tsf"
 
 EXPORTS
     DllCanUnloadNow     PRIVATE

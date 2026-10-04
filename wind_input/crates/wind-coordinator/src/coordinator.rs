@@ -376,7 +376,7 @@ pub(crate) fn settings_app_path() -> Option<String> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
     let stem = exe.file_stem()?.to_str()?; // wind_input 或 wind_input_dev
-    let setting = stem.replacen("wind_input", "wind_setting", 1);
+    let setting = stem.replacen("xinqing_core", "xinqing_hub", 1);
     let path = dir.join(format!("{setting}.exe"));
     path.exists().then(|| path.display().to_string())
 }
