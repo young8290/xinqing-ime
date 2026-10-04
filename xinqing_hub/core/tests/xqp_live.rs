@@ -3,7 +3,6 @@
 
 use std::io;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -28,7 +27,7 @@ use xqp::{ByeReason, Down, KeyKind, KeySrc, MoodState, OpenTarget, Up};
 struct DuplexConnector {
     accept: mpsc::UnboundedSender<DuplexStream>,
     /// 接下来这么多次连接直接失败（模拟核心没运行）。
-    refuse: Arc<AtomicU32>,
+    refuse: Arc<Mutex<u32>>,
     attempts: Arc<Mutex<Vec<Instant>>>,
 }
 
@@ -36,12 +35,12 @@ struct DuplexConnector {
 impl Connector for DuplexConnector {
     async fn connect(&self) -> io::Result<Conn> {
         self.attempts.lock().unwrap().push(Instant::now());
-        if self
-            .refuse
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
-            .is_ok()
         {
-            return Err(io::ErrorKind::NotFound.into());
+            let mut refuse = self.refuse.lock().unwrap();
+            if *refuse > 0 {
+                *refuse -= 1;
+                return Err(io::ErrorKind::NotFound.into());
+            }
         }
         let (hub, core) = tokio::io::duplex(64 * 1024);
         self.accept
@@ -139,13 +138,13 @@ struct Rig {
     handle: XqpHandle,
     events: mpsc::Receiver<LinkEvent>,
     cores: mpsc::UnboundedReceiver<DuplexStream>,
-    refuse: Arc<AtomicU32>,
+    refuse: Arc<Mutex<u32>>,
     attempts: Arc<Mutex<Vec<Instant>>>,
 }
 
 fn start(initial: Down) -> Rig {
     let (accept, cores) = mpsc::unbounded_channel();
-    let refuse = Arc::new(AtomicU32::new(0));
+    let refuse = Arc::new(Mutex::new(0));
     let attempts = Arc::new(Mutex::new(Vec::new()));
     let connector = DuplexConnector {
         accept,
@@ -309,7 +308,7 @@ async fn version_mismatch_retries_slowly_and_core_bye_is_reported() {
 #[tokio::test(start_paused = true)]
 async fn core_not_running_is_retried_every_two_seconds_silently() {
     let mut rig = start(cfg(false));
-    rig.refuse.store(3, Ordering::SeqCst);
+    *rig.refuse.lock().unwrap() = 3;
     let mut core = rig.core().await;
     core.handshake("s1").await;
     // 连接失败不报告事件，第一条就是 Connected
