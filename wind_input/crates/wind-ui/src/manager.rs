@@ -1591,6 +1591,7 @@ mod menu_id_tests {
             MenuCmd::ToggleInputDiagnostics,
             MenuCmd::TogglePasswordSuppress,
             MenuCmd::XinqingTogglePause, // 心晴
+            MenuCmd::XinqingRetryHub,    // 心晴
             MenuCmd::FirstShowMode(0),
             MenuCmd::FirstShowMode(1),
             MenuCmd::FirstShowMode(2),

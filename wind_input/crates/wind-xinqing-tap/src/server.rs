@@ -240,10 +240,8 @@ impl Shared {
                 (self.downlink)(Down::Pause { on });
                 self.refocus(was_open);
             }
-            Down::Bye { reason } => {
-                tracing::info!("Hub 断开：{reason:?}");
-                return false;
-            }
+            // 读循环已先截下（见 `serve`）
+            Down::Bye { .. } => return false,
             other => (self.downlink)(other),
         }
         true
@@ -367,8 +365,17 @@ impl Shared {
         }
         tracing::info!("Hub 已连接");
         let _ = reader.set_read_timeout(None);
+        let mut bye = None;
         loop {
             match read_down(&mut reader) {
+                Ok(Some(Down::Bye { reason })) => {
+                    tracing::info!("Hub 断开：{reason:?}");
+                    // 已被新连接顶替的旧连接不算 Hub 退出
+                    if self.current.load(SEQ) == id {
+                        bye = Some(reason);
+                    }
+                    break;
+                }
                 Ok(Some(msg)) => {
                     if self.current.load(SEQ) != id || !self.on_down(id, msg) {
                         break;
@@ -387,6 +394,11 @@ impl Shared {
         let mut slot = lock(&self.closer);
         if slot.as_ref().is_some_and(|(cur, _)| *cur == id) {
             *slot = None;
+        }
+        drop(slot);
+        // Hub 正常退出：断开之后才告诉协调器，守护线程看到的已经是“未连接”（A-06）
+        if let Some(reason) = bye {
+            (self.downlink)(Down::Bye { reason });
         }
     }
 

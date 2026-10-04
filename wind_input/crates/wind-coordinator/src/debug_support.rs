@@ -266,6 +266,14 @@ impl Coordinator {
         self.run_menu_cmd(cmd);
     }
 
+    /// 心晴：主菜单顶层各项的文字（测试用；分隔线为空串），心晴的菜单项靠它断言。
+    pub fn debug_main_menu_labels(&self) -> Vec<String> {
+        self.build_main_menu_items()
+            .into_iter()
+            .map(|it| it.label)
+            .collect()
+    }
+
     /// 密码框强制英文的运行时两态：`(策略开关, 当前是否正在抑制)`（测试/诊断用）。
     pub fn debug_password_suppress(&self) -> (bool, bool) {
         use std::sync::atomic::Ordering::Relaxed;

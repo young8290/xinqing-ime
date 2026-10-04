@@ -6772,6 +6772,9 @@ pub struct XinqingConfig {
     /// 是否记住无痕状态；不记住时每次启动都从“未暂停”开始，免得用户忘了重新打开。
     #[serde(default)]
     pub remember_pause: bool,
+    /// 核心是否拉起并守护 Hub（FR-OPS-03）。关掉后要用户自己打开心晴。
+    #[serde(default = "default_true")]
+    pub hub_autostart: bool,
 }
 
 /// 出厂黑名单（FR-SEN-05）。与 `wind_xinqing_tap::DEFAULT_BLOCKLIST` 必须一致
@@ -6804,6 +6807,7 @@ impl Default for XinqingConfig {
             app_allowlist: Vec::new(),
             pause_hotkey: default_xinqing_pause_hotkey(),
             remember_pause: false,
+            hub_autostart: true,
         }
     }
 }

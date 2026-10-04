@@ -5,11 +5,14 @@
 //! 所有钩子都是一次 `OnceLock::get` 后直接返回，不改变清风原有行为。
 //! 钩子只调 Tap 的非阻塞方法（闸门判断 + `try_send`），可以在 `state` 锁内调用。
 //!
-//! 下行消息（mood、tip、badge 等）的界面处理属于 A-06/A-07，这里先只记 debug 日志。
+//! Hub 守护（A-06，17 第 1.5 节）也在这里装：`start` 时起 `xq-hub-guard`，配置热重载时更新
+//! 是否需要 Hub。下行的 `mood`、`badge`、`pending` 记进 [`hub_view`]，工具栏与菜单（A-07）
+//! 从那里读；`tip` 的光标旁气泡也在 A-07。
 
 use std::cell::Cell;
 use std::net::SocketAddr;
-use std::sync::{Arc, OnceLock, Weak};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 
 use wind_bridge::handler::KeyEventData;
 use wind_config::XinqingConfig;
@@ -21,8 +24,9 @@ use wind_keys::keymap::{
     VK_RSHIFT, VK_SEMICOLON, VK_SLASH, VK_SPACE, VK_UP, VK_Z,
 };
 use wind_store::stats::CommitSource;
+use wind_xinqing_tap::guard::{ExeLauncher, GuardState, HubGuard};
 use wind_xinqing_tap::{
-    CandOp, CommitHook, CompOp, Down, Endpoint, FocusHook, KeyHook, KeyKind, PIPE_NAME,
+    CandOp, CommitHook, CompOp, Down, Endpoint, FocusHook, KeyHook, KeyKind, MoodState, PIPE_NAME,
     PIPE_NAME_DEV, PauseBy, Scope, Tap, TapConfig,
 };
 
@@ -36,9 +40,37 @@ use crate::key_convert::numpad_char;
 /// 非 Windows 平台只能这样启用。
 pub const XQP_TCP_ENV: &str = "XQ_XQP_TCP";
 
+/// 设了这个环境变量时从这里拉起 Hub（开发联调）；否则取核心可执行文件旁边的 [`HUB_EXE`]
+/// （03 第 5.1 节安装目录）。
+pub const HUB_EXE_ENV: &str = "XQ_HUB_EXE";
+#[cfg(windows)]
+pub const HUB_EXE: &str = "xinqing_hub.exe";
+#[cfg(not(windows))]
+pub const HUB_EXE: &str = "xinqing_hub";
+
 static TAP: OnceLock<Arc<Tap>> = OnceLock::new();
 /// 下行回调要回到协调器（记住 Hub 发来的无痕状态）；弱引用，不延长协调器寿命。
 static COORD: OnceLock<Weak<Coordinator>> = OnceLock::new();
+static GUARD: OnceLock<Arc<HubGuard>> = OnceLock::new();
+static HUB_VIEW: Mutex<HubView> = Mutex::new(HubView {
+    mood: None,
+    offline: false,
+    badge: false,
+    pending: 0,
+});
+
+/// Hub 下发的、要在输入法界面上显示的状态（10 第 2.5 节）。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HubView {
+    /// 工具栏天气按钮（FR-ENT-02）；还没收到过时 `None`。
+    pub mood: Option<MoodState>,
+    /// AI 服务不可用，天气按钮显示离线样式。
+    pub offline: bool,
+    /// 有未读暖心话，天气按钮右上角小圆点（FR-CMF-04）。
+    pub badge: bool,
+    /// 待确认的日程与待办数（FR-ENT-01 菜单项）。
+    pub pending: u32,
+}
 
 /// 启动 XQP 服务端（10 第 2.1 节）。`pipe_suffix` 取 `wind_config::variant::pipe_suffix()`，
 /// dev 构建用 `xinqing_tap_dev`。失败只记日志：心晴组件出问题不能影响打字。
@@ -71,17 +103,46 @@ pub fn start(c: &Arc<Coordinator>, ime_ver: &str, pipe_suffix: &str) {
     cfg.enabled = xq.enabled;
     cfg.app_blocklist = xq.app_blocklist.clone();
     cfg.app_allowlist = xq.app_allowlist.clone();
-    match Tap::start(cfg, Box::new(on_downlink)) {
+    match Tap::start(cfg, Box::new(downlink)) {
         Ok(tap) => {
             if xq.remember_pause && c.xinqing_stored_pause() {
-                // 还没有连接，不会发 pause_changed；Hub 连上后从焦点事件看出闸门关着
+                // 还没有连接；Hub 握手后 Tap 会补发 pause_changed
                 tap.set_paused(true, PauseBy::Menu);
             }
+            let probe = Arc::clone(&tap);
             let _ = TAP.set(tap);
             tracing::info!("心晴 XQP 服务端已启动");
+            start_guard(probe, xq.enabled && xq.hub_autostart);
         }
         Err(e) => tracing::warn!("心晴 XQP 服务端启动失败：{e}"),
     }
+}
+
+/// 起 Hub 守护（FR-OPS-03）。Hub 程序找不到也照常起：拉不起来就按失败计数，次数用完停下，
+/// 菜单显示“心晴组件未运行，点击重试”。
+fn start_guard(tap: Arc<Tap>, wanted: bool) {
+    let path = hub_exe_path();
+    tracing::debug!("心晴 Hub 路径：{}", path.display());
+    match HubGuard::start(
+        Box::new(move || tap.is_linked()),
+        Box::new(ExeLauncher { path }),
+        wanted,
+    ) {
+        Ok(g) => {
+            let _ = GUARD.set(g);
+        }
+        Err(e) => tracing::warn!("心晴 Hub 守护线程启动失败：{e}"),
+    }
+}
+
+fn hub_exe_path() -> PathBuf {
+    if let Some(p) = std::env::var_os(HUB_EXE_ENV) {
+        return PathBuf::from(p);
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join(HUB_EXE)))
+        .unwrap_or_else(|| PathBuf::from(HUB_EXE))
 }
 
 /// 配置热重载后调用：总开关与应用名单即时生效。
@@ -89,6 +150,36 @@ pub(crate) fn apply_config(cfg: &XinqingConfig) {
     if let Some(t) = tap() {
         t.set_app_lists(&cfg.app_blocklist, &cfg.app_allowlist);
         t.set_enabled(cfg.enabled);
+    }
+    // 总开关关掉时 Tap 发 bye{disabled} 并停止监听，守护不再拉起；打开时立即拉起（FR-IME-02）
+    if let Some(g) = GUARD.get() {
+        g.set_wanted(cfg.enabled && cfg.hub_autostart);
+    }
+}
+
+/// 菜单要不要显示“心晴组件未运行，点击重试”：守护放弃了，或 Hub 自己退出了。
+pub(crate) fn hub_needs_retry() -> bool {
+    GUARD.get().is_some_and(|g| g.state().needs_retry())
+}
+
+/// 菜单“心晴组件未运行，点击重试”。
+pub(crate) fn retry_hub() {
+    if let Some(g) = GUARD.get() {
+        g.retry();
+    }
+}
+
+/// 守护线程当前状态；没装时 `None`。
+pub fn guard_state() -> Option<GuardState> {
+    GUARD.get().map(|g| g.state())
+}
+
+/// Hub 下发的界面状态；Hub 没连着时一律是默认值（天气按钮显示未连接）。
+pub fn hub_view() -> HubView {
+    if tap().is_some_and(|t| t.is_linked()) {
+        *HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner())
+    } else {
+        HubView::default()
     }
 }
 
@@ -110,8 +201,17 @@ pub fn install(tap: Arc<Tap>) -> bool {
     TAP.set(tap).is_ok()
 }
 
+/// 测试用：安装一个已启动的 Hub 守护。进程内只能装一次。
+pub fn install_guard(g: Arc<HubGuard>) -> bool {
+    GUARD.set(g).is_ok()
+}
+
 /// 核心退出前调用：发 `bye{shutdown}`。
 pub fn shutdown() {
+    // 先停守护：核心退出不该再拉起 Hub（Hub 自己留着，C-PLT-12）
+    if let Some(g) = GUARD.get() {
+        g.stop();
+    }
     if let Some(t) = TAP.get() {
         t.shutdown();
     }
@@ -154,25 +254,38 @@ impl Coordinator {
     }
 }
 
-fn on_downlink(msg: Down) {
-    if let Down::Pause { on } = msg
-        && let Some(c) = COORD.get().and_then(Weak::upgrade)
-    {
-        // 小组件右键等 Hub 侧入口切的无痕，与菜单、快捷键一样按需记住
-        c.xinqing_store_pause(on);
+/// Tap 的下行回调（服务启动时由 [`start`] 传入；测试自己起 Tap 时也传它）。
+pub fn downlink(msg: Down) {
+    match msg {
+        Down::Pause { on } => {
+            if let Some(c) = COORD.get().and_then(Weak::upgrade) {
+                // 小组件右键等 Hub 侧入口切的无痕，与菜单、快捷键一样按需记住
+                c.xinqing_store_pause(on);
+            }
+        }
+        Down::Mood { state, offline } => {
+            let mut v = HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner());
+            v.mood = Some(state);
+            v.offline = offline;
+        }
+        Down::Badge { on } => HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()).badge = on,
+        Down::Pending { count } => {
+            HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()).pending = count;
+        }
+        Down::Bye { .. } => {
+            // Hub 正常退出（用户在 Hub 里点了退出），不当崩溃重拉
+            if let Some(g) = GUARD.get() {
+                g.hub_quit();
+            }
+            *HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()) = HubView::default();
+        }
+        // tip 的光标旁气泡、改写结果在 A-07/A-08；内容可能是提示文字，只记类型
+        Down::Tip { .. } => tracing::debug!("XQP 下行：tip（A-07 显示）"),
+        Down::RewriteResult { .. } | Down::RewriteFail { .. } => {
+            tracing::debug!("XQP 下行：rewrite（A-08 处理）");
+        }
+        _ => {}
     }
-    // A-06/A-07 接入工具栏、气泡与菜单；内容可能是提示文字，只记类型
-    let kind = match &msg {
-        Down::Pause { .. } => "pause",
-        Down::Mood { .. } => "mood",
-        Down::Badge { .. } => "badge",
-        Down::Tip { .. } => "tip",
-        Down::Pending { .. } => "pending",
-        Down::RewriteResult { .. } => "rewrite_result",
-        Down::RewriteFail { .. } => "rewrite_fail",
-        _ => "other",
-    };
-    tracing::debug!("XQP 下行：{kind}");
 }
 
 /// 一次按键前后的组字快照：编码长度（字符数）与候选页码。
@@ -410,5 +523,18 @@ mod tests {
     fn every_commit_source_has_a_name() {
         assert_eq!(CommitSource::COUNT, 13, "新增来源时同步 source_name");
         assert_eq!(source_name(CommitSource::ModeSwitch), "mode_switch");
+    }
+
+    /// wind-config 不依赖 tap，出厂黑名单两边各写一份（FR-SEN-05），在这里对照。
+    #[test]
+    fn default_blocklist_matches_tap() {
+        assert_eq!(
+            wind_config::XINQING_DEFAULT_BLOCKLIST,
+            wind_xinqing_tap::DEFAULT_BLOCKLIST
+        );
+        assert_eq!(
+            wind_config::Config::default().xinqing.app_blocklist,
+            wind_xinqing_tap::DEFAULT_BLOCKLIST
+        );
     }
 }
