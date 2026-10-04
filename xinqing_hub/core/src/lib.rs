@@ -7,6 +7,7 @@ pub mod bus;
 pub mod domain;
 pub mod infra;
 pub mod pipeline;
+pub mod sense;
 
 /// Hub 版本（XQP 下行 hello 的 `hub_ver`）。
 pub const HUB_VERSION: &str = env!("CARGO_PKG_VERSION");

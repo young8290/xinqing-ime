@@ -26,3 +26,6 @@ specta = { version = "=2.0.0-rc.25", features = ["derive"], optional = true }
 [features]
 # 给 Tauri 外壳导出 TypeScript 类型用（10 第 5.1 节）
 specta = ["dep:specta", "xqp/specta"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

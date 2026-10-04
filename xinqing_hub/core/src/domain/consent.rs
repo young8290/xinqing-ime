@@ -93,6 +93,19 @@ impl ConsentState {
     }
 }
 
+/// 当前同意状态对应的 XQP 下行 `cfg`（10 第 2.5 节）：`collect` = 同意 ①（即已完成引导）；
+/// `send_text` = 同意 ③ 或 ⑤；`rewrite` = 同意 ⑥。黑白名单保存在输入法配置里（10 第 6.1 节），这里不带。
+pub fn xqp_cfg(s: &ConsentState) -> xqp::Down {
+    let sense = s.granted(ConsentItem::Sense);
+    xqp::Down::Cfg {
+        collect: sense,
+        send_text: sense && (s.granted(ConsentItem::Schedule) || s.granted(ConsentItem::Enhanced)),
+        rewrite: sense && s.granted(ConsentItem::Rewrite),
+        app_blocklist: None,
+        app_allowlist: None,
+    }
+}
+
 /// 记录一次同意或撤回。撤回“感知”时，依赖它的其余各项一并视为撤回（09 第 2.1 节“撤回后”列）。
 pub fn set(db: &Db, item: ConsentItem, granted: bool, ts: i64) -> Result<(), StoreError> {
     db.consent_set(item.as_str(), POLICY_VER, granted, ts)?;
@@ -149,6 +162,34 @@ mod tests {
         set(&db, ConsentItem::Sense, false, 100).unwrap();
         let s = ConsentState::load(&db).unwrap();
         assert!(s.items.iter().all(|e| !e.granted));
+    }
+
+    #[test]
+    fn cfg_follows_consent() {
+        let db = Db::open_in_memory().unwrap();
+        let cfg = |db: &Db| xqp_cfg(&ConsentState::load(db).unwrap());
+        let off = xqp::Down::Cfg {
+            collect: false,
+            send_text: false,
+            rewrite: false,
+            app_blocklist: None,
+            app_allowlist: None,
+        };
+        assert_eq!(cfg(&db), off);
+        set(&db, ConsentItem::Sense, true, 1).unwrap();
+        set(&db, ConsentItem::Enhanced, true, 2).unwrap();
+        assert!(matches!(
+            cfg(&db),
+            xqp::Down::Cfg {
+                collect: true,
+                send_text: true,
+                rewrite: false,
+                ..
+            }
+        ));
+        set(&db, ConsentItem::Rewrite, true, 3).unwrap();
+        set(&db, ConsentItem::Sense, false, 4).unwrap();
+        assert_eq!(cfg(&db), off);
     }
 
     #[test]

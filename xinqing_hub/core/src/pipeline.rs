@@ -65,8 +65,39 @@ impl StatePipeline {
         }
     }
 
+    pub fn baseline(&self) -> &Baseline {
+        &self.baseline
+    }
+
     pub fn baseline_mut(&mut self) -> &mut Baseline {
         &mut self.baseline
+    }
+
+    /// 核心开始了新会话（会话时间从 0 重新计）：丢掉进行中的窗口和会话内的统计，
+    /// 保留基线与融合状态（显示状态不因重连跳变）。`base_local` 是新会话时间 0 对应的本地时间。
+    pub fn reset_session(&mut self, base_local: DateTime<Local>) {
+        self.cutter = WindowCutter::new();
+        self.typo = TypoDetector::new();
+        self.session = SessionTracker::default();
+        self.app_cat = AppCat::Other;
+        self.recent.clear();
+        self.prefer_tsf = false;
+        self.base_local = base_local;
+    }
+
+    /// 会话起点确定后（收到新会话第一条带时间戳的事件）校正会话时间 0 对应的本地时间。
+    pub fn set_base_local(&mut self, base_local: DateTime<Local>) {
+        self.base_local = base_local;
+    }
+
+    /// 无痕开启或连接断开：进行中的窗口作废，不再计算（FR-SEN-06 第 1 条）。
+    pub fn discard(&mut self) {
+        self.cutter.discard();
+    }
+
+    /// 会话时间 `ts` 对应的 Unix 毫秒。
+    pub fn unix_ms(&self, ts: u64) -> i64 {
+        (self.base_local + Duration::milliseconds(ts as i64)).timestamp_millis()
     }
 
     pub fn push(&mut self, ev: &Up) -> Vec<PipelineOut> {
@@ -144,7 +175,7 @@ impl StatePipeline {
 
     /// 融合（FR-STA-06 / 08）。`verdict = None` 表示 Jev 不可用，走本地规则。
     pub fn fuse(&mut self, w: &WindowOut, verdict: Option<&JevVerdict>) -> FusionOut {
-        let now_ms = (self.base_local + Duration::milliseconds(w.end_ts as i64)).timestamp_millis();
+        let now_ms = self.unix_ms(w.end_ts);
         self.fusion.on_window(&w.hints, verdict, now_ms)
     }
 
