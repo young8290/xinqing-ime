@@ -141,7 +141,15 @@ delete_confirm = "输入“删除”两个字，确认删除全部心晴数据"
 withdraw_notice = "已经发送给第三方服务的数据，我们无法从对方那里撤回。"
 restart_banner = "部分设置需要重启输入法后生效"
 
-[about]
+[about]                      # 07 FR-SET-09“关于”；开源许可的条目在 xinqing_hub/src/windows/settings/licenses.ts
+title = "关于"
+tagline = "懂你心情的 AI 输入陪伴"      # DS-BRAND-01 定位语
+version = "版本 {version}"
+licenses = "开源许可"
+licenses_intro = "心晴随附以下开源软件与数据，各自适用其许可。"
+notice_title = "清风输入法第三方资源声明（词库与数据）"
+notice_license = "各项分别适用"
+deps_note = "其余依赖库各自适用其许可，清单见源码仓库中的 Cargo.lock 与 pnpm-lock.yaml。"
 fork_notice = "心晴基于开源项目清风输入法（WindInput，MIT 协议）开发，为非官方版本。"
 disclaimer = "本产品不提供任何医疗诊断或治疗。"
 
@@ -204,6 +212,7 @@ theme_system = "跟随系统"
 theme_light = "浅色"
 theme_dark = "深色"
 widget_opacity = "小组件不透明度"
+privacy_about = "隐私与关于"           # 07 FR-SET-01 的分类名
 
 [common]
 coming_soon = "这里还在准备中，很快就来。"

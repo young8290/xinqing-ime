@@ -15,7 +15,8 @@ export default defineConfig({
   resolve: { alias: { '@': src } },
   // Tauri 约定：固定端口，不清屏，好让 cargo 的输出留在终端里
   clearScreen: false,
-  server: { port: 1420, strictPort: true },
+  // “关于”页把仓库根目录的 LICENSE、NOTICE.md 打包进来（settings/licenses.ts），开发服务器要允许读到仓库根目录
+  server: { port: 1420, strictPort: true, fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] } },
   build: {
     outDir: fileURLToPath(new URL('./dist', import.meta.url)),
     emptyOutDir: true,
