@@ -380,9 +380,11 @@ function Build-Hub ([string]$profile = "release", [string]$outdir = $null) {
     Say "`n[hub] 构建心晴 Hub (release)..."
     Push-Location (Join-Path $ProductRoot "xinqing_hub")
     try {
-        pnpm install --frozen-lockfile
+        # pnpm 的输出走标准输出, 不 Out-Host 就会混进本函数的返回值: 调用方拿到的是
+        # @(输出..., $false), 非空数组为真, 构建失败被吞掉, 报错原文也看不到。
+        pnpm install --frozen-lockfile | Out-Host
         if ($LASTEXITCODE -ne 0) { ErrMsg "Hub 前端依赖安装失败!"; return $false }
-        pnpm tauri build --no-bundle
+        pnpm tauri build --no-bundle | Out-Host
         if ($LASTEXITCODE -ne 0) { ErrMsg "心晴 Hub 构建失败!"; return $false }
     } finally { Pop-Location }
     $exe = Join-Path (Get-CargoTargetDir $ProductRoot) "release\xinqing_hub.exe"
