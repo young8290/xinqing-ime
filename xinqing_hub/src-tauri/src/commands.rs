@@ -50,10 +50,9 @@ pub fn settings_set(
     value: SettingValue,
 ) -> Result<(), UiError> {
     let changed = settings::set(&state.db(), &key, &value)?;
-    if changed
-        && let Err(e) = (SettingsChanged { key }).emit(&app) {
-            eprintln!("推送 settings:changed 失败：{e}");
-        }
+    if changed && let Err(e) = (SettingsChanged { key }).emit(&app) {
+        eprintln!("推送 settings:changed 失败：{e}");
+    }
     Ok(())
 }
 

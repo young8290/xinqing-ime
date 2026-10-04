@@ -9,8 +9,8 @@ use serde::Serialize;
 use xqp::{KeySrc, Up};
 
 use crate::domain::features::{
-    compute, Baseline, SessionCtx, SessionTracker, TypoDetector, WindowBuf, WindowCutter,
-    WindowFeatures,
+    Baseline, SessionCtx, SessionTracker, TypoDetector, WindowBuf, WindowCutter, WindowFeatures,
+    compute,
 };
 use crate::domain::fusion::{Fusion, FusionOut, JevVerdict};
 use crate::domain::rules::{self, Hints};

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::Deserialize;
-use xinqing_hub_core::domain::safety::{check_local, CrisisLexicon};
+use xinqing_hub_core::domain::safety::{CrisisLexicon, check_local};
 use xinqing_hub_core::infra::templates::TemplateDirs;
 
 fn repo() -> PathBuf {

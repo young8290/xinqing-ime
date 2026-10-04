@@ -13,8 +13,8 @@ use clap::Parser;
 use xinqing_hub_core::domain::features::{Baseline, Bucket};
 use xinqing_hub_core::domain::fusion::JevVerdict;
 use xinqing_hub_core::domain::rules::{Hint, Hints};
-use xinqing_hub_core::infra::templates::{read_toml, AppCategories, BaselineDefault, TemplateDirs};
-use xinqing_hub_core::pipeline::{replay, StatePipeline};
+use xinqing_hub_core::infra::templates::{AppCategories, BaselineDefault, TemplateDirs, read_toml};
+use xinqing_hub_core::pipeline::{StatePipeline, replay};
 use xqp::{MoodState, Up};
 
 #[derive(Parser, Debug)]
@@ -136,7 +136,10 @@ fn main() -> Result<()> {
                 w.start_ts as f64 / 1000.0,
                 w.end_ts as f64 / 1000.0,
                 w.features.n_keys,
-                w.features.kpm.map(|k| format!("{k:.0}")).unwrap_or("-".into()),
+                w.features
+                    .kpm
+                    .map(|k| format!("{k:.0}"))
+                    .unwrap_or("-".into()),
                 w.features.bs_rate,
                 w.features.pause_cnt,
                 w.features.page_flips,

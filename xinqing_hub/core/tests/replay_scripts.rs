@@ -8,7 +8,7 @@ use xinqing_hub_core::domain::features::Baseline;
 use xinqing_hub_core::domain::fusion::JevVerdict;
 use xinqing_hub_core::domain::rules::Hint;
 use xinqing_hub_core::infra::templates::{AppCategories, BaselineDefault, TemplateDirs};
-use xinqing_hub_core::pipeline::{replay, ReplayReport, StatePipeline};
+use xinqing_hub_core::pipeline::{ReplayReport, StatePipeline, replay};
 use xqp::{MoodState, Up};
 
 fn repo() -> PathBuf {

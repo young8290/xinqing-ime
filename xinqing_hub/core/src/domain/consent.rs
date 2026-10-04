@@ -133,9 +133,11 @@ mod tests {
         assert!(!s.needs_onboarding());
 
         set(&db, ConsentItem::JevFeatures, false, 3).unwrap();
-        assert!(!ConsentState::load(&db)
-            .unwrap()
-            .granted(ConsentItem::JevFeatures));
+        assert!(
+            !ConsentState::load(&db)
+                .unwrap()
+                .granted(ConsentItem::JevFeatures)
+        );
     }
 
     #[test]

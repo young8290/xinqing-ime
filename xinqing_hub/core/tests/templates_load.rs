@@ -32,14 +32,16 @@ fn factory_templates_load() {
 fn banned_words_scenes() {
     let bw = BannedWords::load(&dirs()).unwrap();
     assert!(bw.find("检测到你的情绪不太好", Scene::Other).is_some());
-    assert!(bw
-        .find("想说的话不急着说完，慢慢来。", Scene::Other)
-        .is_none());
+    assert!(
+        bw.find("想说的话不急着说完，慢慢来。", Scene::Other)
+            .is_none()
+    );
     // 对话场景放行“药物”等词（FR-CHT-03），其他场景禁止
     assert!(bw.find("关于药物的问题建议问问医生", Scene::Chat).is_none());
-    assert!(bw
-        .find("关于药物的问题建议问问医生", Scene::Other)
-        .is_some());
+    assert!(
+        bw.find("关于药物的问题建议问问医生", Scene::Other)
+            .is_some()
+    );
     // 豁免文案
     assert!(bw.find_in_copy("safety.card", "心理援助热线").is_none());
     assert!(bw.find_in_copy("tip.x", "你必须休息").is_some());

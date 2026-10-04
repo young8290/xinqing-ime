@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use chrono::Local;
 use futures::StreamExt;
-use mock_ai::{Handle, Scenario as Mock, BACKUP_MODEL, DEFAULT_MODEL, REPLY};
+use mock_ai::{BACKUP_MODEL, DEFAULT_MODEL, Handle, REPLY, Scenario as Mock};
 use tokio::sync::mpsc;
 use xinqing_hub_core::infra::clock::ManualClock;
 use xinqing_hub_core::infra::gateway::{

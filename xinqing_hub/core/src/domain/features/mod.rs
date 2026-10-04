@@ -6,6 +6,6 @@ pub mod typo;
 pub mod window;
 
 pub use baseline::{Baseline, Bucket};
-pub use calc::{compute, SessionCtx, SessionTracker, WindowFeatures};
+pub use calc::{SessionCtx, SessionTracker, WindowFeatures, compute};
 pub use typo::TypoDetector;
 pub use window::{CutReason, WindowBuf, WindowCutter};

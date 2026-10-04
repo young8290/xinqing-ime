@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 use clap::Parser;
-use mock_ai::{router, Handle, Scenario};
+use mock_ai::{Handle, Scenario, router};
 
 #[derive(Parser, Debug)]
 #[command(name = "mock-ai", about = "心晴 AI 接口模拟服务")]

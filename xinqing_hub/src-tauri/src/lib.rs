@@ -14,7 +14,7 @@ use std::path::Path;
 
 use specta_typescript::Typescript;
 use tauri::Manager;
-use tauri_specta::{collect_commands, collect_events, Builder};
+use tauri_specta::{Builder, collect_commands, collect_events};
 
 pub use args::LaunchArgs;
 pub use error::UiError;

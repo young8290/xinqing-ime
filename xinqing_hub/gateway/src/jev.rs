@@ -150,7 +150,7 @@ impl JevClient {
                         model: w.model,
                         latency_ms,
                         answers: w.answers,
-                    })
+                    });
                 }
                 Err(e) if attempt == 0 && e.retryable() => previous = Some(e),
                 Err(e) => return Err(e),

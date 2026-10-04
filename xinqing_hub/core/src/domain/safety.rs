@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, HashMap};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::infra::templates::{read_toml, TemplateDirs, TemplateError};
+use crate::infra::templates::{TemplateDirs, TemplateError, read_toml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

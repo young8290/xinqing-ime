@@ -228,18 +228,23 @@ impl WindowCutter {
     /// 定时调用（Hub 中每 250 ms），`now` 为当前会话时间。
     pub fn tick(&mut self, now: u64) -> Option<WindowBuf> {
         if let Some(p) = &self.pending_small
-            && self.cur.is_none() && now.saturating_sub(p.end_ts()) > SMALL_MERGE_MS {
-                self.pending_small = None;
-            }
+            && self.cur.is_none()
+            && now.saturating_sub(p.end_ts()) > SMALL_MERGE_MS
+        {
+            self.pending_small = None;
+        }
         self.cur.as_ref()?;
         if let Some(c) = self.commit_at
-            && now.saturating_sub(c) >= COMMIT_IDLE_MS {
-                return self.close(CutReason::AfterCommit);
-            }
+            && now.saturating_sub(c) >= COMMIT_IDLE_MS
+        {
+            return self.close(CutReason::AfterCommit);
+        }
         if let Some(k) = self.last_key_ts
-            && !self.in_comp && now.saturating_sub(k) >= PAUSE_MS {
-                return self.close(CutReason::Pause);
-            }
+            && !self.in_comp
+            && now.saturating_sub(k) >= PAUSE_MS
+        {
+            return self.close(CutReason::Pause);
+        }
         if now.saturating_sub(self.cur.as_ref()?.start_ts()) >= MAX_WINDOW_MS {
             return self.close(CutReason::MaxDuration);
         }
@@ -262,13 +267,16 @@ impl WindowCutter {
 
     fn cut_before_key(&mut self, ts: u64) -> Option<WindowBuf> {
         if let Some(c) = self.commit_at
-            && ts.saturating_sub(c) >= COMMIT_IDLE_MS {
-                return self.close(CutReason::AfterCommit);
-            }
+            && ts.saturating_sub(c) >= COMMIT_IDLE_MS
+        {
+            return self.close(CutReason::AfterCommit);
+        }
         if let Some(k) = self.last_key_ts
-            && !self.in_comp && ts.saturating_sub(k) >= PAUSE_MS {
-                return self.close(CutReason::Pause);
-            }
+            && !self.in_comp
+            && ts.saturating_sub(k) >= PAUSE_MS
+        {
+            return self.close(CutReason::Pause);
+        }
         let start = self.cur.as_ref().map(WindowBuf::start_ts).unwrap_or(ts);
         if ts.saturating_sub(start) >= MAX_WINDOW_MS {
             return self.close(CutReason::MaxDuration);

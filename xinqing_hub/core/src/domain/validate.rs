@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::infra::templates::{read_toml, TemplateDirs, TemplateError};
+use crate::infra::templates::{TemplateDirs, TemplateError, read_toml};
 
 /// 输出场景：对话场景放行 `chat_allow` 中的词（FR-CHT-03）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

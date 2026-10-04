@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::domain::features::WindowFeatures;
 use crate::domain::rules::Hints;

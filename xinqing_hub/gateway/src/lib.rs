@@ -27,7 +27,7 @@ use xinqing_hub_core::infra::gateway::{
 };
 
 pub use config::{
-    ApiKey, GatewayConfig, JevConfig, LlmConfig, ScenarioParams, DEFAULT_MODELS, DEV_BASE,
+    ApiKey, DEFAULT_MODELS, DEV_BASE, GatewayConfig, JevConfig, LlmConfig, ScenarioParams,
 };
 pub use error::BuildError;
 pub use llm::{ModelProbe, ModelStatus};

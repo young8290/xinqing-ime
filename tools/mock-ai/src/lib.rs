@@ -21,7 +21,7 @@ use axum::{Json, Router};
 use clap::ValueEnum;
 use futures::Stream;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Scenario {
@@ -271,7 +271,7 @@ async fn jev(State(st): State<Handle>, h: HeaderMap, Json(body): Json<Value>) ->
                     StatusCode::UNPROCESSABLE_ENTITY,
                     Json(json!({"error": {"message": format!("unknown question {q}")}})),
                 )
-                    .into_response()
+                    .into_response();
             }
         };
         answers.insert(q.clone(), a);

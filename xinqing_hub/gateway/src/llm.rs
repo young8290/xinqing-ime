@@ -7,20 +7,20 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use futures::stream::{self, BoxStream};
 use futures::StreamExt;
+use futures::stream::{self, BoxStream};
 use reqwest::{Client, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use xinqing_hub_core::infra::gateway::{
-    redact, AiError, Breaker, CompleteRequest, CompleteResponse, Delta, NetLogEntry, Scenario,
+    AiError, Breaker, CompleteRequest, CompleteResponse, Delta, NetLogEntry, Scenario, redact,
 };
 
 use crate::config::LlmConfig;
 use crate::error::{from_reqwest, kind_label};
-use crate::http::{authed, client, send_json, Outcome};
+use crate::http::{Outcome, authed, client, send_json};
 use crate::jev::breaker_blocking;
-use crate::metrics::{percentile, Shared};
+use crate::metrics::{Shared, percentile};
 use crate::sse::SseParser;
 
 /// 每个模型保留的最近调用数（FR-AIG-04 第 2 条）。
@@ -375,7 +375,7 @@ impl LlmClient {
                         model,
                         text,
                         latency_ms,
-                    })
+                    });
                 }
                 // 请求本身有问题，换模型也一样
                 Err(AiError::BadRequest) => return Err(AiError::BadRequest),
