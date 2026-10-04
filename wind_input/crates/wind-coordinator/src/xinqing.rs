@@ -10,6 +10,7 @@
 //! 输入法里的心晴入口（A-07）：主菜单“心晴”分组、`tip` 的光标旁气泡、工具栏天气按钮。
 //! 温柔改写模式（A-08）在子模块 [`rewrite`]。
 
+pub(crate) mod perf;
 mod rewrite;
 
 use std::cell::Cell;
@@ -523,6 +524,7 @@ pub(crate) struct CompSnap {
 /// 取当前组字快照；没装 Tap 时返回 `None`，调用方据此跳过钩子、不取锁。
 pub(crate) fn snap(c: &crate::coordinator::Coordinator) -> Option<CompSnap> {
     tap()?;
+    let _t = perf::hook_timer();
     let s = c.state.lock().unwrap_or_else(|e| e.into_inner());
     Some(CompSnap {
         len: s.input_buffer.chars().count(),
@@ -615,6 +617,7 @@ pub(crate) fn before_key(data: &KeyEventData, before: CompSnap, rewrite_hotkey: 
     let Some(tap) = tap() else {
         return;
     };
+    let _t = perf::hook_timer();
     KEY_COMMITTED.with(|c| c.set(false));
     if data.event_type != EVENT_KEY_DOWN || rewrite_hotkey {
         return;
@@ -635,6 +638,7 @@ pub(crate) fn after_key(data: &KeyEventData, before: CompSnap, after: CompSnap) 
     let Some(tap) = tap() else {
         return;
     };
+    let _t = perf::hook_timer();
     if data.event_type != EVENT_KEY_DOWN {
         return;
     }
@@ -675,6 +679,7 @@ pub(crate) fn on_commit(text: &str, keystrokes: u32, cand_pos: i32, source: Comm
     let Some(tap) = tap() else {
         return;
     };
+    let _t = perf::hook_timer();
     if IN_FALLBACK.with(Cell::get) && KEY_COMMITTED.with(Cell::get) {
         return;
     }

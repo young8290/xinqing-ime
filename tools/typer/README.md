@@ -7,6 +7,6 @@
   - `typer check <脚本>`：校验格式、统计标注，并用离线复刻的 R1 规则核对：标了 `typo` 的键必须恰好是 R1 会命中的键，否则报错。复刻的规则与 `xinqing_hub/core/src/domain/features/typo.rs` 一致，那边改了这里要跟着改（`src/r1.rs`）。
   - `typer run <脚本> [--speed 1] [--countdown 5] [--log out.csv] [--dry-run]`（只在 Windows 上发键）：倒数结束时的前台窗口就是目标窗口；中途前台窗口一变就停下，免得打进别的窗口。日志列为 `idx,key,label,planned_ms,actual_us,lag_us`，结束时在标准错误输出发送时刻相对计划的延迟 p50 / p99 / 最大值。
 - 测试步骤：
-  - TC-PERF-01：在记事本里切到心晴输入法，分别在心晴开、关（托盘“暂停心晴”）下各跑一次 `typer run perf.txt --log on.csv`、`--log off.csv`，两次用同一份脚本。核心侧还没有记录每键处理耗时（P99 增量、钩子耗时）的埋点，要先补上才能出 TC-PERF-01 的数字，见 `docs/xinqing/handover/A-输入法.md`。
+  - TC-PERF-01：用 dev 构建的核心（或给核心进程设 `XQ_PERF=1`），在记事本里切到心晴输入法，分别在心晴开、关（主菜单“心晴”分组里的开关）下各跑一次 `typer run perf.txt`，两次之间重启核心，用同一份脚本。核心每 2,000 个按键在日志里记一行“心晴性能（累计）”，取 10,000 键那一行：按键 p99 两次之差应 < 1 ms，钩子 p99 应 ≤ 50 µs（埋点在 `wind-coordinator/src/xinqing/perf.rs`）。
   - TC-STA-04：开着 Hub 跑 `typer run r1.txt --log r1.csv`，用 Hub 记录的 `typo` 事件时刻与日志里标 `typo` 的行对齐（容差几十毫秒）算精确率、召回率。必须原速（`--speed 1`），倍速下标注不再成立。
 - 注意：目标窗口是管理员权限时，typer 也要用管理员身份运行（UIPI 会挡住低权限进程发的键）。`SendInput` 发的是虚拟键加扫描码，不是 Unicode 字符，所以会经过输入法。

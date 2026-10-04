@@ -696,6 +696,8 @@ impl MessageHandler for Coordinator {
     /// 再做 preedit 占位后处理。集中在此避免修改 40+ 个 commit 返回点（对齐旧 Go
     /// HandleKeyEvent 末尾的 recordCommitFallback 思路）。
     fn handle_key_event_policed(&self, data: &KeyEventData) -> KeyAction {
+        // 心晴：dev 构建的按键处理耗时埋点（NFR-PERF-01），心晴关着时也计，作对照
+        let _xq_perf = crate::xinqing::perf::key_timer(data.event_type == EVENT_KEY_DOWN);
         // 心晴：按键先于它可能触发的上屏发给 Hub（FR-SEN-01）；没装 Tap 时不取锁
         let xq_before = crate::xinqing::snap(self);
         if let Some(b) = xq_before {
