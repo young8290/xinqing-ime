@@ -4,9 +4,12 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'docs/**']
+    # 心晴：只动心晴部分（Hub、开发工具、模板、评测；由 xinqing.yml 把关）时不跑输入法核心的交叉编译。
+    # crates/xqp、protocol/ 将来被 wind-xinqing-tap 引用，不在忽略之列。
+    paths-ignore: ['**.md', 'docs/**', 'xinqing_hub/**', 'tools/**', 'hub_templates/**', 'eval/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/xinqing*.yml']
   pull_request:
     branches: [main]
+    paths-ignore: ['xinqing_hub/**', 'tools/**', 'hub_templates/**', 'eval/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/xinqing*.yml']
 
 concurrency:
   group: ci-${{ github.ref }}
