@@ -6775,6 +6775,9 @@ pub struct XinqingConfig {
     /// 无痕模式快捷键（FR-SEN-06），`"none"` 或空串表示不绑。
     #[serde(default = "default_xinqing_pause_hotkey")]
     pub pause_hotkey: String,
+    /// 温柔改写快捷键（FR-RWR-01），`"none"` 或空串表示不绑。
+    #[serde(default = "default_xinqing_rewrite_hotkey")]
+    pub rewrite_hotkey: String,
     /// 是否记住无痕状态；不记住时每次启动都从“未暂停”开始，免得用户忘了重新打开。
     #[serde(default)]
     pub remember_pause: bool,
@@ -6805,6 +6808,10 @@ fn default_xinqing_pause_hotkey() -> String {
     "ctrl+alt+p".into()
 }
 
+fn default_xinqing_rewrite_hotkey() -> String {
+    "ctrl+alt+r".into()
+}
+
 impl Default for XinqingConfig {
     fn default() -> Self {
         Self {
@@ -6812,6 +6819,7 @@ impl Default for XinqingConfig {
             app_blocklist: default_xinqing_blocklist(),
             app_allowlist: Vec::new(),
             pause_hotkey: default_xinqing_pause_hotkey(),
+            rewrite_hotkey: default_xinqing_rewrite_hotkey(),
             remember_pause: false,
             hub_autostart: true,
         }

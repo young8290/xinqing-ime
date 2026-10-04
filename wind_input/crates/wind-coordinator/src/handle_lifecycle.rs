@@ -1132,6 +1132,8 @@ impl Coordinator {
         state.committed_segs.clear();
         // 焦点/模式切换：解除智能符号待命，避免跨上下文误触发替换。
         self.disarm_smart_symbol();
+        // 心晴：改写模式同样随焦点/模式切换退出（当作取消）。
+        self.xinqing_abort_rewrite(state);
         // 快捷加词模式遗留：焦点/模式切换时退出。
         // 布局无需在此恢复——模式标志已清，下一次候选显示会自动算回全局基线（见 layout.rs）。
         // 这正是声明式重算相对「保存/恢复」的价值：这条路径当年就是补丁式加上的第 3、第 4 个

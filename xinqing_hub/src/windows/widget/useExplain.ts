@@ -27,6 +27,8 @@ export async function loadExplain(s: StatusSnapshot | null): Promise<ExplainLine
 
 export function useExplain(snapshot: Ref<StatusSnapshot | null>) {
   const lines = ref<ExplainLines | null>(null)
+  /** 当前这个状态已经点过“准 / 不准”：面板里改为显示致谢，状态变了再重新问 */
+  const voted = ref(false)
   let openTimer: ReturnType<typeof setTimeout> | undefined
   let closeTimer: ReturnType<typeof setTimeout> | undefined
   let seq = 0
@@ -63,9 +65,10 @@ export function useExplain(snapshot: Ref<StatusSnapshot | null>) {
   }
 
   // 状态变了，开着的解释就过期了（每个事件都会换一份快照，所以逐项比较，可能性变了不算）
-  watch([() => snapshot.value?.state, () => snapshot.value?.paused, () => snapshot.value?.connected], () =>
-    close(),
-  )
+  watch([() => snapshot.value?.state, () => snapshot.value?.paused, () => snapshot.value?.connected], () => {
+    voted.value = false
+    close()
+  })
 
-  return { lines, open, hover, leave, close }
+  return { lines, voted, open, hover, leave, close }
 }
