@@ -444,8 +444,9 @@ python3 tools/check_templates.py hub_templates && python3 tools/check_xqp_script
 - CI：`xinqing.yml` 只在心晴路径变化时跑（Linux 上 fmt / clippy / 测试与前端绑定核对、前端 lint 与 Vitest、Windows 上编译测试并构建 Hub、契约校验）；`xinqing-secrets.yml` 的 gitleaks 每次都跑；上游 `ci.yml` 在只改心晴部分时跳过。
 - **禁止提交任何真实 API 密钥或私有接口地址**，示例只用占位符 `<...>`；本地密钥放 `secrets.toml`（已忽略），模板见 `secrets.example.toml`。
 - 危机词表、禁用词表、提示词的修改至少 2 人评审，其中 1 人是 E（产品书 15 第 5 节）。
-- 改清风原有文件时，在改动处加以 `心晴：` 开头的注释（即产品书 13 第 6.1 节说的 `XINQING:` 标记），合并上游时 `git grep 心晴：` 就能找全；身份改造脚本做的替换不另加注释，合并上游的步骤见 `docs/xinqing/identity.md`。
+- 改清风原有文件时，在改动处加以 `心晴：` 开头的注释（产品书 13 第 6.1 节），合并上游时 `git grep 心晴：` 就能找全；身份改造脚本做的替换不另加注释，合并上游的步骤见 `docs/xinqing/identity.md`。
 - 偏离产品书的实现决定写 `docs/adr/`，并在 ADR 的“影响”里列出产品书要改的章节。
+- 多人异步协作（认领、契约先行、草稿 PR、评审时限、交接）按产品书 13 第 3.1 节。
 
 ## Agent skills
 

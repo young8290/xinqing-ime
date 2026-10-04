@@ -16,13 +16,19 @@
 
 线程：`xq-tap-accept`、`xq-tap-writer`（唯一的写者），每个连接一个 `xq-tap-reader`。没有 tokio（C-PLT-03）。
 
-## 接入协调器（A-04 要做的事）
+## 接入协调器
 
-- 启动：`Tap::start(TapConfig::new(ime_ver, Endpoint::Pipe(name)), downlink)`，`name` 按 `wind_config::variant::pipe_suffix()` 选 `xqp::PIPE_NAME` 或 `xqp::PIPE_NAME_DEV`；`xinqing.enabled`、名单来自配置。
-- 钩子位置见 17 第 1.2 节：`handle_key_event` → `hook_key`，`record_commit_ks` → `hook_commit`，`handle_focus_gained` / `handle_input_state_report` → `hook_focus`，组字与候选 → `hook_comp` / `hook_cand`。钩子不阻塞，可在状态锁内调用。
-- `downlink` 在读线程上回调 `pause`、`mood`、`badge`、`tip`、`pending`、`rewrite_result`、`rewrite_fail`，协调器在状态锁内更新并刷新界面。
-- 菜单或快捷键切换无痕调 `set_paused(on, by)`；入口按钮调 `send_open`；安全桌面调 `set_secure_desktop`；核心退出前调 `shutdown`。
-- 改写模式：进入时 `take_recent()`，`rewrite_enabled()` 为假时只弹同意询问；发请求 `send_rewrite_req`，结束 `send_rewrite_done`。
+A-04 已接好，代码在 `wind-coordinator/src/xinqing.rs`（钩子点见那边 AGENTS.md）：服务启动时
+`Tap::start`，管道名按 `pipe_suffix` 选 `PIPE_NAME` 或 `PIPE_NAME_DEV`，设了 `XQ_XQP_TCP` 改走本机
+TCP；重启前调 `shutdown`。按键与组字在 `handle_key_event_policed` 前后各取一次（组字长度、页码）
+快照，差异推出 `comp{update/cancel/clear}`、`cand{page}`；选词在上屏钩子里发 `cand{select}`。
+
+还没接的：
+
+- `xinqing.enabled` 与应用名单的配置（A-05/A-06），现在用默认值启动，采集仍以 Hub 的 `cfg` 为准。
+- `downlink` 只记 debug 日志；`pause`、`mood`、`badge`、`tip` 的界面处理在 A-06/A-07。
+- 无痕的菜单与快捷键（A-05）、入口按钮 `send_open`（A-07）、安全桌面、改写模式（A-08）。
+- 组字长度只看 `input_buffer`，临时拼音、临时英文等独占模式的缓冲不计。
 
 ## 约束
 

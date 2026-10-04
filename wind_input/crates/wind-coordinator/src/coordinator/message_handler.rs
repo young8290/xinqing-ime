@@ -696,6 +696,11 @@ impl MessageHandler for Coordinator {
     /// 再做 preedit 占位后处理。集中在此避免修改 40+ 个 commit 返回点（对齐旧 Go
     /// HandleKeyEvent 末尾的 recordCommitFallback 思路）。
     fn handle_key_event_policed(&self, data: &KeyEventData) -> KeyAction {
+        // 心晴：按键先于它可能触发的上屏发给 Hub（FR-SEN-01）；没装 Tap 时不取锁
+        let xq_before = crate::xinqing::snap(self);
+        if let Some(b) = xq_before {
+            crate::xinqing::before_key(data, b);
+        }
         // 「上一次按键送达之后、这一按之前，有键被透传给了宿主」⇒ 智能符号武装态失效。
         //
         // 这是出口那道「非同键按键解除武装」够不着的那一块：英文半角下 TSF 只吃标点键
@@ -832,6 +837,10 @@ impl MessageHandler for Coordinator {
         } else {
             action
         };
+        // 心晴：比较按键前后的组字状态，发组字与翻页事件（FR-SEN-04）
+        if let (Some(b), Some(a)) = (xq_before, crate::xinqing::snap(self)) {
+            crate::xinqing::after_key(data, b, a);
+        }
         if self.preedit_uses_placeholder() {
             action.with_composition_placeholder()
         } else {
@@ -2365,6 +2374,15 @@ impl MessageHandler for Coordinator {
         // 详见 `mode_scope` 字段注释。
         let (old_pid, old_has_rule) = *self.mode_scope.lock().unwrap_or_else(|e| e.into_inner());
         self.update_active_compat(data.client_token);
+        // 心晴：焦点进程与输入框类型（FR-SEN-03）；进程名在上一行刚落进缓存
+        crate::xinqing::on_focus(
+            &self.cached_proc_name(data.client_token),
+            if crate::input_diag::is_password_scope(data.input_scope_mask) {
+                wind_xinqing_tap::Scope::Password
+            } else {
+                wind_xinqing_tap::Scope::Normal
+            },
+        );
         let new_has_rule = self
             .active_compat
             .lock()
@@ -2773,6 +2791,8 @@ impl MessageHandler for Coordinator {
             // 该字段的失效方向不对称：多显示只是碍眼，永不显示是功能失效，故取宽松侧。
             s.has_edit_context = true;
             s.focus_no_edit_ctx = false;
+            // 心晴：输入法激活与中英状态（Tap 只做 try_send，可在锁内调用）
+            crate::xinqing::on_ime(true, s.chinese_mode);
         }
         // 输入诊断态（密码抑制 / 禁用）是按焦点采的读数，切走本输入法后不会有人更新它；
         // 不清就会让新实例沿用上一实例留下的密码态（实测 Zen：无焦点态被判成密码，切回后图标恒显「英」）。
@@ -2803,6 +2823,8 @@ impl MessageHandler for Coordinator {
         {
             let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
             s.ime_active = false;
+            // 心晴：切走本输入法，Hub 据此结束当前窗口（FR-STA-01 第 4 条）
+            crate::xinqing::on_ime(false, s.chinese_mode);
             s.has_edit_context = false; // 切走本输入法：谈不上焦点在不在可编辑控件里
             s.focus_no_edit_ctx = false; // 同上：不表态（input_block 也会因 ime_active 早退）
             s.input_buffer.clear();
@@ -2969,6 +2991,10 @@ impl MessageHandler for Coordinator {
         //   不会误伤白名单外的普通宿主。）
         if self.host_render_active() {
             return;
+        }
+        // 心晴：组字被系统终止（FR-SEN-04）；缓冲本来就空时不算
+        if crate::xinqing::snap(self).is_some_and(|b| b.len > 0) {
+            crate::xinqing::on_comp_terminated();
         }
         // 宿主亲口说组合没了 ⇒ 联想孤儿占位组合也随之不存在，撤标记。
         //

@@ -9,7 +9,7 @@
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError};
-use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, TryLockError};
 use std::time::{Duration, Instant};
 
 use xqp::{ByeReason, Down, FrameError, PROTOCOL_VERSION, Scope, Up};
@@ -26,6 +26,8 @@ pub(crate) const HEARTBEAT: Duration = Duration::from_secs(5);
 pub(crate) const HELLO_TIMEOUT: Duration = Duration::from_secs(5);
 /// 后台线程检查退出与停用的间隔。
 const TICK: Duration = Duration::from_millis(200);
+/// 发 `bye` 时最多等写线程让出链路多久（[`Shared::send_now`]）。
+const SEND_NOW_WAIT: Duration = Duration::from_millis(200);
 
 const SEQ: Ordering = Ordering::SeqCst;
 
@@ -335,7 +337,11 @@ impl Shared {
                 session: self.info.session.clone(),
                 caps: self.info.caps.clone(),
             };
+            // 先标记已连接再回 hello：Hub 一收到 hello 就可能触发事件，晚标记的话这些事件
+            // 会因“没有连接”被丢掉。写线程要等这把 link 锁，事件不会抢在 hello 前面。
+            self.linked.store(id, SEQ);
             if write_frame(&mut writer, &hello).is_err() {
+                let _ = self.linked.compare_exchange(id, 0, SEQ, SEQ);
                 closer();
                 return;
             }
@@ -345,7 +351,6 @@ impl Shared {
                 seq: 0,
                 closer: closer.clone(),
             });
-            self.linked.store(id, SEQ);
         }
         tracing::info!("Hub 已连接");
         let _ = reader.set_read_timeout(None);
@@ -441,12 +446,34 @@ impl Shared {
         }
     }
 
-    /// 立即写一条控制消息（`bye`）。写线程正卡在写入时放弃，不等待。
+    /// 立即写一条控制消息（`bye`）。写线程正在写一条消息时等它写完，但最多等
+    /// [`SEND_NOW_WAIT`]：Hub 不读、写线程卡死时放弃，不让退出跟着卡住。
+    ///
+    /// 曾经只 `try_lock` 一次，碰上写线程刚好在发心跳或事件，`bye` 就被静默丢掉。
     pub fn send_now(&self, msg: Up) {
-        if let Ok(mut link) = self.link.try_lock()
-            && let Some(l) = link.as_mut()
-        {
-            let _ = write_up(l, msg);
+        let deadline = Instant::now() + SEND_NOW_WAIT;
+        loop {
+            match self.link.try_lock() {
+                Ok(mut link) => {
+                    if let Some(l) = link.as_mut() {
+                        let _ = write_up(l, msg);
+                    }
+                    return;
+                }
+                Err(TryLockError::Poisoned(e)) => {
+                    if let Some(l) = e.into_inner().as_mut() {
+                        let _ = write_up(l, msg);
+                    }
+                    return;
+                }
+                Err(TryLockError::WouldBlock) if Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                Err(TryLockError::WouldBlock) => {
+                    tracing::debug!("XQP 写线程占着链路，放弃发送 bye");
+                    return;
+                }
+            }
         }
     }
 

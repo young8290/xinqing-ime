@@ -1883,6 +1883,7 @@ dispatch() {
         pdm2)             do_push_module dev core ;;
         k|check)          do_check ;;
         l|clippy)         do_clippy ;;
+        clippy-deny)      do_clippy deny ;;   # 心晴：CI 分步调用（dev.sh ci 的第二步）
         t|test)           do_test ;;
         sk|setting-check) do_setting_check ;;
         st|setting-test)  do_setting_test ;;

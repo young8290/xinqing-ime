@@ -45,6 +45,7 @@
 | `src/host_services.rs` | `HostServices` trait（剪贴板等平台能力注入面）+ 桌面/headless 实现；收录判据见模块文档 |
 | `src/stats.rs` | 输入统计采集 |
 | `src/watchdog.rs` | 看门狗 |
+| `src/xinqing.rs` | 心晴：把按键、上屏、焦点、组字、候选事件交给 `wind-xinqing-tap`（进程级单例，服务启动时 `start`，没装时钩子全是空操作）。钩子点：`handle_key_event_policed` 前后快照、`record_commit_ks`（统计兜底经 `fallback_commit` 去重）、`handle_focus_gained` / `apply_input_diag`、`handle_composition_terminated`、IME 激活与停用。测试 `tests/xinqing_tap.rs` |
 
 > `src/handle_key.rs` 仅为模块占位（文档注释），实际按键路由在 `coordinator.rs::handle_key_event`。**注意：`keymap` 不在本 crate**，在 `wind-keys`（`use wind_keys::keymap`）；根 AGENTS.md 旧引用的 `wind-coordinator/src/keymap.rs` 已失效。
 
