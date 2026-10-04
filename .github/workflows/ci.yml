@@ -125,9 +125,11 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # 测试失败也存缓存：默认只在成功时存，一红就每轮从零编译（约 15 分钟）
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: wind_input
+          cache-on-failure: true
 
       - name: cargo test (本机，全工作区)
         run: ./scripts/dev.sh test
