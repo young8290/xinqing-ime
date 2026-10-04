@@ -15,7 +15,17 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # 心晴：私有仓库的 runner 磁盘小，msvc 交叉编译和本机测试两套 target 带完整调试信息会写满磁盘
+    # （No space left on device）。调试信息只留行号表，测试失败时回溯仍有文件和行号。
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
+      # 心晴：删掉本任务用不到的预装 SDK（.NET、Android、GHC、CodeQL），腾出二十多 GB
+      - name: 释放 runner 磁盘空间
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: actions/checkout@v7
 
       # 心晴：身份改造不得有残留（docs/xinqing/identity.md）
