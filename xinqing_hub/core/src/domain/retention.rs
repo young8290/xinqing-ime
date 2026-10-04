@@ -1,7 +1,7 @@
 //! 保留与自动清理（FR-DAT-02）：按 09 第 1 节的保留期限删除过期数据，再做增量 `VACUUM`。
 //!
 //! 每条规则单独执行、单独提交，一条失败不影响其他规则（“清理任务失败只记日志，下次继续”）。
-//! 什么时候跑由外壳决定：每天 04:30，另外 Hub 启动后补跑一次（docs/adr/0012 第 1 条）。
+//! 什么时候跑由外壳决定：每天 04:30，另外 Hub 启动后补跑一次（docs/adr/0013 第 1 条）。
 //!
 //! 不在这里处理的表：`baseline`（滚动 7 天由基线重算维护，B-04）、`diary` / `memory` /
 //! `collection`（直到用户删除）、`consent`（直到删除全部数据）、已添加的日程和未完成的待办
@@ -78,7 +78,7 @@ const RULES: &[Rule] = &[
         cutoff: Cutoff::Days(90),
         sql: "DELETE FROM comfort_log WHERE ts < ?1",
     },
-    // 整个会话按最后一条消息的时间过期，不拆开删半个会话（ADR 0012 第 3 条）；
+    // 整个会话按最后一条消息的时间过期，不拆开删半个会话（ADR 0013 第 3 条）；
     // chat_message 随 ON DELETE CASCADE 一起删除。
     Rule {
         data: "D-11",
@@ -94,7 +94,7 @@ const RULES: &[Rule] = &[
         cutoff: Cutoff::Days(7),
         sql: "DELETE FROM schedule WHERE status = 'pending' AND created_ts < ?1",
     },
-    // “已忽略：只存哈希”：写入时就应只留哈希，这里兜底清掉内容字段（ADR 0012 第 4 条）。
+    // “已忽略：只存哈希”：写入时就应只留哈希，这里兜底清掉内容字段（ADR 0013 第 4 条）。
     // 与时间无关，?1 恒成立。
     Rule {
         data: "D-12",
@@ -140,7 +140,7 @@ const RULES: &[Rule] = &[
         cutoff: Cutoff::Days(7),
         sql: "DELETE FROM todo WHERE status = 'pending' AND created_ts < ?1",
     },
-    // 已完成：完成 7 天后归档、30 天后删除，都从 done_ts 算（ADR 0012 第 5 条）。
+    // 已完成：完成 7 天后归档、30 天后删除，都从 done_ts 算（ADR 0013 第 5 条）。
     // 先删后归档，同一次清理里不会把刚归档的又算一遍。
     Rule {
         data: "D-25",

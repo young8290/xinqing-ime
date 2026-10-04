@@ -45,7 +45,7 @@ impl Db {
     }
 
     fn init(conn: Connection) -> Result<Self, StoreError> {
-        // 只对还没有表的新库生效，让 FR-DAT-02 清理后的增量 VACUUM 能回收空间（docs/adr/0012 第 6 条）
+        // 只对还没有表的新库生效，让 FR-DAT-02 清理后的增量 VACUUM 能回收空间（docs/adr/0013 第 6 条）
         conn.pragma_update(None, "auto_vacuum", "INCREMENTAL")?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;

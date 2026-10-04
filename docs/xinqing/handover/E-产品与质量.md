@@ -13,7 +13,7 @@
 | PM-02 | 每周例会、风险登记更新、周报 | 未开始（需要人） | 模板：16 第 6.1 节 | 纪要放 `docs/meetings/YYYY-MM-DD.md`（目录还没有）；风险状态见第 4.3 节 |
 | PM-03 | 需求、设计、测试评审各一次 | 未开始 | 模板：16 第 6.2 节 | 计划 W2 / W4 / W6；ADR 评审在做（第 4.1 节），不替代正式评审会 |
 | PM-04 | 一手调研：问卷与访谈 | 未开始（需要人） | 问卷与提纲：12 第 8 节 | 要真人做，Claude 只能帮整理结果 |
-| E-01 | 数据导出、删除、撤回同意、自动清理 | **进行中** | 第一部分（自动清理）：[xinqing-ime#20](https://github.com/young8290/xinqing-ime/pull/20)，ADR 0012 | 见第 3 节 |
+| E-01 | 数据导出、删除、撤回同意、自动清理 | **进行中** | 第一部分（自动清理）：[xinqing-ime#20](https://github.com/young8290/xinqing-ime/pull/20)，ADR 0013 | 见第 3 节 |
 | E-02 | 数据导入与恢复（合并 / 覆盖、事务回滚） | 未开始 | — | 计划 W10，依赖 E-01 的导出格式 |
 | E-03 | db-grep、隐私自动化测试（NFR-PRI） | 未开始 | — | 计划 W8。已有的隐私约束测试：`window_features_reject_text`（store）、Q-STATE 字段白名单与脱敏（`core/src/infra/gateway`） |
 | E-04 | 测试用例维护与执行（18 全部用例）、缺陷管理 | 未开始 | — | 计划 W6–W12；目前各 PR 的单元测试按需求编号写，还没人按 TC 编号执行和记录 |
@@ -31,9 +31,9 @@ xinqing_hub/core/src/
 ├─ domain/consent.rs       六项单独同意（C 写的；撤回同意 FR-DAT-05 要在这里补“撤回后的动作”）
 └─ infra/store/mod.rs      Db::init 对新库开 auto_vacuum = INCREMENTAL（清理后回收空间）
 xinqing_hub/src-tauri/src/
-├─ cleanup.rs              启动 5 分钟后补跑一次，之后每天 04:30（ADR 0012 第 1 条）
+├─ cleanup.rs              启动 5 分钟后补跑一次，之后每天 04:30（ADR 0013 第 1 条）
 └─ state.rs                open_or_rebuild：数据库损坏时备份为 .corrupt-<时间> 并重建（FR-DAT-01，C 写的）
-docs/adr/0012-…            数据保留清理的实现解释
+docs/adr/0013-…            数据保留清理的实现解释
 ```
 
 验证：`cargo test -p xinqing-hub-core retention`（TC-DAT-08 口径：每张表一条刚过期、一条没过期的数据）。
@@ -57,7 +57,7 @@ docs/adr/0012-…            数据保留清理的实现解释
 | ADR 0008 状态识别规格的解释 | **已接受**（B、E） | 已同步到产品书 V1.4（[xinqing#7](https://github.com/young8290/xinqing/pull/7)，04）。第 5 条 R1b 的协议字段等 A 决定 |
 | ADR 0010 状态解释的信号挑选 | **已接受**（B、D、E） | 已同步到产品书 V1.4（04、15） |
 | ADR 0011 自评天气的实现解释（B，[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)） | 提议 | **等 E 评审**（还有 D）；接受后改 04 FR-STA-10 第 1、3 条，10 第 5.3 节 |
-| ADR 0012 数据保留清理 | 提议（E） | 等 C 评审；接受后改 09 FR-DAT-02、D-11/D-12/D-25，10 第 6.2 节登记 `chat.retention_days` |
+| ADR 0013 数据保留清理 | 提议（E） | 等 C 评审；接受后改 09 FR-DAT-02、D-11/D-12/D-25，10 第 6.2 节登记 `chat.retention_days` |
 | ADR 0007 Hub 核心与外壳分离 | 提议 | 等 W1 评审会。产品书 13、09、10、20 的路径已按它写，17 第 2 节的目录图还是旧的（`src-tauri/src/domain`），接受后一起改 |
 | ADR 0009 核心侧 XQP 服务端 | 提议 | 等 A 评审 |
 | 危机词表、禁用词表、`ui_copy.toml` | 待评审（E-08） | 见第 1 节 E-08 |
@@ -85,7 +85,7 @@ docs/adr/0012-…            数据保留清理的实现解释
 
 - `daily_summary` 的保留期 09 写“1 年（可调）”，没有对应设置键，现在固定 365 天。
 - 已有的开发库是在开 `auto_vacuum` 之前建的，清理后不回收空间（文件不变小），删库重建即可；新库没有这个问题。
-- 状态为 `expired` 的日程、`ignored` 的待办 09 没写保留期，暂不清理（ADR 0012 第 7 条）。
+- 状态为 `expired` 的日程、`ignored` 的待办 09 没写保留期，暂不清理（ADR 0013 第 7 条）。
 - 清理跑在外壳的 `spawn_blocking` 里，与命令共用一把数据库锁；1 年数据第一次清理可能持锁较久。17 第 2.9 节的单写线程 `DbWriter` 接入后改为投递到写线程。
 - 清理时刻用系统时钟；演示模式（B-10）替换 `Clock` 后，演示里要看到清理效果需要让 `cleanup.rs` 也用同一个 `Clock`。
 
@@ -101,4 +101,4 @@ docs/adr/0012-…            数据保留清理的实现解释
 
 | 日期 | 改动 |
 |---|---|
-| 2026-10-04 | 初版：盘点 PM-01～04、E-01～08；E-01 第一部分（自动清理）与 ADR 0012；ADR 0008、0010 评审通过，产品书 V1.4 |
+| 2026-10-04 | 初版：盘点 PM-01～04、E-01～08；E-01 第一部分（自动清理）与 ADR 0013；ADR 0008、0010 评审通过，产品书 V1.4 |
