@@ -1,5 +1,5 @@
-//! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04～A-06，产品书 18 的 FR-SEN-01～06、
-//! FR-OPS-03）。
+//! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04～A-07，产品书 18 的 FR-SEN-01～06、
+//! FR-OPS-03、FR-IME-02、FR-ENT-01/03）。
 //!
 //! 装一个本机 TCP 的 Tap，测试扮演 Hub 握手并下发 `cfg{collect:true}`，再经 `MessageHandler`
 //! 驱动 headless 协调器，断言 Hub 收到的上行事件。Tap 是进程级单例，所以整个文件只有一个测试。
@@ -7,8 +7,10 @@
 
 use std::io::ErrorKind;
 use std::net::TcpStream;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use wind_bridge::handler::KeyAction;
@@ -18,10 +20,11 @@ use wind_coordinator::Coordinator;
 use wind_coordinator::xinqing::{self, HubView};
 use wind_ipc::protocol::EVENT_KEY_DOWN;
 use wind_ipc::protocol::{MOD_ALT, MOD_CTRL};
-use wind_ui_types::MenuCmd;
+use wind_ui_types::{MenuCmd, UiCommand};
 use wind_xinqing_tap::guard::{GuardState, HubGuard, Launcher};
 use wind_xinqing_tap::{
-    ByeReason, CompOp, Down, Endpoint, KeyKind, MoodState, PauseBy, Scope, Tap, TapConfig,
+    ByeReason, CompOp, Down, Endpoint, KeyKind, MoodState, OpenTarget, PauseBy, Scope, Tap,
+    TapConfig,
 };
 use xqp::Up;
 
@@ -68,6 +71,25 @@ impl Launcher for Count {
         self.0.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
+}
+
+/// 目前为止 UI 通道上收到的心晴提示（状态泡指令里的文字与时长）。
+fn tips(ui: &Receiver<UiCommand>) -> Vec<(String, u64)> {
+    ui.try_iter()
+        .filter_map(|c| match c {
+            UiCommand::ShowStatusTip {
+                text, duration_ms, ..
+            } => Some((text, duration_ms)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// 用户层 config.toml 里 `xinqing.enabled` 的写盘值；未写则 `None`。
+fn user_enabled(user: &Path) -> Option<bool> {
+    let text = std::fs::read_to_string(user.join("config.toml")).ok()?;
+    let v: toml::Value = toml::from_str(&text).unwrap();
+    v.get("xinqing")?.get("enabled")?.as_bool()
 }
 
 fn wait_until(mut ok: impl FnMut() -> bool) {
@@ -119,6 +141,26 @@ impl Hub {
 
 #[test]
 fn coordinator_events_reach_hub() {
+    // 菜单“关闭心晴功能”会写用户配置：用户目录重定向到临时目录（同 password_force_english_persist）。
+    // ⚠️ 目录名带 pid：多会话并行跑测试时固定名会互删夹具。
+    let tmp = std::env::temp_dir().join(format!("wind_coord_xinqing-{}", std::process::id()));
+    let user = tmp.join("UserData");
+    let conf = tmp.join("datadir.conf");
+    let _ = std::fs::remove_dir_all(&tmp);
+    std::fs::create_dir_all(tmp.join("install").join("data")).unwrap();
+    std::fs::create_dir_all(&user).unwrap();
+    std::fs::write(&conf, user.to_string_lossy().as_bytes()).unwrap();
+    // SAFETY: 本文件仅此一个测试，env 在任何 OnceLock 初始化之前设置，无并发读者。
+    unsafe {
+        std::env::set_var("WIND_DATADIR_CONF", &conf);
+        std::env::set_var("WIND_INSTALL_ROOT", tmp.join("install"));
+    }
+    assert_eq!(
+        Config::user_config_dir(),
+        Some(user.clone()),
+        "前置条件：用户目录须已重定向，否则本测试会写真实用户配置"
+    );
+
     let tap = Tap::start(
         TapConfig::new("0.1.0-test", Endpoint::Tcp("127.0.0.1:0".parse().unwrap())),
         Box::new(xinqing::downlink),
@@ -140,7 +182,8 @@ fn coordinator_events_reach_hub() {
 
     let mut c = Config::default();
     c.input.default.chinese_mode = true;
-    let coord = Coordinator::new_headless(c, None);
+    let (coord, ui) = Coordinator::new_headless_with_ui(c, None);
+    xinqing::attach(&coord);
 
     let s = TcpStream::connect(tap.local_addr().unwrap()).unwrap();
     s.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
@@ -178,9 +221,24 @@ fn coordinator_events_reach_hub() {
             pending: 2,
         }
     );
+    // 主菜单“心晴”分组（FR-ENT-01）
     let labels = coord.debug_main_menu_labels();
-    assert!(labels.iter().any(|l| l == "暂停感知"), "{labels:?}");
+    for want in [
+        "和晴晴聊聊",
+        "情绪看板",
+        "待确认日程与待办（2）",
+        "暂停感知",
+        "心晴设置",
+        "关闭心晴功能",
+    ] {
+        assert!(labels.iter().any(|l| l == want), "缺 {want}：{labels:?}");
+    }
     assert!(!labels.iter().any(|l| l.contains("点击重试")));
+    coord.debug_run_menu_cmd(MenuCmd::XinqingOpen(1));
+    match hub.recv() {
+        Up::Open { target, .. } => assert_eq!(target, OpenTarget::Dashboard),
+        other => panic!("{other:?}"),
+    }
 
     // 焦点：进程名来自缓存，闸门打开后先补发当前焦点
     coord.handle_focus_gained(&focus(4242, "Notepad.exe", 0));
@@ -218,6 +276,15 @@ fn coordinator_events_reach_hub() {
         }
         other => panic!("{other:?}"),
     }
+    // 光标旁气泡（FR-ENT-03）：正在组字时不显示
+    hub.send(&Down::Tip {
+        text: "📅 识别到日程".into(),
+        ms: 1500,
+    });
+    hub.send(&Down::Pending { count: 3 });
+    wait_until(|| xinqing::hub_view().pending == 3);
+    assert!(tips(&ui).is_empty(), "组字时不该弹心晴提示");
+
     coord.handle_key_event_policed(&key(VK_B));
     match hub.recv() {
         Up::Key { in_comp, .. } => assert!(in_comp),
@@ -244,6 +311,22 @@ fn coordinator_events_reach_hub() {
         Up::Comp { op, .. } => assert_eq!(op, CompOp::Cancel),
         other => panic!("{other:?}"),
     }
+
+    // 组字撤销后：提示照常显示，时长取 Hub 给的值；10 秒内第二条不显示
+    hub.send(&Down::Tip {
+        text: "📅 识别到日程".into(),
+        ms: 1500,
+    });
+    hub.send(&Down::Pending { count: 4 });
+    wait_until(|| xinqing::hub_view().pending == 4);
+    assert_eq!(tips(&ui), vec![("📅 识别到日程".to_string(), 1500)]);
+    hub.send(&Down::Tip {
+        text: "📝 识别到待办".into(),
+        ms: 2000,
+    });
+    hub.send(&Down::Pending { count: 5 });
+    wait_until(|| xinqing::hub_view().pending == 5);
+    assert!(tips(&ui).is_empty(), "10 秒内最多 1 条");
 
     // 回车上屏编码：key 之后只有一条 commit（send_text 关着，不带原文）；统计兜底不重报
     coord.handle_key_event_policed(&key(VK_A));
@@ -347,8 +430,42 @@ fn coordinator_events_reach_hub() {
     assert!(matches!(hub.recv(), Up::Hello { .. }));
     wait_until(|| guard.state() == GuardState::Connected);
 
+    // 菜单“关闭心晴功能”（FR-IME-02）：写盘，Hub 收到 bye{disabled}，守护不再拉起，
+    // 菜单只剩“开启心晴功能”
+    coord.debug_run_menu_cmd(MenuCmd::XinqingToggleEnabled);
+    let (up, _) = hub.until(|u| matches!(u, Up::Bye { .. }));
+    assert!(matches!(
+        up,
+        Up::Bye {
+            reason: ByeReason::Disabled,
+            ..
+        }
+    ));
+    assert_eq!(user_enabled(&user), Some(false));
+    wait_until(|| guard.state() == GuardState::Idle);
+    let labels = coord.debug_main_menu_labels();
+    assert!(labels.iter().any(|l| l == "开启心晴功能"), "{labels:?}");
+    assert!(!labels.iter().any(|l| l == "和晴晴聊聊"));
+    std::thread::sleep(Duration::from_millis(600));
+    assert_eq!(launches.load(Ordering::SeqCst), 2, "关掉后不拉起");
+
+    // 再打开：立即拉起，新的 Hub 照常连上
+    coord.debug_run_menu_cmd(MenuCmd::XinqingToggleEnabled);
+    assert_eq!(user_enabled(&user), Some(true));
+    wait_until(|| launches.load(Ordering::SeqCst) == 3);
+    let s = TcpStream::connect(tap.local_addr().unwrap()).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+    let mut hub = Hub(s);
+    hub.send(&Down::Hello {
+        v: 1,
+        hub_ver: "test".into(),
+    });
+    assert!(matches!(hub.recv(), Up::Hello { .. }));
+    wait_until(|| guard.state() == GuardState::Connected);
+
     // 核心退出：Hub 收到 bye
     xinqing::shutdown();
     let (up, _) = hub.until(|u| matches!(u, Up::Bye { .. }));
     assert!(matches!(up, Up::Bye { .. }));
+    let _ = std::fs::remove_dir_all(&tmp);
 }

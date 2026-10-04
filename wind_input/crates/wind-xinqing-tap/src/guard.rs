@@ -44,7 +44,7 @@ pub enum GuardState {
 }
 
 impl GuardState {
-    /// 菜单该不该显示“心晴组件未运行，点击重试”。
+    /// 守护是否已停止自动重拉（放弃了，或 Hub 自己退出了），只能等用户点“点击重试”。
     pub fn needs_retry(self) -> bool {
         matches!(self, Self::GaveUp | Self::HubQuit)
     }
@@ -183,6 +183,8 @@ impl Launcher for ExeLauncher {
 pub struct HubGuard {
     machine: Mutex<Machine>,
     wanted: AtomicBool,
+    /// 用户点了“点击重试”：`hub_autostart` 关着时也拉起一次。
+    kick: AtomicBool,
     stop: AtomicBool,
 }
 
@@ -196,6 +198,7 @@ impl HubGuard {
         let g = Arc::new(Self {
             machine: Mutex::new(Machine::new(Instant::now())),
             wanted: AtomicBool::new(wanted),
+            kick: AtomicBool::new(false),
             stop: AtomicBool::new(false),
         });
         let me = Arc::clone(&g);
@@ -204,7 +207,11 @@ impl HubGuard {
             .spawn(move || {
                 while !me.stop.load(Ordering::SeqCst) {
                     let wanted = me.wanted.load(Ordering::SeqCst);
-                    let go = lock(&me.machine).step(Instant::now(), wanted, linked());
+                    let kick = me.kick.swap(false, Ordering::SeqCst);
+                    let is_linked = linked();
+                    let go = lock(&me.machine).step(Instant::now(), wanted, is_linked)
+                        // 不自动拉起时，用户手动重试也要拉一次（状态机仍停在 Idle）
+                        || (kick && !wanted && !is_linked);
                     if go {
                         match launcher.launch() {
                             Ok(()) => tracing::info!("已拉起心晴 Hub"),
@@ -232,9 +239,10 @@ impl HubGuard {
         lock(&self.machine).hub_quit(Instant::now());
     }
 
-    /// 菜单“心晴组件未运行，点击重试”。
+    /// 菜单“心晴组件未运行，点击重试”：清掉失败记录立即重拉；`hub_autostart` 关着时只拉这一次。
     pub fn retry(&self) {
         lock(&self.machine).retry(Instant::now());
+        self.kick.store(true, Ordering::SeqCst);
     }
 
     /// 核心退出：线程在下一个周期结束，不再拉起 Hub（Hub 自己留着，C-PLT-12）。
@@ -393,6 +401,24 @@ mod tests {
             *lock(&self.0) += 1;
             Ok(())
         }
+    }
+
+    #[test]
+    fn retry_launches_once_even_without_autostart() {
+        let n = Arc::new(Mutex::new(0));
+        let g =
+            HubGuard::start(Box::new(|| false), Box::new(Count(Arc::clone(&n))), false).unwrap();
+        std::thread::sleep(TICK * 3);
+        assert_eq!(*lock(&n), 0, "不自动拉起");
+        g.retry();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while *lock(&n) == 0 && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        std::thread::sleep(TICK * 3);
+        assert_eq!(*lock(&n), 1, "重试只拉一次");
+        assert_eq!(g.state(), Idle);
+        g.stop();
     }
 
     #[test]
