@@ -16,9 +16,9 @@ export interface ExplainLines {
 }
 
 /** 可能性（0–100 的整数）转成标题行。 */
-export function explainHeader(state: MoodState, prob: number | null): string {
+export function explainHeader(state: MoodState, probPct: number | null): string {
   const h = hedge(state)
-  return prob === null ? h : t('widget.prob_hint', { hedge: h, pct: prob })
+  return probPct === null ? h : t('widget.prob_hint', { hedge: h, pct: probPct })
 }
 
 export function explainLines(e: Explanation): ExplainLines {
@@ -30,7 +30,7 @@ export function explainLines(e: Explanation): ExplainLines {
   const notes = [t(`explain.source.${e.source}` satisfies CopyKey)]
   if (e.cold_start) notes.push(t('explain.note.cold_start'))
   return {
-    header: explainHeader(e.state, e.prob),
+    header: explainHeader(e.state, e.prob_pct),
     signals: signals.length > 0 ? signals : [t('explain.note.no_signal')],
     footer: notes.join(t('explain.note.separator')),
   }
