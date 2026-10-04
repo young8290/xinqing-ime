@@ -431,6 +431,35 @@ fn downlink_messages_reach_the_callback() {
 }
 
 #[test]
+fn hub_bye_reaches_the_callback_after_unlink() {
+    // 回调里看到的连接状态：守护线程据此判断 Hub 退出，必须已经是“未连接”
+    let me: Arc<std::sync::OnceLock<Arc<Tap>>> = Arc::default();
+    let seen: Arc<Mutex<Option<bool>>> = Arc::default();
+    let (me2, seen2) = (Arc::clone(&me), Arc::clone(&seen));
+    let got = Arc::new(Mutex::new(Vec::new()));
+    let cfg = TapConfig::new("0.1.0-test", Endpoint::Tcp("127.0.0.1:0".parse().unwrap()));
+    let tap = Tap::start(
+        cfg,
+        Box::new(move |d| {
+            if matches!(d, Down::Bye { .. }) {
+                *seen2.lock().unwrap() = me2.get().map(|t| t.is_linked());
+            }
+        }),
+    )
+    .unwrap();
+    let _ = me.set(Arc::clone(&tap));
+    let mut hub = Hub::hello(&tap, &got, 1);
+    assert!(matches!(hub.recv(), Up::Hello { .. }));
+    wait_for(|| tap.is_linked());
+    hub.send(&Down::Bye {
+        reason: ByeReason::Shutdown,
+    });
+    wait_for(|| seen.lock().unwrap().is_some());
+    assert_eq!(*seen.lock().unwrap(), Some(false));
+    assert!(hub.closed());
+}
+
+#[test]
 fn new_client_replaces_old_and_needs_its_own_cfg() {
     let (tap, got) = start();
     let mut old = Hub::linked(&tap, &got, true, false, false);

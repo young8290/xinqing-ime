@@ -1,4 +1,5 @@
-//! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04，产品书 18 的 FR-SEN-01～04）。
+//! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04～A-06，产品书 18 的 FR-SEN-01～06、
+//! FR-OPS-03）。
 //!
 //! 装一个本机 TCP 的 Tap，测试扮演 Hub 握手并下发 `cfg{collect:true}`，再经 `MessageHandler`
 //! 驱动 headless 协调器，断言 Hub 收到的上行事件。Tap 是进程级单例，所以整个文件只有一个测试。
@@ -7,16 +8,21 @@
 use std::io::ErrorKind;
 use std::net::TcpStream;
 use std::sync::Arc;
-use std::time::Duration;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::{Duration, Instant};
 
 use wind_bridge::handler::KeyAction;
 use wind_bridge::handler::{FocusData, KeyEventData, MessageHandler};
 use wind_config::Config;
 use wind_coordinator::Coordinator;
+use wind_coordinator::xinqing::{self, HubView};
 use wind_ipc::protocol::EVENT_KEY_DOWN;
 use wind_ipc::protocol::{MOD_ALT, MOD_CTRL};
 use wind_ui_types::MenuCmd;
-use wind_xinqing_tap::{CompOp, Down, Endpoint, KeyKind, PauseBy, Scope, Tap, TapConfig};
+use wind_xinqing_tap::guard::{GuardState, HubGuard, Launcher};
+use wind_xinqing_tap::{
+    ByeReason, CompOp, Down, Endpoint, KeyKind, MoodState, PauseBy, Scope, Tap, TapConfig,
+};
 use xqp::Up;
 
 const VK_A: u32 = 0x41;
@@ -52,6 +58,23 @@ fn focus(pid: u32, name: &str, input_scope_mask: u64) -> FocusData {
         caret_source: wind_ipc::protocol::caret_source::GUI_CARET,
         bundle_id: name.into(),
         window_class: String::new(),
+    }
+}
+
+struct Count(Arc<AtomicU32>);
+
+impl Launcher for Count {
+    fn launch(&mut self) -> std::io::Result<()> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+fn wait_until(mut ok: impl FnMut() -> bool) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !ok() {
+        assert!(Instant::now() < deadline, "等待超时");
+        std::thread::sleep(Duration::from_millis(20));
     }
 }
 
@@ -98,10 +121,22 @@ impl Hub {
 fn coordinator_events_reach_hub() {
     let tap = Tap::start(
         TapConfig::new("0.1.0-test", Endpoint::Tcp("127.0.0.1:0".parse().unwrap())),
-        Box::new(|_| {}),
+        Box::new(xinqing::downlink),
     )
     .unwrap();
-    assert!(wind_coordinator::xinqing::install(Arc::clone(&tap)));
+    assert!(xinqing::install(Arc::clone(&tap)));
+    // Hub 守护（A-06）：拉起动作换成计数，连接状态取自 Tap
+    let launches = Arc::new(AtomicU32::new(0));
+    let probe = Arc::clone(&tap);
+    let guard = HubGuard::start(
+        Box::new(move || probe.is_linked()),
+        Box::new(Count(Arc::clone(&launches))),
+        true,
+    )
+    .unwrap();
+    assert!(xinqing::install_guard(Arc::clone(&guard)));
+    wait_until(|| launches.load(Ordering::SeqCst) == 1);
+    assert_eq!(guard.state(), GuardState::Launching);
 
     let mut c = Config::default();
     c.input.default.chinese_mode = true;
@@ -122,6 +157,30 @@ fn coordinator_events_reach_hub() {
         app_blocklist: None,
         app_allowlist: None,
     });
+
+    wait_until(|| guard.state() == GuardState::Connected);
+    assert_eq!(launches.load(Ordering::SeqCst), 1, "连上后不再拉起");
+
+    // 下行 mood、badge、pending 记进 hub_view，供工具栏与菜单显示
+    hub.send(&Down::Mood {
+        state: MoodState::Hesitant,
+        offline: false,
+    });
+    hub.send(&Down::Badge { on: true });
+    hub.send(&Down::Pending { count: 2 });
+    wait_until(|| xinqing::hub_view().pending == 2);
+    assert_eq!(
+        xinqing::hub_view(),
+        HubView {
+            mood: Some(MoodState::Hesitant),
+            offline: false,
+            badge: true,
+            pending: 2,
+        }
+    );
+    let labels = coord.debug_main_menu_labels();
+    assert!(labels.iter().any(|l| l == "暂停感知"), "{labels:?}");
+    assert!(!labels.iter().any(|l| l.contains("点击重试")));
 
     // 焦点：进程名来自缓存，闸门打开后先补发当前焦点
     coord.handle_focus_gained(&focus(4242, "Notepad.exe", 0));
@@ -261,8 +320,35 @@ fn coordinator_events_reach_hub() {
     assert!(matches!(hub.recv(), Up::Focus { .. }));
     assert!(!tap.paused());
 
+    // Hub 正常退出（发 bye）：守护不重拉，菜单出现“点击重试”，点了才再拉起
+    hub.send(&Down::Bye {
+        reason: ByeReason::Shutdown,
+    });
+    wait_until(|| guard.state() == GuardState::HubQuit);
+    assert_eq!(xinqing::hub_view(), HubView::default());
+    std::thread::sleep(Duration::from_millis(600));
+    assert_eq!(launches.load(Ordering::SeqCst), 1, "Hub 自己退出不重拉");
+    let labels = coord.debug_main_menu_labels();
+    assert!(
+        labels.iter().any(|l| l == "心晴组件未运行，点击重试"),
+        "{labels:?}"
+    );
+    coord.debug_run_menu_cmd(MenuCmd::XinqingRetryHub);
+    wait_until(|| launches.load(Ordering::SeqCst) == 2);
+
+    // 新的 Hub 连上
+    let s = TcpStream::connect(tap.local_addr().unwrap()).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+    let mut hub = Hub(s);
+    hub.send(&Down::Hello {
+        v: 1,
+        hub_ver: "test".into(),
+    });
+    assert!(matches!(hub.recv(), Up::Hello { .. }));
+    wait_until(|| guard.state() == GuardState::Connected);
+
     // 核心退出：Hub 收到 bye
-    wind_coordinator::xinqing::shutdown();
+    xinqing::shutdown();
     let (up, _) = hub.until(|u| matches!(u, Up::Bye { .. }));
     assert!(matches!(up, Up::Bye { .. }));
 }

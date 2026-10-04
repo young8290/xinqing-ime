@@ -6,9 +6,10 @@
 //!
 //! 与 17 第 1.1 节的差异：消息类型与帧编解码直接用心晴工作区的 `xqp` crate（Hub、xq-sim 同用），
 //! 不再另写 `event.rs`；队列用标准库 `sync_channel`，不引入 crossbeam。
-//! Hub 守护线程（17 第 1.5 节）属于 A-06，改写模式（17 第 1.6 节）在协调器里实现，都不在本 crate。
+//! Hub 守护线程（17 第 1.5 节，A-06）在 [`guard`]；改写模式（17 第 1.6 节）在协调器里实现。
 
 mod gate;
+pub mod guard;
 #[cfg(windows)]
 mod pipe;
 mod recent;
@@ -22,19 +23,20 @@ use std::sync::Arc;
 pub use gate::{AppFilter, BUILTIN_EXCLUDED, DEFAULT_BLOCKLIST};
 pub use recent::RecentText;
 pub use xqp::{
-    CandOp, CompOp, Down, KeyKind, OpenTarget, PIPE_NAME, PIPE_NAME_DEV, PauseBy, RewriteOutcome,
-    RewriteSource, RewriteStyle, Scope,
+    ByeReason, CandOp, CompOp, Down, KeyKind, MoodState, OpenTarget, PIPE_NAME, PIPE_NAME_DEV,
+    PauseBy, RewriteOutcome, RewriteSource, RewriteStyle, Scope,
 };
 
 use gate::Gate;
 use server::{Shared, Static, lock};
 use transport::{Listener, TcpServer};
-use xqp::{ByeReason, KeySrc, Up};
+use xqp::{KeySrc, Up};
 
 /// `commit.text` 上限（FR-SEN-02 第 3 条）。
 pub const MAX_COMMIT_TEXT: usize = 500;
 
-/// 下行回调：`pause`、`mood`、`badge`、`tip`、`pending`、`rewrite_result`、`rewrite_fail`。
+/// 下行回调：`pause`、`mood`、`badge`、`tip`、`pending`、`rewrite_result`、`rewrite_fail`，
+/// 以及 Hub 正常退出时的 `bye`（连接已断开后才回调，守护线程据此不重拉）。
 /// 在 `xq-tap-reader` 线程上调用，由协调器在状态锁内处理并刷新界面。
 pub type Downlink = Box<dyn Fn(Down) + Send + Sync>;
 

@@ -289,6 +289,7 @@ impl Coordinator {
             MenuCmd::XinqingTogglePause => {
                 let _ = self.xinqing_toggle_pause(wind_xinqing_tap::PauseBy::Menu);
             }
+            MenuCmd::XinqingRetryHub => crate::xinqing::retry_hub(),
             MenuCmd::FirstShowMode(m) => self.set_first_show_mode(m),
             MenuCmd::AutoPairRule(m) => self.set_auto_pair_rule(m),
             MenuCmd::CompatRuleEnabled(m) => self.set_compat_rule_enabled(m == 1),
@@ -2051,6 +2052,15 @@ impl Coordinator {
                     "暂停感知"
                 },
                 cmd(MenuCmd::XinqingTogglePause),
+                true,
+                false,
+            ));
+        }
+        // 心晴：守护放弃重拉、或 Hub 自己退出了（FR-OPS-03）。
+        if crate::xinqing::hub_needs_retry() {
+            items.push(M::leaf(
+                "心晴组件未运行，点击重试",
+                cmd(MenuCmd::XinqingRetryHub),
                 true,
                 false,
             ));

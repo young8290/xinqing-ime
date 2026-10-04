@@ -132,6 +132,8 @@ pub enum MenuCmd {
     InputDiagToggleTopmost,
     /// 心晴：暂停 / 恢复感知（无痕模式，FR-SEN-06）。id 取 900，远离上游顺序编号的区段。
     XinqingTogglePause,
+    /// 心晴：Hub 守护放弃或 Hub 自己退出后，“心晴组件未运行，点击重试”（FR-OPS-03）。id 901。
+    XinqingRetryHub,
     /// 悬停提示：复制全部（取原始行，未截断、未折行）
     TooltipCopy,
     /// 悬停提示：复制右键点中的那一段（原始行，不含段名）
@@ -291,6 +293,7 @@ impl MenuKind {
                 MenuCmd::TooltipCopyLine => 135,
                 MenuCmd::TooltipCommitLine => 136,
                 MenuCmd::XinqingTogglePause => 900,
+                MenuCmd::XinqingRetryHub => 901,
                 MenuCmd::IconBadgeStyle(i) => 10000 + i as i32,
                 MenuCmd::SoftKeyboardPage(i) => 11000 + i as i32,
                 MenuCmd::InputDiagToggleSection(i) => 8000 + i as i32,
@@ -361,6 +364,7 @@ impl MenuKind {
             135 => MenuCmd::TooltipCopyLine,
             136 => MenuCmd::TooltipCommitLine,
             900 => MenuCmd::XinqingTogglePause,
+            901 => MenuCmd::XinqingRetryHub,
             10000..=10099 => MenuCmd::IconBadgeStyle((id - 10000) as u8),
             11000..=11999 => MenuCmd::SoftKeyboardPage((id - 11000) as usize),
             8000..=8999 => MenuCmd::InputDiagToggleSection((id - 8000) as u8),
