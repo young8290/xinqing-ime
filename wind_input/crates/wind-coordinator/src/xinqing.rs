@@ -8,6 +8,9 @@
 //! Hub 守护（A-06，17 第 1.5 节）也在这里装：`start` 时起 `xq-hub-guard`，配置热重载时更新
 //! 是否需要 Hub。下行的 `mood`、`badge`、`pending` 记进 [`hub_view`]，菜单与工具栏从那里读。
 //! 输入法里的心晴入口（A-07）：主菜单“心晴”分组、`tip` 的光标旁气泡、工具栏天气按钮。
+//! 温柔改写模式（A-08）在子模块 [`rewrite`]。
+
+mod rewrite;
 
 use std::cell::Cell;
 use std::net::SocketAddr;
@@ -20,9 +23,9 @@ use wind_config::XinqingConfig;
 use wind_ipc::protocol::{EVENT_KEY_DOWN, MOD_SHORTCUT};
 use wind_keys::keymap::{
     VK_0, VK_9, VK_A, VK_BACK, VK_BACKSLASH, VK_BACKTICK, VK_CAPITAL, VK_COMMA, VK_DELETE, VK_DOWN,
-    VK_END, VK_EQUAL, VK_ESCAPE, VK_HOME, VK_LBRACKET, VK_LCONTROL, VK_LEFT, VK_LSHIFT, VK_MINUS,
-    VK_NEXT, VK_PERIOD, VK_PRIOR, VK_QUOTE, VK_RBRACKET, VK_RCONTROL, VK_RETURN, VK_RIGHT,
-    VK_RSHIFT, VK_SEMICOLON, VK_SLASH, VK_SPACE, VK_UP, VK_Z,
+    VK_END, VK_EQUAL, VK_ESCAPE, VK_HOME, VK_LBRACKET, VK_LEFT, VK_LSHIFT, VK_MINUS,
+    VK_NEXT, VK_PERIOD, VK_PRIOR, VK_QUOTE, VK_RBRACKET, VK_RETURN, VK_RIGHT,
+    VK_SEMICOLON, VK_SLASH, VK_SPACE, VK_UP, VK_Z,
 };
 use wind_store::stats::CommitSource;
 use wind_xinqing_tap::guard::{ExeLauncher, GuardState, HubGuard};
@@ -35,6 +38,8 @@ use crate::coordinator::Coordinator;
 use wind_ui_types::{
     MenuCmd, MenuItemSpec, MenuKind, ToastKind, ToastPosition, XinqingCell, XinqingWeather,
 };
+
+pub(crate) use rewrite::{RewriteMode, debug_phase as debug_rewrite_phase, replay_if_exited};
 
 use crate::input_diag::InputDiagReason;
 use crate::key_convert::numpad_char;
@@ -490,8 +495,19 @@ pub fn downlink(msg: Down) {
                 c.xinqing_tip(&text, ms);
             }
         }
-        Down::RewriteResult { .. } | Down::RewriteFail { .. } => {
-            tracing::debug!("XQP 下行：rewrite（A-08 处理）");
+        Down::RewriteResult {
+            req_id,
+            style,
+            cands,
+        } => {
+            if let Some(c) = COORD.get().and_then(Weak::upgrade) {
+                c.xinqing_rewrite_result(req_id, style, cands);
+            }
+        }
+        Down::RewriteFail { req_id, reason } => {
+            if let Some(c) = COORD.get().and_then(Weak::upgrade) {
+                c.xinqing_rewrite_fail(req_id, reason);
+            }
         }
         _ => {}
     }
@@ -514,7 +530,19 @@ pub(crate) fn snap(c: &crate::coordinator::Coordinator) -> Option<CompSnap> {
     })
 }
 
-/// 虚拟键码 → FR-SEN-01 的按键类别。单按的 Shift / Ctrl / CapsLock 不算按键，返回 `None`。
+/// 单按的修饰键（含左右之分的具体键码与 Win 键）。keymap 只收了左右 Shift / Ctrl 四个，
+/// 改写模式吃键期间 C++ 会把其余几个也转发过来，这里补全。
+pub(crate) fn is_modifier_vk(vk: u32) -> bool {
+    const VK_SHIFT: u32 = 0x10;
+    const VK_MENU: u32 = 0x12;
+    const VK_LWIN: u32 = 0x5B;
+    const VK_RWIN: u32 = 0x5C;
+    const VK_RMENU: u32 = 0xA5;
+    matches!(vk, VK_SHIFT..=VK_MENU | VK_LWIN | VK_RWIN | VK_LSHIFT..=VK_RMENU | VK_CAPITAL)
+}
+
+/// 虚拟键码 → FR-SEN-01 的按键类别。单按的 Shift / Ctrl / Alt / Win / CapsLock 不算按键，
+/// 返回 `None`。
 pub(crate) fn key_kind(vk: u32) -> Option<KeyKind> {
     const PUNCT: [u32; 11] = [
         VK_SEMICOLON,
@@ -530,7 +558,7 @@ pub(crate) fn key_kind(vk: u32) -> Option<KeyKind> {
         VK_QUOTE,
     ];
     let kind = match vk {
-        VK_LSHIFT | VK_RSHIFT | VK_LCONTROL | VK_RCONTROL | VK_CAPITAL => return None,
+        _ if is_modifier_vk(vk) => return None,
         VK_A..=VK_Z => KeyKind::Letter,
         VK_0..=VK_9 => KeyKind::Digit,
         VK_SPACE => KeyKind::Space,
@@ -581,13 +609,14 @@ pub(crate) fn source_name(src: CommitSource) -> &'static str {
     }
 }
 
-/// 按键进入协调器之前（FR-SEN-01）：先于本键可能产生的上屏发出。
-pub(crate) fn before_key(data: &KeyEventData, before: CompSnap) {
+/// 按键进入协调器之前（FR-SEN-01）：先于本键可能产生的上屏发出。`rewrite_hotkey` 为真时
+/// 本键是改写快捷键，不报：它带修饰键，报了会清掉马上要取的“最近上屏”。
+pub(crate) fn before_key(data: &KeyEventData, before: CompSnap, rewrite_hotkey: bool) {
     let Some(tap) = tap() else {
         return;
     };
     KEY_COMMITTED.with(|c| c.set(false));
-    if data.event_type != EVENT_KEY_DOWN {
+    if data.event_type != EVENT_KEY_DOWN || rewrite_hotkey {
         return;
     }
     let Some(kind) = key_kind(data.key_code) else {
@@ -674,6 +703,13 @@ pub(crate) fn on_focus(app: &str, scope: Scope) {
 }
 
 /// 宿主终止了组字（FR-SEN-04）。
+/// 宿主里的选区变了（用户点了别处、选中了文字）：“最近上屏”与光标前的文字对不上了。
+pub(crate) fn on_selection_changed() {
+    if let Some(t) = tap() {
+        t.hook_selection_changed();
+    }
+}
+
 pub(crate) fn on_comp_terminated() {
     if let Some(tap) = tap() {
         tap.hook_comp(CompOp::Terminated, 0);
@@ -710,6 +746,9 @@ mod tests {
         assert_eq!(key_kind(VK_TAB), Some(KeyKind::Other));
         assert_eq!(key_kind(VK_LSHIFT), None);
         assert_eq!(key_kind(VK_CAPITAL), None);
+        for vk in [0x10, 0x11, 0x12, 0xA4, 0xA5, 0x5B, 0x5C] {
+            assert_eq!(key_kind(vk), None, "单按修饰键 {vk:#x}");
+        }
     }
 
     #[test]

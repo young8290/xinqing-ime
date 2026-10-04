@@ -405,6 +405,9 @@ pub fn compile_session_key(name: &str) -> Option<(bool, HotkeyEntry)> {
 /// 心晴：无痕模式快捷键在热键表里的动作名（来自 `xinqing.pause_hotkey`，不是 `keys.*`）。
 pub const XINQING_PAUSE_ACTION: &str = "xinqing_pause";
 
+/// 心晴：温柔改写快捷键的动作名（来自 `xinqing.rewrite_hotkey`）。
+pub const XINQING_REWRITE_ACTION: &str = "xinqing_rewrite";
+
 /// 热键编译器
 pub struct Compiler {
     config: Config,
@@ -430,6 +433,8 @@ impl Compiler {
             ("take_screenshot", &h.take_screenshot),
             // 心晴：无痕模式开关（FR-SEN-06），英文态下也要能暂停
             (XINQING_PAUSE_ACTION, &self.config.xinqing.pause_hotkey),
+            // 心晴：温柔改写（FR-RWR-01），改写的是已上屏的文字，英文态下也能用
+            (XINQING_REWRITE_ACTION, &self.config.xinqing.rewrite_hotkey),
         ] {
             if let Some(raw) = parse_hotkey(value) {
                 result.key_down.push(HotkeyEntry {
@@ -1965,6 +1970,29 @@ mod tests {
             .iter()
             .filter(|e| (e.match_hash >> 16) == MOD_ALT)
             .collect()
+    }
+
+    /// 心晴：改写快捷键出厂为 Ctrl+Alt+R，同样不带策略位；填 `none` 时不进表。
+    #[test]
+    fn xinqing_rewrite_hotkey_compiles_without_policy_bits() {
+        let compiled = Compiler::new(Config::default()).compile();
+        let e = compiled
+            .key_down
+            .iter()
+            .find(|e| e.action == XINQING_REWRITE_ACTION)
+            .expect("出厂应绑定改写快捷键");
+        assert_eq!(Some(e.match_hash), parse_hotkey("ctrl+alt+r"));
+        assert_eq!(e.tsf_hash, e.match_hash);
+
+        let mut cfg = Config::default();
+        cfg.xinqing.rewrite_hotkey = "none".into();
+        let compiled = Compiler::new(cfg).compile();
+        assert!(
+            compiled
+                .key_down
+                .iter()
+                .all(|e| e.action != XINQING_REWRITE_ACTION)
+        );
     }
 
     /// 心晴：无痕快捷键出厂为 Ctrl+Alt+P，中英文态都生效（不带任何策略位）；

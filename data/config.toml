@@ -1674,6 +1674,9 @@ app_blocklist = ["*bank*", "*pay*", "KeePass*.exe", "1Password*.exe", "Bitwarden
 app_allowlist = []
 # 暂停感知（无痕模式）的快捷键，再按一次恢复。"none" 表示不绑。
 pause_hotkey = "ctrl+alt+p"
+# 温柔改写的快捷键：把刚打的一段话（或剪贴板里的文字）改得更温和。"none" 表示不绑。
+# 只有在心晴里同意了“温柔改写”后才会把这段文字发给 AI 服务。
+rewrite_hotkey = "ctrl+alt+r"
 # 是否记住暂停状态。默认不记住：重启输入法后自动恢复感知，免得忘了重新打开。
 remember_pause = false
 # 输入法启动时自动打开心晴，心晴意外退出后自动重新打开（10 分钟内最多 3 次）。

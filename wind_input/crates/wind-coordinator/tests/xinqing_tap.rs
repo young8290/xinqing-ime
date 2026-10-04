@@ -1,5 +1,5 @@
-//! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04～A-07，产品书 18 的 FR-SEN-01～06、
-//! FR-OPS-03、FR-IME-02、FR-ENT-01/02/03）。
+//! 心晴：协调器钩子接到 `wind-xinqing-tap` 的端到端测试（A-04～A-08，产品书 18 的 FR-SEN-01～06、
+//! FR-OPS-03、FR-IME-02、FR-ENT-01/02/03、FR-RWR-01～04）。
 //!
 //! 装一个本机 TCP 的 Tap，测试扮演 Hub 握手并下发 `cfg{collect:true}`，再经 `MessageHandler`
 //! 驱动 headless 协调器，断言 Hub 收到的上行事件。Tap 是进程级单例，所以整个文件只有一个测试。
@@ -8,7 +8,7 @@
 use std::io::ErrorKind;
 use std::net::TcpStream;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
@@ -17,20 +17,27 @@ use wind_bridge::handler::KeyAction;
 use wind_bridge::handler::{FocusData, KeyEventData, MessageHandler};
 use wind_config::Config;
 use wind_coordinator::Coordinator;
+use wind_coordinator::host_services::HostServices;
 use wind_coordinator::xinqing::{self, HubView};
 use wind_ipc::protocol::EVENT_KEY_DOWN;
 use wind_ipc::protocol::{MOD_ALT, MOD_CTRL};
 use wind_ui_types::{MenuCmd, ToolbarAction, UiCommand, XinqingCell, XinqingWeather};
 use wind_xinqing_tap::guard::{GuardState, HubGuard, Launcher};
 use wind_xinqing_tap::{
-    ByeReason, CompOp, Down, Endpoint, KeyKind, MoodState, OpenTarget, PauseBy, Scope, Tap,
-    TapConfig,
+    ByeReason, CompOp, Down, Endpoint, KeyKind, MoodState, OpenTarget, PauseBy, RewriteFailReason,
+    RewriteOutcome, RewriteSource, RewriteStyle, Scope, Tap, TapConfig,
 };
 use xqp::Up;
 
 const VK_A: u32 = 0x41;
 const VK_B: u32 = 0x42;
 const VK_P: u32 = 0x50;
+const VK_R: u32 = 0x52;
+const VK_1: u32 = 0x31;
+const VK_TAB: u32 = 0x09;
+const VK_SPACE: u32 = 0x20;
+const VK_LEFT: u32 = 0x25;
+const VK_LCONTROL: u32 = 0xA2;
 const VK_RETURN: u32 = 0x0D;
 const VK_ESCAPE: u32 = 0x1B;
 const PASSWORD_MASK: u64 = 1 << 31;
@@ -61,6 +68,16 @@ fn focus(pid: u32, name: &str, input_scope_mask: u64) -> FocusData {
         caret_source: wind_ipc::protocol::caret_source::GUI_CARET,
         bundle_id: name.into(),
         window_class: String::new(),
+    }
+}
+
+/// 测试用剪贴板：改写的第二来源（FR-RWR-01）。
+#[derive(Default)]
+struct Clip(Mutex<String>);
+
+impl HostServices for Clip {
+    fn clipboard_get_text(&self) -> anyhow::Result<String> {
+        Ok(self.0.lock().unwrap().clone())
     }
 }
 
@@ -184,6 +201,8 @@ fn coordinator_events_reach_hub() {
     let mut c = Config::default();
     c.input.default.chinese_mode = true;
     let (coord, ui) = Coordinator::new_headless_with_ui(c, None);
+    let clip = Arc::new(Clip::default());
+    coord.set_host_services(Arc::clone(&clip) as Arc<dyn HostServices>);
     xinqing::attach(&coord);
 
     let s = TcpStream::connect(tap.local_addr().unwrap()).unwrap();
@@ -449,6 +468,258 @@ fn coordinator_events_reach_hub() {
     ));
     assert!(matches!(hub.recv(), Up::Focus { .. }));
     assert!(!tap.paused());
+
+    // 温柔改写（A-08）：Hub 下发同意 ⑥ 之后，上屏的文字记进“最近上屏”
+    hub.send(&Down::Cfg {
+        collect: true,
+        send_text: false,
+        rewrite: true,
+        app_blocklist: None,
+        app_allowlist: None,
+    });
+    wait_until(|| tap.rewrite_enabled());
+    coord.handle_key_event_policed(&key(VK_A));
+    coord.handle_key_event_policed(&key(VK_B));
+    coord.handle_key_event_policed(&key(VK_RETURN));
+    hub.until(|u| matches!(u, Up::Commit { .. }));
+    let _ = tips(&ui);
+    let phase = || coord.debug_xinqing_rewrite_phase();
+    let mut ctrl_alt_r = key(VK_R);
+    ctrl_alt_r.modifiers = MOD_CTRL | MOD_ALT;
+    let enter_rewrite = |hub: &mut Hub| -> (u32, RewriteSource, String, Option<u32>) {
+        assert!(matches!(
+            coord.handle_key_event_policed(&ctrl_alt_r),
+            KeyAction::Consumed
+        ));
+        let (up, skipped) = hub.until(|u| matches!(u, Up::RewriteReq { .. }));
+        assert!(
+            !skipped.iter().any(|u| matches!(
+                u,
+                Up::Key {
+                    kind: KeyKind::Other,
+                    ..
+                }
+            )),
+            "改写快捷键本身不报 key，报了会先清掉最近上屏：{skipped:?}"
+        );
+        match up {
+            Up::RewriteReq {
+                req_id,
+                source,
+                text,
+                style,
+                replace_len,
+                ..
+            } => {
+                assert_eq!(style, RewriteStyle::Gentle, "每次进入都从“更温和”开始");
+                (req_id, source, text, replace_len)
+            }
+            _ => unreachable!(),
+        }
+    };
+    let done = |hub: &mut Hub| match hub.until(|u| matches!(u, Up::RewriteDone { .. })).0 {
+        Up::RewriteDone {
+            req_id,
+            chosen,
+            outcome,
+            ..
+        } => (req_id, chosen, outcome),
+        _ => unreachable!(),
+    };
+
+    // 来源一：最近上屏，替换原文（UTF-16 长度）
+    let (req, source, text, replace_len) = enter_rewrite(&mut hub);
+    assert_eq!(
+        (source, text.as_str(), replace_len),
+        (RewriteSource::Recent, "ab", Some(2))
+    );
+    assert_eq!(phase().as_deref(), Some("waiting:更温和"));
+    hub.send(&Down::RewriteResult {
+        req_id: req,
+        style: RewriteStyle::Gentle,
+        cands: vec!["甲".into(), "乙".into()],
+    });
+    wait_until(|| phase().as_deref() == Some("showing:更温和:甲|乙"));
+    // 单按 Ctrl（为按 Ctrl+数字）不退出
+    let mut ctrl = key(VK_LCONTROL);
+    ctrl.modifiers = MOD_CTRL;
+    coord.handle_key_event_policed(&ctrl);
+    assert_eq!(phase().as_deref(), Some("showing:更温和:甲|乙"));
+    // Tab 换风格：重新请求，迟到的旧结果不打扰
+    assert!(matches!(
+        coord.handle_key_event_policed(&key(VK_TAB)),
+        KeyAction::Consumed
+    ));
+    let req2 = match hub.until(|u| matches!(u, Up::RewriteReq { .. })).0 {
+        Up::RewriteReq {
+            req_id,
+            style,
+            text,
+            replace_len,
+            ..
+        } => {
+            assert_eq!(style, RewriteStyle::Polite);
+            assert_eq!((text.as_str(), replace_len), ("ab", Some(2)));
+            assert_ne!(req_id, req);
+            req_id
+        }
+        _ => unreachable!(),
+    };
+    assert_eq!(phase().as_deref(), Some("waiting:更礼貌得体"));
+    hub.send(&Down::RewriteResult {
+        req_id: req,
+        style: RewriteStyle::Gentle,
+        cands: vec!["迟到".into()],
+    });
+    hub.send(&Down::RewriteResult {
+        req_id: req2,
+        style: RewriteStyle::Polite,
+        cands: vec!["丙".into()],
+    });
+    wait_until(|| phase().as_deref() == Some("showing:更礼貌得体:丙"));
+    // 候选只有 1 个，按 2 不动
+    assert!(matches!(
+        coord.handle_key_event_policed(&key(VK_1 + 1)),
+        KeyAction::Consumed
+    ));
+    assert!(phase().is_some());
+    match coord.handle_key_event_policed(&key(VK_1)) {
+        KeyAction::ReplaceBackward { count, text } => assert_eq!((count, text.as_str()), (2, "丙")),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(phase(), None);
+    assert_eq!(
+        done(&mut hub),
+        (req2, Some(0), RewriteOutcome::Replaced),
+        "rewrite_done 不带文字"
+    );
+    assert!(
+        tips(&ui).iter().any(|(t, _)| t == "已改写，Ctrl+Z 可撤销"),
+        "替换后提示可撤销"
+    );
+
+    // 来源二：光标挪过（最近上屏作废），读剪贴板，插入
+    *clip.0.lock().unwrap() = "  今天好累啊  ".into();
+    coord.handle_key_event_policed(&key(VK_LEFT));
+    let (req, source, text, replace_len) = enter_rewrite(&mut hub);
+    assert_eq!(
+        (source, text.as_str(), replace_len),
+        (RewriteSource::Clipboard, "今天好累啊", None)
+    );
+    hub.send(&Down::RewriteResult {
+        req_id: req,
+        style: RewriteStyle::Gentle,
+        cands: vec!["丁".into(), "戊".into()],
+    });
+    wait_until(|| phase().as_deref() == Some("showing:更温和:丁|戊"));
+    match coord.handle_key_event_policed(&key(VK_SPACE)) {
+        KeyAction::InsertText { text, .. } => assert_eq!(text, "丁", "空格选第 1 个"),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(done(&mut hub), (req, Some(0), RewriteOutcome::Inserted));
+
+    // Ctrl+数字只复制
+    coord.handle_key_event_policed(&key(VK_LEFT));
+    let (req, ..) = enter_rewrite(&mut hub);
+    hub.send(&Down::RewriteResult {
+        req_id: req,
+        style: RewriteStyle::Gentle,
+        cands: vec!["己".into(), "庚".into()],
+    });
+    wait_until(|| phase().is_some_and(|p| p.starts_with("showing")));
+    let mut ctrl_2 = key(VK_1 + 1);
+    ctrl_2.modifiers = MOD_CTRL;
+    let _ = ui.try_iter().count();
+    assert!(matches!(
+        coord.handle_key_event_policed(&ctrl_2),
+        KeyAction::Consumed
+    ));
+    assert!(
+        ui.try_iter()
+            .any(|c| matches!(c, UiCommand::CopyToClipboard(ref t) if t == "庚"))
+    );
+    assert_eq!(done(&mut hub), (req, Some(1), RewriteOutcome::Copied));
+
+    // 表外的键：退出模式再照常处理；要交给宿主的键改成由 C++ 重放（它已经吃了这个键）
+    let (req, ..) = enter_rewrite(&mut hub);
+    assert!(matches!(
+        coord.handle_key_event_policed(&key(VK_LEFT)),
+        KeyAction::ClearCompositionThenPassThrough
+    ));
+    assert_eq!(phase(), None);
+    assert_eq!(done(&mut hub), (req, None, RewriteOutcome::Cancelled));
+    let (req, ..) = enter_rewrite(&mut hub);
+    assert!(!matches!(
+        coord.handle_key_event_policed(&key(VK_A)),
+        KeyAction::Consumed | KeyAction::PassThrough | KeyAction::ClearCompositionThenPassThrough
+    ));
+    assert_eq!(done(&mut hub), (req, None, RewriteOutcome::Cancelled));
+    let (up, _) = hub.until(|u| matches!(u, Up::Comp { .. }));
+    assert!(matches!(up, Up::Comp { op: CompOp::Update, .. }), "字母进了组字");
+    coord.handle_key_event_policed(&key(VK_ESCAPE));
+    // 组字时按改写快捷键：先上屏再改写
+    coord.handle_key_event_policed(&key(VK_A));
+    let _ = tips(&ui);
+    assert!(matches!(
+        coord.handle_key_event_policed(&ctrl_alt_r),
+        KeyAction::Consumed
+    ));
+    assert_eq!(phase(), None);
+    assert_eq!(tips(&ui), vec![("先上屏再改写哦".to_string(), 2500)]);
+    coord.handle_key_event_policed(&key(VK_ESCAPE));
+
+    // Esc 取消
+    let (req, ..) = enter_rewrite(&mut hub);
+    assert!(matches!(
+        coord.handle_key_event_policed(&key(VK_ESCAPE)),
+        KeyAction::Consumed
+    ));
+    assert_eq!(done(&mut hub), (req, None, RewriteOutcome::Cancelled));
+
+    // 危机内容：不改写，退出并邀请聊聊（FR-RWR-05 第 3 条）
+    let (req, ..) = enter_rewrite(&mut hub);
+    let _ = tips(&ui);
+    hub.send(&Down::RewriteFail {
+        req_id: req,
+        reason: RewriteFailReason::Crisis,
+    });
+    assert_eq!(done(&mut hub), (req, None, RewriteOutcome::Failed));
+    assert_eq!(phase(), None);
+    assert!(tips(&ui).iter().any(|(t, _)| t.contains("和晴晴聊聊")));
+
+    // 其余失败：候选框里提示 1.5 秒后退出
+    let (req, ..) = enter_rewrite(&mut hub);
+    hub.send(&Down::RewriteFail {
+        req_id: req,
+        reason: RewriteFailReason::Budget,
+    });
+    wait_until(|| phase().as_deref() == Some("failed:今天的改写次数用完了"));
+    assert_eq!(done(&mut hub), (req, None, RewriteOutcome::Failed));
+    assert_eq!(phase(), None);
+
+    // 没同意 ⑥：不进模式，提示并请 Hub 打开设置问一次
+    hub.send(&Down::Cfg {
+        collect: true,
+        send_text: false,
+        rewrite: false,
+        app_blocklist: None,
+        app_allowlist: None,
+    });
+    wait_until(|| !tap.rewrite_enabled());
+    let _ = tips(&ui);
+    assert!(matches!(
+        coord.handle_key_event_policed(&ctrl_alt_r),
+        KeyAction::Consumed
+    ));
+    match hub.until(|u| matches!(u, Up::Open { .. })).0 {
+        Up::Open { target, .. } => assert_eq!(target, OpenTarget::Settings),
+        _ => unreachable!(),
+    }
+    assert_eq!(phase(), None);
+    assert_eq!(
+        tips(&ui),
+        vec![("要先在心晴里同意“温柔改写”".to_string(), 2500)]
+    );
 
     // Hub 正常退出（发 bye）：守护不重拉，菜单出现“点击重试”，点了才再拉起
     hub.send(&Down::Bye {
