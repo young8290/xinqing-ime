@@ -23,11 +23,14 @@ A-04 已接好，代码在 `wind-coordinator/src/xinqing.rs`（钩子点见那�
 TCP；重启前调 `shutdown`。按键与组字在 `handle_key_event_policed` 前后各取一次（组字长度、页码）
 快照，差异推出 `comp{update/cancel/clear}`、`cand{page}`；选词在上屏钩子里发 `cand{select}`。
 
+A-05 接上了输入法配置 `[xinqing]`（`enabled`、`app_blocklist`、`app_allowlist`、`pause_hotkey`、
+`remember_pause`，出厂黑名单 `XINQING_DEFAULT_BLOCKLIST` 与产品书 04 FR-SEN-05 一致）和无痕的菜单、快捷键；
+Hub 下发的 `pause` 也会记进 state.toml。握手完成时核心若处于无痕，补发 `pause_changed{on:true}`（ADR 0009 第 7 条）。
+
 还没接的：
 
-- `xinqing.enabled` 与应用名单的配置（A-05/A-06），现在用默认值启动，采集仍以 Hub 的 `cfg` 为准。
-- `downlink` 只记 debug 日志；`pause`、`mood`、`badge`、`tip` 的界面处理在 A-06/A-07。
-- 无痕的菜单与快捷键（A-05）、入口按钮 `send_open`（A-07）、安全桌面、改写模式（A-08）。
+- `downlink` 除 `pause` 外只记 debug 日志；`mood`、`badge`、`tip` 的界面处理在 A-06/A-07。
+- 小精灵闭眼、工具栏变灰（FR-SEN-06 第 3 条）、入口按钮 `send_open`（A-07）、安全桌面、改写模式（A-08）。
 - 组字长度只看 `input_buffer`，临时拼音、临时英文等独占模式的缓冲不计。
 
 ## 约束
@@ -38,5 +41,5 @@ TCP；重启前调 `shutdown`。按键与组字在 `handle_key_event_policed` �
 
 ## 测试
 
-`cargo test -p wind-xinqing-tap`：单元测试覆盖闸门与缓冲；`tests/tap.rs` 用本机 TCP 扮演 Hub，覆盖握手、版本不符、闸门、`send_text`、无痕、下行回调、新连接顶替、断线撤销同意、队列满丢弃与心跳计数、停用、改写。
+`cargo test -p wind-xinqing-tap`：单元测试覆盖闸门与缓冲；`tests/tap.rs` 用本机 TCP 扮演 Hub，覆盖握手、版本不符、闸门、`send_text`、无痕（含连上前已开启）、下行回调、新连接顶替、断线撤销同意、队列满丢弃与心跳计数、停用、改写。
 命名管道部分只能在 Windows 上验证；Linux 上可用 `cargo clippy -p wind-xinqing-tap --target x86_64-pc-windows-gnu` 做编译检查。

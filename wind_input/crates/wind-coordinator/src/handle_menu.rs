@@ -285,6 +285,10 @@ impl Coordinator {
             MenuCmd::OpenLogDir => self.open_dir(Config::log_dir()),
             MenuCmd::ToggleInputDiagnostics => self.toggle_input_diag_hud(),
             MenuCmd::TogglePasswordSuppress => self.toggle_password_suppress(),
+            // 心晴：无痕模式（FR-SEN-06）
+            MenuCmd::XinqingTogglePause => {
+                let _ = self.xinqing_toggle_pause(wind_xinqing_tap::PauseBy::Menu);
+            }
             MenuCmd::FirstShowMode(m) => self.set_first_show_mode(m),
             MenuCmd::AutoPairRule(m) => self.set_auto_pair_rule(m),
             MenuCmd::CompatRuleEnabled(m) => self.set_compat_rule_enabled(m == 1),
@@ -2037,6 +2041,20 @@ impl Coordinator {
             M::separator(),
         ];
         items.extend(display_toggles);
+        // 心晴：无痕模式开关（FR-SEN-06 / FR-ENT-01）。心晴没启动时不显示。
+        // 「心晴」分组的其余项（和晴晴聊聊、情绪看板等）在 A-07 补齐。
+        if let Some(paused) = crate::xinqing::paused() {
+            items.push(M::leaf(
+                if paused {
+                    "恢复感知"
+                } else {
+                    "暂停感知"
+                },
+                cmd(MenuCmd::XinqingTogglePause),
+                true,
+                false,
+            ));
+        }
         items.extend([
             M::submenu("主题", theme_children),
             M::separator(),

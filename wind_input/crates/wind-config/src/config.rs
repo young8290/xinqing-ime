@@ -676,6 +676,9 @@ pub struct Config {
     pub debug: DebugConfig,
     #[serde(default)]
     pub system: SystemConfig,
+    /// 心晴：采集开关、应用名单与无痕模式（产品书 10 第 6.1 节）。
+    #[serde(default)]
+    pub xinqing: XinqingConfig,
     /// 移动端对上面各域的覆盖；桌面构建完全无视。见 [`MobileConfig`]。
     #[serde(default)]
     pub mobile: MobileConfig,
@@ -6742,6 +6745,65 @@ impl Default for StatsConfig {
             enabled: true,
             track_english: true,
             speed_factor: default_speed_factor(),
+        }
+    }
+}
+
+// ───────────────────────── xinqing（心晴）─────────────────────────
+
+/// 心晴的采集配置（产品书 10 第 6.1 节，FR-SEN-05/06）。
+///
+/// 同意相关的开关（采集、发送文本）**不在这里**：由 Hub 每次连接时用 `cfg` 下发，
+/// 只有一个真相源。Hub 的 `cfg` 带应用名单时也以 Hub 为准。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct XinqingConfig {
+    /// 心晴总开关（FR-IME-02）。关闭后不开管道、不采集。
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// 应用黑名单：进程名通配符（`*`、`?`），忽略大小写。
+    #[serde(default = "default_xinqing_blocklist")]
+    pub app_blocklist: Vec<String>,
+    /// 应用白名单：非空时只在名单内的应用采集。
+    #[serde(default)]
+    pub app_allowlist: Vec<String>,
+    /// 无痕模式快捷键（FR-SEN-06），`"none"` 或空串表示不绑。
+    #[serde(default = "default_xinqing_pause_hotkey")]
+    pub pause_hotkey: String,
+    /// 是否记住无痕状态；不记住时每次启动都从“未暂停”开始，免得用户忘了重新打开。
+    #[serde(default)]
+    pub remember_pause: bool,
+}
+
+/// 出厂黑名单（FR-SEN-05）。与 `wind_xinqing_tap::DEFAULT_BLOCKLIST` 必须一致
+/// （本 crate 不依赖它，由 wind-coordinator 的测试对照）。
+pub const XINQING_DEFAULT_BLOCKLIST: &[&str] = &[
+    "*bank*",
+    "*pay*",
+    "KeePass*.exe",
+    "1Password*.exe",
+    "Bitwarden*.exe",
+    "mstsc.exe",
+];
+
+fn default_xinqing_blocklist() -> Vec<String> {
+    XINQING_DEFAULT_BLOCKLIST
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+fn default_xinqing_pause_hotkey() -> String {
+    "ctrl+alt+p".into()
+}
+
+impl Default for XinqingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            app_blocklist: default_xinqing_blocklist(),
+            app_allowlist: Vec::new(),
+            pause_hotkey: default_xinqing_pause_hotkey(),
+            remember_pause: false,
         }
     }
 }

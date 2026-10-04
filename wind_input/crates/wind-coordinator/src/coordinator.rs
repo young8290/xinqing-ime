@@ -4147,6 +4147,8 @@ impl Coordinator {
         // `input.rare_char.include_blocks` 在 input 段，改它不会把 schema 标脏，
         // 放进那个分支等于「改了没反应，切一次方案才生效」。见 `rebuild_charsets`。
         self.engine_mgr.rebuild_charsets(&bundle.config);
+        // 心晴：同 `reload_user_config`。
+        crate::xinqing::apply_config(&bundle.config.xinqing);
         *self.rt.write().unwrap_or_else(|e| e.into_inner()) = bundle;
         // 状态气泡去重缓存只在"内容配置不变"的前提下有效：改了 ui.status.items 之类后，
         // 同一状态该合成出不同文本，留着旧缓存会把改动后的第一次显示误判成"内容没变"而吞掉。
@@ -4191,6 +4193,8 @@ impl Coordinator {
                 // 文本查表、与编码域无关，本就不是某个方案的属性。自带变更检测（只看
                 // enabled/categories），未变即空操作。
                 self.sync_emoji_dict();
+                // 心晴：总开关与应用名单（`[xinqing]`）跟随热重载，不必重启服务。
+                crate::xinqing::apply_config(&new_cfg.xinqing);
                 // 语言栏图标的呈现参数同理跟随全局配置（`[ui.langbar]`），也不属 schema。
                 // 少了这一步，改角标形状/配色要重启才生效——「改了没反应、重启就好」正是
                 // 本仓反复出现的那类缺陷（运行时镜像态没回灌）。自带变更检测，未变即空操作。

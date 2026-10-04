@@ -1145,6 +1145,14 @@ impl MessageHandler for Coordinator {
                 if state.chinese_mode {
                     return self.open_add_word_from_history(&mut state);
                 }
+            } else if action == hotkey::XINQING_PAUSE_ACTION {
+                // 心晴：无痕模式开关（FR-SEN-06）。心晴没启动时不吞键，交给下面的常规链路。
+                if self
+                    .xinqing_toggle_pause(wind_xinqing_tap::PauseBy::Hotkey)
+                    .is_some()
+                {
+                    return KeyAction::Consumed;
+                }
             } else if let Some(act) = self.dispatch_bound_action_hotkey(&action) {
                 // 其余动词统一按 `BoundAction` 分派——组合键与单键、修饰键同一个值域。
                 // 热键上下文专有的三条（key_code=0 哨兵 / chinese_mode 守卫 / 幂等）
