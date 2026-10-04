@@ -591,7 +591,7 @@ const TEMPLATE_ORDER: i32 = 5;
 /// 会以为改它就生效（那正是改成库存储要消灭的误解）。
 fn default_edit_dir() -> PathBuf {
     std::env::temp_dir()
-        .join("WindInput")
+        .join("XinQing")
         .join(charset_def::CHARSETS_DIR_NAME)
 }
 

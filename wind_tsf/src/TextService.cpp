@@ -1585,7 +1585,7 @@ void CTextService::_UninitThreadMgrEventSink()
 // 取到相同 ID。
 static UINT GetRetryHotkeyMessageId()
 {
-    static UINT s_msg = RegisterWindowMessageW(L"WindInputHotkeyRetry_v1");
+    static UINT s_msg = RegisterWindowMessageW(L"XinQingHotkeyRetry_v1");
     return s_msg;
 }
 
@@ -1662,11 +1662,11 @@ static constexpr ULONGLONG kActivateSettleMs = 250;
 // 窗口类名按 Debug / Release 区分（class name 是 per-process 不会跨进程冲突，但
 // 命名约定与 pipe / CLSID 等其他跨进程资源保持一致，便于 Spy++ 等工具区分两版本）。
 #ifdef WIND_DEV_VARIANT
-static const wchar_t* kHotkeyWndClassName = L"WindInputHotkeyWndDebug";
-static const wchar_t* kHotkeyWndTitle     = L"WindInputHotkeyDebug";
+static const wchar_t* kHotkeyWndClassName = L"XinQingHotkeyWndDebug";
+static const wchar_t* kHotkeyWndTitle     = L"XinQingHotkeyDebug";
 #else
-static const wchar_t* kHotkeyWndClassName = L"WindInputHotkeyWnd";
-static const wchar_t* kHotkeyWndTitle     = L"WindInputHotkey";
+static const wchar_t* kHotkeyWndClassName = L"XinQingHotkeyWnd";
+static const wchar_t* kHotkeyWndTitle     = L"XinQingHotkey";
 #endif
 // 候选热键（置顶/删除）的 id 段。**id 与具体组合键之间不再有约定**：注册时按服务端
 // SESSION 热键表的迭代序顺次取 id，并把 (id, rawHash) 记进 _candidateHotkeyIds，
@@ -2101,7 +2101,7 @@ LRESULT CALLBACK CTextService::_HotkeyWndProc(HWND hWnd, UINT msg, WPARAM wParam
                 if (self->_hotkeysActive) self->_UnregisterCandidateHotkeys();
                 if (self->_addWordHotkeysActive) self->_UnregisterAddWordHotkeys();
                 // 通知前台 IME 立即重试
-                const wchar_t* classNames[] = { L"WindInputHotkeyWnd", L"WindInputHotkeyWndDebug" };
+                const wchar_t* classNames[] = { L"XinQingHotkeyWnd", L"XinQingHotkeyWndDebug" };
                 UINT retryMsg = GetRetryHotkeyMessageId();
                 for (auto cls : classNames)
                 {
@@ -2156,7 +2156,7 @@ LRESULT CALLBACK CTextService::_HotkeyWndProc(HWND hWnd, UINT msg, WPARAM wParam
                 if (self->_addWordHotkeysActive) self->_UnregisterAddWordHotkeys();
                 // 通知前台进程的 IME hidden window 立即重试注册（避免它要等下次
                 // 候选变化才发现热键空了）。两个变体的 class name 都搜。
-                const wchar_t* classNames[] = { L"WindInputHotkeyWnd", L"WindInputHotkeyWndDebug" };
+                const wchar_t* classNames[] = { L"XinQingHotkeyWnd", L"XinQingHotkeyWndDebug" };
                 UINT retryMsg = GetRetryHotkeyMessageId();
                 for (auto cls : classNames)
                 {

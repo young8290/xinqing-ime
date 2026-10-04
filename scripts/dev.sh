@@ -2,7 +2,7 @@
 # WindInput 开发菜单 (Linux 开发机)
 #
 # ★ 构建不在本机进行 —— 凡会写进 build[_dev]/ 或 dist/ 的命令都转发到 Windows 编译机,
-#   用原生 MSVC 编, 产物回传本机。理由: clang/cargo-xwin 交叉编出的 wind_tsf.dll 在带
+#   用原生 MSVC 编, 产物回传本机。理由: clang/cargo-xwin 交叉编出的 xinqing_tsf.dll 在带
 #   安全加固的宿主里 COM 激活失败, 根因在工具链代码生成层 (6dbc8595)。本机的 cargo-xwin
 #   只剩 check/clippy 一个正当用途 —— 那两个不链接、不产出交付物。
 #   配置: cp scripts/build.local.example scripts/build.local; 未配置时构建类命令硬失败。
@@ -220,8 +220,8 @@ build_core() {
         || { err "wind_input 构建失败!"; return 1; }
     local src="$(cargo_target_dir "$PROJECT_ROOT")/$TARGET/$prof/wind_input.exe"
     [ -f "$src" ] || { err "未找到产物: $src"; return 1; }
-    cp -f "$src" "$outdir/wind_input${suffix}.exe"
-    gray "已构建: wind_input${suffix}.exe ($(fsize "$outdir/wind_input${suffix}.exe"))"
+    cp -f "$src" "$outdir/xinqing_core${suffix}.exe"
+    gray "已构建: xinqing_core${suffix}.exe ($(fsize "$outdir/xinqing_core${suffix}.exe"))"
     # CLI 包装器 (wind_input config ...; 运行时自辨 dev/release exe, 两变体共用一份)
     [ -f "$PROJECT_ROOT/scripts/wind_cli.bat" ] && cp -f "$PROJECT_ROOT/scripts/wind_cli.bat" "$outdir/wind_cli.bat" && gray "已复制: wind_cli.bat"
 }
@@ -414,7 +414,7 @@ build_tsf_all() {
              CLANG="clang++-$WIND_LLVM_VER" LLVM_RC="llvm-rc-$WIND_LLVM_VER" >/dev/null \
           || { err "TSF $a 构建失败！见 'make -C $TSF_DIR ARCH=$a' 输出。"; return 1; }
     done
-    gray "已构建: $(cd "$outdir" && ls wind_tsf*.dll 2>/dev/null | tr '\n' ' ')"
+    gray "已构建: $(cd "$outdir" && ls xinqing_tsf*.dll 2>/dev/null | tr '\n' ' ')"
 }
 
 # ---------- 词库下载 ----------
@@ -734,15 +734,15 @@ remote_ps() {
 
 # 本 profile 的二进制基名（exe/dll）。data/ 不在此（不会被锁，直接 scp 覆盖）。
 #
-# ⚠️ x86 那个是 wind_tsf_x86_dev.dll 而不是 wind_tsf_dev_x86.dll —— 后缀顺序是
-#    base + _x86 + _dev，真源是 wind_tsf/Makefile 的 TARGET := wind_tsf$(ARCHSUFFIX)$(DBGSUFFIX)。
+# ⚠️ x86 那个是 xinqing_tsf_x86_dev.dll 而不是 xinqing_tsf_dev_x86.dll —— 后缀顺序是
+#    base + _x86 + _dev，真源是 wind_tsf/Makefile 的 TARGET := xinqing_tsf$(ARCHSUFFIX)$(DBGSUFFIX)。
 #    写反了【只在 dev 变体上发作】(release 的 sfx 为空，两种写法碰巧同名)，且是静默的:
 #    remote_rename_aside 的 Test-Path 为假就跳过，不报错；于是它从不让路，仅当恰好有
-#    32 位宿主正加载着它时 scp 覆盖才失败。判据: 靶机 dev 目录里 wind_tsf_dev.dll 攒了
-#    一堆 .old_*，而 wind_tsf_x86_dev.dll 一个都没有 —— 那就是它从没被让路过。
+#    32 位宿主正加载着它时 scp 覆盖才失败。判据: 靶机 dev 目录里 xinqing_tsf_dev.dll 攒了
+#    一堆 .old_*，而 xinqing_tsf_x86_dev.dll 一个都没有 —— 那就是它从没被让路过。
 bins_for() {
     local sfx=""; [ "$1" = dev ] && sfx="_dev"
-    printf '%s\n' "wind_input${sfx}.exe" "wind_tsf${sfx}.dll" "wind_tsf_x86${sfx}.dll"
+    printf '%s\n' "xinqing_core${sfx}.exe" "xinqing_tsf${sfx}.dll" "xinqing_tsf_x86${sfx}.dll"
 }
 
 # 把 bash 列表转成 PowerShell 字符串数组字面量： a b → 'a','b'
@@ -773,9 +773,9 @@ remote_taskkill() {
     [ "$profile" = dev ] && sfx="_dev"
     local procs=()
     case "$mod" in
-        core)    procs=("wind_input${sfx}.exe") ;;
-        tsf)     procs=("wind_input${sfx}.exe") ;;  # 改 DLL 也需停宿主
-        "")      procs=("wind_input${sfx}.exe" "wind_setting${sfx}.exe") ;;
+        core)    procs=("xinqing_core${sfx}.exe") ;;
+        tsf)     procs=("xinqing_core${sfx}.exe") ;;  # 改 DLL 也需停宿主
+        "")      procs=("xinqing_core${sfx}.exe" "wind_setting${sfx}.exe") ;;
     esac
     local p
     for p in "${procs[@]}"; do
@@ -856,7 +856,7 @@ deploy_guard_close() {
 # （症状：部署后看不到进程）。改用计划任务(schtasks)在用户交互会话拉起，脱离 SSH 生命周期。
 #
 # ★ 判据是「运行中进程映像 = 安装目录里那份 exe」（MD5 相同且映像路径不是 .old_*），
-#   不是「有个叫 wind_input*.exe 的进程」：后者在推送途中被拉起的旧进程（映像已被改名成
+#   不是「有个叫 xinqing_core*.exe 的进程」：后者在推送途中被拉起的旧进程（映像已被改名成
 #   .old_*）面前恒真，见 remote_deploy_guard。
 #   期望值取**远端**安装目录里的 exe，不取本地产物：只推 tsf（pm1/pdm1）时远端 exe 本就
 #   不是本地这份，拿本地比会把好好的进程当旧版本杀掉；全量/core 推送后远端那份即新文件。
@@ -866,7 +866,7 @@ deploy_guard_close() {
 #   映像路径读不到（权限不足时 Path 为 null）的进程无从比对，单独报出、不当版本不符去杀。
 remote_start_main() {
     local profile="$1" sfx=""; [ "$profile" = dev ] && sfx="_dev"
-    local name="wind_input${sfx}" exe="$REMOTE_DIR/wind_input${sfx}.exe"
+    local name="xinqing_core${sfx}" exe="$REMOTE_DIR/xinqing_core${sfx}.exe"
     local want; want="$(remote_ps "(Get-FileHash -Algorithm MD5 -LiteralPath '$exe' -EA Stop).Hash" 2>/dev/null | tr -d '\r' | tail -1)"
     [[ "$want" =~ ^[0-9A-F]{32}$ ]] || { err "读不到远端 $exe 的 MD5，无法校验运行中的版本"; return 1; }
     if [ -n "${2:-}" ]; then
@@ -922,7 +922,7 @@ Unregister-ScheduledTask -TaskName 'WindInputDeployBoot' -Confirm:\$false" >/dev
 #   那份旧 DLL，**且全程没有任何报错**：scp 成功、进程重启成功、MD5 与本地一致 ——
 #   一致的是没人加载的那份。2026-09-15 靶机实测因此空转了四轮，判据全落在 Program Files
 #   那份上，而 Notepad 里跑的是三天前的 DLL（真凭据是 TSF 日志首行的 build=<日期>，
-#   以及 Get-Process 的 Modules 里 wind_tsf*.dll 的 FileName）。
+#   以及 Get-Process 的 Modules 里 xinqing_tsf*.dll 的 FileName）。
 #
 # 源取远端安装目录里刚推上去的那份（不二次 scp）；改名让路后覆盖，再回校 hash。
 remote_sync_tsf_system_copy() {
@@ -938,8 +938,8 @@ remote_sync_tsf_system_copy() {
 if(-not [Environment]::Is64BitProcess){ throw '需要 64 位 PowerShell（32 位进程访问 System32 会被 WOW64 重定向到 SysWOW64）' }; \
 \$stamp=Get-Date -Format 'yyyyMMddHHmmss'; \
 \$pairs=@( \
- @{src=Join-Path '$REMOTE_DIR' 'wind_tsf${sfx}.dll'; dst=Join-Path \$env:SystemRoot 'System32\\IME\\$app\\wind_tsf${sfx}.dll'; required=\$true}, \
- @{src=Join-Path '$REMOTE_DIR' 'wind_tsf_x86${sfx}.dll'; dst=Join-Path \$env:SystemRoot 'SysWOW64\\IME\\$app\\wind_tsf_x86${sfx}.dll'; required=\$false} ); \
+ @{src=Join-Path '$REMOTE_DIR' 'xinqing_tsf${sfx}.dll'; dst=Join-Path \$env:SystemRoot 'System32\\IME\\$app\\xinqing_tsf${sfx}.dll'; required=\$true}, \
+ @{src=Join-Path '$REMOTE_DIR' 'xinqing_tsf_x86${sfx}.dll'; dst=Join-Path \$env:SystemRoot 'SysWOW64\\IME\\$app\\xinqing_tsf_x86${sfx}.dll'; required=\$false} ); \
 \$fail=0; \
 foreach(\$p in \$pairs){ try { \
  if(-not (Test-Path \$p.src)){ \
@@ -1009,7 +1009,7 @@ _push_full_body() {
         # ★ 与 do_push_module 同理：不同步系统副本，新 TSF DLL 不会被任何宿主加载。
         remote_sync_tsf_system_copy "$profile" || return 1
         local sfx=""; [ "$profile" = dev ] && sfx="_dev"
-        remote_start_main "$profile" "$outdir/wind_input${sfx}.exe" || return 1
+        remote_start_main "$profile" "$outdir/xinqing_core${sfx}.exe" || return 1
         remote_cleanup_old
         remote_cleanup_tool_state
         say "已全量部署并启动（$profile）。"
@@ -1034,11 +1034,11 @@ do_push_module() {
     local files=()
     case "$mod" in
         # ★ 名字取自 bins_for 而不是在这里再拼一遍 —— 这两处曾各写一份拼写规则, x86 的
-        #   后缀顺序在此处写反过(wind_tsf_dev_x86 ≠ 真产物 wind_tsf_x86_dev), 修 bins_for
+        #   后缀顺序在此处写反过(xinqing_tsf_dev_x86 ≠ 真产物 xinqing_tsf_x86_dev), 修 bins_for
         #   时又漏掉了这一份。同一个事实只留一个出处。
         tsf)     local b; mapfile -t b < <(bins_for "$profile")
                  files=("${b[1]}" "${b[2]}") ;;                    # [0]=exe [1]=x64 dll [2]=x86 dll
-        core)    files=("wind_input${sfx}.exe")
+        core)    files=("xinqing_core${sfx}.exe")
                  [ -f "$outdir/wind_cli.bat" ] && files+=("wind_cli.bat") ;;  # CLI 包装器随核心
         *)       err "未知模块: $mod（tsf|core）"; return 1 ;;
     esac
@@ -1285,8 +1285,8 @@ do_full() {
     say "\n========== 全构建 ($profile) → $outdir =========="
     sync_version_stamp   # 版本号变化则强制重建关键产物 (确定性保险)
     rm -rf "$outdir"; mkdir -p "$outdir"
-    build_core    "$profile" "$outdir" || return 1   # wind_input[_dev].exe
-    build_tsf_all "$profile" "$outdir" || return 1   # wind_tsf[_x86][_dev].dll
+    build_core    "$profile" "$outdir" || return 1   # xinqing_core[_dev].exe
+    build_tsf_all "$profile" "$outdir" || return 1   # xinqing_tsf[_x86][_dev].dll
     build_setting "$profile" "$outdir" || return 1   # wind_setting[_dev].exe (可选)
     build_portable "$profile" "$outdir" || return 1  # wind_portable.exe (可选)
     do_gen_data   "$outdir"            || return 1   # data/(下载词库 + unigram/pinyin + opencc)
@@ -1303,7 +1303,7 @@ do_installer() {
     local skip="${1:-}"
     if [ "$skip" = "skip" ]; then
         say "\n跳过构建，直接打包现有 $BUILD_DIR/"
-        [ -f "$BUILD_DIR/wind_input.exe" ] || {
+        [ -f "$BUILD_DIR/xinqing_core.exe" ] || {
             err "build/ 无产物；请先运行 'dev.sh installer'（不带 skip）或 'dev.sh 1'。"; return 1; }
     else
         do_full release || return 1
@@ -1322,7 +1322,7 @@ do_portable_zip() {
     local skip="${1:-}"
     if [ "$skip" = "skip" ]; then
         say "\n跳过构建，直接打包现有 $BUILD_DIR/"
-        [ -f "$BUILD_DIR/wind_input.exe" ] || {
+        [ -f "$BUILD_DIR/xinqing_core.exe" ] || {
             err "build/ 无产物；请先运行 'dev.sh portable-zip'（不带 skip）或 'dev.sh 1'。"; return 1; }
     else
         do_full release || return 1
@@ -1341,7 +1341,7 @@ do_portable_zip() {
     rm -f  "$stage/$name"/*.old*          # 部署残留
 
     # 便携标记: 内容与 wind-portable 的 ensure_portable_layout 一致(同 dev.ps1 Write-PortableMarker)。
-    # 有它 wind_input.exe 才把 userdata 落在自身目录; 缺了会退化成安装版行为写 %APPDATA%,
+    # 有它 xinqing_core.exe 才把 userdata 落在自身目录; 缺了会退化成安装版行为写 %APPDATA%,
     # 那样"便携"就名不副实了。
     # 文件名与安装器清单 [app] portable_marker 及 wind-config PORTABLE_MARKER_NAME 统一为
     # portable_mode (旧名 wind_portable_mode 仅保留读取兼容, 新包不再写)。
@@ -1358,8 +1358,8 @@ do_portable_zip() {
     if [ "$has_launcher" = 1 ]; then
         gray "使用: 解压后运行 wind_portable.exe（注册组件并拉起服务）"
     else
-        gray "使用: 包内无便携启动器 —— 需管理员 regsvr32 注册 wind_tsf.dll"
-        gray "      (x86 版用 %SystemRoot%\\SysWOW64\\regsvr32.exe)，再手动运行 wind_input.exe"
+        gray "使用: 包内无便携启动器 —— 需管理员 regsvr32 注册 xinqing_tsf.dll"
+        gray "      (x86 版用 %SystemRoot%\\SysWOW64\\regsvr32.exe)，再手动运行 xinqing_core.exe"
     fi
 }
 
@@ -1417,7 +1417,7 @@ pe_is_native_msvc() {
 
 # ★ 发版产物必须是原生 MSVC 编的 —— stage 的消费侧硬闸门。
 #
-# 原委 (6dbc8595): 交叉编译(clang+lld-link)的 wind_tsf.dll 在部分启用进程级缓解策略的
+# 原委 (6dbc8595): 交叉编译(clang+lld-link)的 xinqing_tsf.dll 在部分启用进程级缓解策略的
 # 宿主中 COM 激活失败。实测两份 DLL 的 PE 安全元数据(DllCharacteristics/SafeSEH)【逐位
 # 相同】, 差异落在【工具链代码生成层】(clang vs cl.exe) —— 换 cargo-xwin 的用法或版本
 # 都解决不了, 也不是 32 位专有(SafeSEH 那条线当时查过, 被排除了)。故 release.yml 的整个
@@ -1465,7 +1465,7 @@ check_native_msvc() {
     err "发版产物不是原生 MSVC 编的, 拒绝出中转包。交叉编译产物 ${#cross[@]} 个:"
     for f in "${cross[@]}"; do err "    $f"; done
     err "  判据: PE 无 Rich header ⇒ lld-link 链接(cargo-xwin / clang), 不是 cl.exe。"
-    err "  原委: 6dbc8595 —— 交叉编的 wind_tsf.dll 在加固宿主 COM 激活失败, 根因在工具链"
+    err "  原委: 6dbc8595 —— 交叉编的 xinqing_tsf.dll 在加固宿主 COM 激活失败, 根因在工具链"
     err "        代码生成层; 签名不改变代码生成, unstage 也验不出来, 故在此拦死。"
     err "  出路: build/ 下的 → 须来自编译机 (dev.sh 1/d1); 本机 dev.sh 1 的产物只能自测。"
     err "        installer-bins/ 下的 → dev.sh instbins 重取 (那条路就是去编译机原生编的)。"
@@ -1479,7 +1479,7 @@ do_stage() {
     outdir="$(out_for "$profile")"
     [ "$profile" = dev ] && { suffix="_dev"; full_cmd="d1"; }
 
-    if [ ! -f "$outdir/wind_input$suffix.exe" ]; then
+    if [ ! -f "$outdir/xinqing_core$suffix.exe" ]; then
         err "无 $outdir 产物; 先跑全构建 ('$full_cmd')。"
         return 1
     fi
@@ -1673,7 +1673,7 @@ Get-ChildItem \$env:APPDATA,\$env:LOCALAPPDATA -Filter 'WindInput*' -Directory -
 # ★★ 为什么必须从编译机取, 而不是在 Linux 上交叉编:
 #    本机 unstage 后 `sign 8s` 会给 pack.ps1 透传 -SkipBuild, 直接拿这三个 exe 打包 ——
 #    其中 wind-installer.exe 就是【Setup.exe 的外壳】, wind-uninstaller.exe 会【装到用户
-#    机器上】。两者都进最终产物、都要签名、都被杀软扫, 因此和 wind_tsf.dll 一样受
+#    机器上】。两者都进最终产物、都要签名、都被杀软扫, 因此和 xinqing_tsf.dll 一样受
 #    6dbc8595 约束: 必须原生 MSVC。交叉编它们等于把已判死的工具链重新放回发版链,
 #    而 check_native_msvc 闸门正会在出口拦下 —— 那时「三件套齐了」反而变成出不了包。
 #    (三个里只有 wind-packer.exe 是纯打包工具、不进产物, 但既然另外两个必须从编译机来,

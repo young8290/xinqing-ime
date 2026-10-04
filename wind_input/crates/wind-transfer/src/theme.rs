@@ -147,7 +147,7 @@ fn read_meta(package: &Path) -> anyhow::Result<ThemeMeta> {
         toml::from_str(&text).map_err(|e| anyhow::anyhow!("{THEME_META_NAME} 解析失败：{e}"))?;
     if meta.package.format_version > THEME_FORMAT_VERSION {
         anyhow::bail!(
-            "主题包格式版本 {} 高于本程序支持的 {THEME_FORMAT_VERSION}，请升级清风输入法",
+            "主题包格式版本 {} 高于本程序支持的 {THEME_FORMAT_VERSION}，请升级心晴输入法",
             meta.package.format_version
         );
     }

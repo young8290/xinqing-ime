@@ -62,11 +62,11 @@
 #
 # 部署目标 (在 scripts\deploy.local.ps1 覆盖, PowerShell 赋值格式):
 #   ── 系统安装 (注册 COM/写自启; 默认在 Program Files 下, 部署自动 UAC 提权)
-#   WIND_DIR_RELEASE          = C:\Program Files\WindInput      # p1 / pm* 目标
-#   WIND_DIR_DEV              = C:\Program Files\WindInputDev   # pd1 / pdm* 目标
+#   WIND_DIR_RELEASE          = C:\Program Files\XinQing      # p1 / pm* 目标
+#   WIND_DIR_DEV              = C:\Program Files\XinQingDev   # pd1 / pdm* 目标
 #   ── 便携部署 (纯复制, 免注册免自启; 无需管理员)
-#   WIND_DIR_PORTABLE_RELEASE = D:\WindInputPortable            # pb1 / pbm* 目标
-#   WIND_DIR_PORTABLE_DEV     = D:\WindInputPortableDev         # pbd1 / pbdm* 目标
+#   WIND_DIR_PORTABLE_RELEASE = D:\XinQingPortable            # pb1 / pbm* 目标
+#   WIND_DIR_PORTABLE_DEV     = D:\XinQingPortableDev         # pbd1 / pbdm* 目标
 #   注: 便携目录【不可】落在 Program Files\ 或 Windows\ 下 —— wind_portable 的
 #       is_protected_dir (layout.rs) 会拒绝在系统保护目录启动便携模式。
 #   注: 便携用户数据在 <便携目录>\userdata\, 重新部署与卸载均保留该目录。
@@ -135,13 +135,13 @@ $CacheDir      = "$ProductRoot\.cache"        # 外部下载/生成 (不入库)
 $DistDir       = "$ProductRoot\dist"          # 安装包输出目录 (gitignore)
 
 # ---------- 部署目标 (Go 便携式: 复制到指定本地目录) ----------
-$WIND_DIR_RELEASE = "C:\Program Files\WindInput"
-$WIND_DIR_DEV     = "C:\Program Files\WindInputDev"
+$WIND_DIR_RELEASE = "C:\Program Files\XinQing"
+$WIND_DIR_DEV     = "C:\Program Files\XinQingDev"
 # 便携部署目标 (绿色版: 纯复制 + 便携标记, 不注册 COM/不写自启, 无需管理员)。
 # 默认放 D:\ 而非 Program Files —— wind_portable 探测到自身位于系统保护目录会直接拒绝
 # 启动便携模式 (wind-portable\src\layout.rs is_protected_dir), 故此处不能沿用安装目录。
-$WIND_DIR_PORTABLE_RELEASE = "D:\WindInputPortable"
-$WIND_DIR_PORTABLE_DEV     = "D:\WindInputPortableDev"
+$WIND_DIR_PORTABLE_RELEASE = "D:\XinQingPortable"
+$WIND_DIR_PORTABLE_DEV     = "D:\XinQingPortableDev"
 # 便携标记文件名与用户数据目录名: 真源是 wind-config\src\variant.rs 的 PORTABLE_MARKER_NAME
 # / PORTABLE_DATA_DIR 常量。标记名已与 config\app.toml 的 portable_marker (安装器侧字段)
 # 统一 —— 此前两侧各叫各的, 安装包便携模式装出的目录主程序不认, 数据落回 %APPDATA%。
@@ -234,9 +234,9 @@ function Build-Core ([string]$profile = "release", [string]$outdir = $null) {
     } finally { Pop-Location }
     $src = Join-Path (Get-CargoTargetDir $ProjectRoot) "$prof\wind_input.exe"
     if (-not (Test-Path $src)) { ErrMsg "未找到产物: $src"; return $false }
-    Copy-Item $src "$outdir\wind_input$suffix.exe" -Force
-    $sz = [math]::Round((Get-Item "$outdir\wind_input$suffix.exe").Length / 1MB, 1)
-    Gray "已构建: wind_input$suffix.exe (${sz}MB)"
+    Copy-Item $src "$outdir\xinqing_core$suffix.exe" -Force
+    $sz = [math]::Round((Get-Item "$outdir\xinqing_core$suffix.exe").Length / 1MB, 1)
+    Gray "已构建: xinqing_core$suffix.exe (${sz}MB)"
     # CLI 包装器 (wind_input config ...; 运行时自辨 dev/release exe, 两变体共用一份)
     $cli = "$ProjectRoot\scripts\wind_cli.bat"
     if (Test-Path $cli) { Copy-Item $cli "$outdir\wind_cli.bat" -Force; Gray "已复制: wind_cli.bat" }
@@ -261,7 +261,7 @@ function Test-PeArch ([string]$path, [string]$platform) {
 }
 
 # ---------- 构建: C++ TSF DLL (x64 + x86; CMake/MSVC) ----------
-# CMakeLists 把 DLL 写死输出到 ..\build[_dev], x86/x64 同名 wind_tsf.dll。
+# CMakeLists 把 DLL 写死输出到 ..\build[_dev], x86/x64 同名 xinqing_tsf.dll。
 # 故先编 x86 → 改名 _x86, 再编 x64 (保留无后缀名), 避免互相覆盖。
 function Build-TsfAll ([string]$profile = "release", [string]$outdir = $null) {
     if (-not $outdir) { $outdir = Out-For $profile }
@@ -291,11 +291,11 @@ function Build-TsfAll ([string]$profile = "release", [string]$outdir = $null) {
             "-DAPP_VERSION_MAJOR=$vMaj" "-DAPP_VERSION_MINOR=$vMin" "-DAPP_VERSION_PATCH=$vPat" `
             | Out-Null
         if ($LASTEXITCODE -ne 0) { ErrMsg "TSF $($a.A) CMake 配置失败!"; return $false }
-        # CMakeLists 输出到 $outdir\wind_tsf$suffix.dll; x86 需改名加 _x86。
+        # CMakeLists 输出到 $outdir\xinqing_tsf$suffix.dll; x86 需改名加 _x86。
         # 构建前必须先删这个文件: 两个架构共用它, MSBuild 的增量判据也看它。x86 这轮若
         # 撞见上一轮 x64 留下的同名文件比输入新, 会判定「已最新」而跳过链接, 下面的改名
         # 就把那个 x64 产物当成 x86 交付 (实测踩中)。删掉输出即强制重新链接, 不重编 .obj。
-        $produced = "$outdir\wind_tsf$suffix.dll"
+        $produced = "$outdir\xinqing_tsf$suffix.dll"
         Remove-Item $produced -Force -ErrorAction SilentlyContinue
         # MSBuild 的编译警告走 stdout, 整条 | Out-Null 会连警告一起吞掉 (C++ 侧等于零编译期
         # 信号)。故只丢进度噪音, 保留 warning/error 行原样打出。Select-String 不改 $LASTEXITCODE
@@ -304,8 +304,8 @@ function Build-TsfAll ([string]$profile = "release", [string]$outdir = $null) {
             Select-String -Pattern 'warning|error|警告|错误' |
             ForEach-Object { Warn "  $($_.Line.Trim())" }
         if ($LASTEXITCODE -ne 0) { ErrMsg "TSF $($a.A) 构建失败!"; return $false }
-        # 末尾化: 架构后缀在前, 变体后缀在后 → wind_tsf_x86_dev.dll
-        $final    = "$outdir\wind_tsf$($a.Sfx)$suffix.dll"
+        # 末尾化: 架构后缀在前, 变体后缀在后 → xinqing_tsf_x86_dev.dll
+        $final    = "$outdir\xinqing_tsf$($a.Sfx)$suffix.dll"
         if ((Test-Path $produced) -and ($produced -ne $final)) {
             Move-Item $produced $final -Force
         }
@@ -315,7 +315,7 @@ function Build-TsfAll ([string]$profile = "release", [string]$outdir = $null) {
     }
     # 清理 CMake 顺带产出的导入库/导出表, 保持 outdir == 安装内容
     Get-ChildItem -Path $outdir -Include "*.lib", "*.exp" -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-    $dlls = (Get-ChildItem -Path $outdir -Filter "wind_tsf*.dll" -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join " "
+    $dlls = (Get-ChildItem -Path $outdir -Filter "xinqing_tsf*.dll" -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join " "
     Gray "已构建: $dlls"
     return $true
 }
@@ -900,8 +900,8 @@ function Do-Full ([string]$profile = "release") {
     if ($env:WIND_PARALLEL_BUILD) {
         if (-not (Invoke-BuildStagesParallel $profile $outdir)) { return $false }
     } else {
-    if (-not (Build-Core     $profile $outdir)) { return $false }   # wind_input[_dev].exe
-    if (-not (Build-TsfAll   $profile $outdir)) { return $false }   # wind_tsf[_x86][_dev].dll
+    if (-not (Build-Core     $profile $outdir)) { return $false }   # xinqing_core[_dev].exe
+    if (-not (Build-TsfAll   $profile $outdir)) { return $false }   # xinqing_tsf[_x86][_dev].dll
     if (-not (Build-Setting  $profile $outdir)) { return $false }   # wind_setting[_dev].exe (可选)
     if (-not (Build-Portable $profile $outdir)) { return $false }   # wind_portable.exe (可选)
     }
@@ -918,7 +918,7 @@ function Do-Full ([string]$profile = "release") {
 # ---------- 部署 (Go 非便携式 / 系统安装) ----------
 # 与便携式不同: 复制到安装目录后, regsvr32 注册 TSF COM (DllRegisterServer 自带
 # AddLanguageProfile + RegisterCategories, 输入法直接进系统列表), 授权 AppContainer
-# 宿主读取 DLL, 安装字根字体, 写开机自启, 直接启动 wind_input[_dev].exe (不靠
+# 宿主读取 DLL, 安装字根字体, 写开机自启, 直接启动 xinqing_core[_dev].exe (不靠
 function Test-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -1007,7 +1007,7 @@ function Get-TsfSystemDir ([string]$suffix, [bool]$wow64) {
     if (-not [Environment]::Is64BitProcess) {
         throw "Get-TsfSystemDir 需在 64 位 PowerShell 中运行 (32 位进程访问 System32 会被 WOW64 重定向)"
     }
-    $app  = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $app  = if ($suffix) { "XinQingDev" } else { "XinQing" }
     $root = if ($wow64)  { "SysWOW64" }     else { "System32" }
     return (Join-Path $env:SystemRoot "$root\IME\$app")
 }
@@ -1015,7 +1015,7 @@ function Get-TsfSystemDir ([string]$suffix, [bool]$wow64) {
 # 应用注册表键 HKLM\Software\<AppName>。与安装器清单 [app] id、Rust 侧
 # wind-config::variant::app_dir_name()、C++ 侧 WIND_APP_NAME 同名 (四处无编译期约束)。
 function Get-AppRegKey ([string]$suffix) {
-    $app = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $app = if ($suffix) { "XinQingDev" } else { "XinQing" }
     return "HKLM:\Software\$app"
 }
 
@@ -1023,12 +1023,12 @@ function Get-AppRegKey ([string]$suffix) {
 function Unregister-Tsf ([string]$dir, [string]$suffix) {
     # 系统副本优先: regsvr32 注册的是哪个副本, InprocServer32 就指向哪个 —— 现行部署
     # 注册的是系统副本。安装目录副本仍反注册一次, 兜住「从就地注册的存量版本升级」。
-    $sysX64 = Join-Path (Get-TsfSystemDir $suffix $false) "wind_tsf$suffix.dll"
-    $sysX86 = Join-Path (Get-TsfSystemDir $suffix $true)  "wind_tsf_x86${suffix}.dll"
-    foreach ($p in @($sysX64, (Join-Path $dir "wind_tsf$suffix.dll"))) {
+    $sysX64 = Join-Path (Get-TsfSystemDir $suffix $false) "xinqing_tsf$suffix.dll"
+    $sysX86 = Join-Path (Get-TsfSystemDir $suffix $true)  "xinqing_tsf_x86${suffix}.dll"
+    foreach ($p in @($sysX64, (Join-Path $dir "xinqing_tsf$suffix.dll"))) {
         if (Test-Path $p) { & regsvr32 /u /s $p 2>$null }
     }
-    foreach ($p in @($sysX86, (Join-Path $dir "wind_tsf_x86${suffix}.dll"))) {
+    foreach ($p in @($sysX86, (Join-Path $dir "xinqing_tsf_x86${suffix}.dll"))) {
         if (Test-Path $p) { & (Get-Regsvr32X86) /u /s $p 2>$null }
     }
     # 删掉系统副本, 免得下次注册撞上被宿主锁住的旧映像。删不掉只告警: 随后的
@@ -1063,13 +1063,13 @@ function Register-Tsf ([string]$dir, [string]$suffix) {
     if (-not (Test-Path $regKey)) { New-Item -Path $regKey -Force | Out-Null }
     Set-ItemProperty -Path $regKey -Name "InstallDir" -Value $dir
 
-    $x64Src = Join-Path $dir "wind_tsf$suffix.dll"
+    $x64Src = Join-Path $dir "xinqing_tsf$suffix.dll"
     $x64Dir = Get-TsfSystemDir $suffix $false
     New-Item -ItemType Directory -Force -Path $x64Dir | Out-Null
-    $x64Dst = Join-Path $x64Dir "wind_tsf$suffix.dll"
+    $x64Dst = Join-Path $x64Dir "xinqing_tsf$suffix.dll"
     # 走 Copy-Replace 而不是 Copy-Item: 系统副本是 in-proc 常驻的, 宿主不重启就一直锁着
     # 旧映像, 直接覆盖会抛错中断部署。让路逻辑与安装目录副本共用同一套。
-    Copy-Replace $x64Dir "wind_tsf$suffix.dll" $x64Src
+    Copy-Replace $x64Dir "xinqing_tsf$suffix.dll" $x64Src
     & icacls $x64Dst /grant "${sid}:(RX)" /c | Out-Null
     & regsvr32 /s $x64Dst
     if ($LASTEXITCODE -ne 0) { ErrMsg "  - x64 COM 注册失败: $x64Dst"; return $false }
@@ -1077,12 +1077,12 @@ function Register-Tsf ([string]$dir, [string]$suffix) {
 
     # x86 走 SysWOW64: 32 位宿主只能加载 32 位 in-proc DLL, 且必须用 SysWOW64 下的
     # regsvr32 注册, 注册项才会落进 WOW6432Node 视图。
-    $x86Src = Join-Path $dir "wind_tsf_x86${suffix}.dll"
+    $x86Src = Join-Path $dir "xinqing_tsf_x86${suffix}.dll"
     if (Test-Path $x86Src) {
         $x86Dir = Get-TsfSystemDir $suffix $true
         New-Item -ItemType Directory -Force -Path $x86Dir | Out-Null
-        $x86Dst = Join-Path $x86Dir "wind_tsf_x86${suffix}.dll"
-        Copy-Replace $x86Dir "wind_tsf_x86${suffix}.dll" $x86Src
+        $x86Dst = Join-Path $x86Dir "xinqing_tsf_x86${suffix}.dll"
+        Copy-Replace $x86Dir "xinqing_tsf_x86${suffix}.dll" $x86Src
         & icacls $x86Dst /grant "${sid}:(RX)" /c | Out-Null
         & (Get-Regsvr32X86) /s $x86Dst
         if ($LASTEXITCODE -ne 0) { Warn "  - x86 COM 注册失败 (32 位应用可能无法使用输入法)" }
@@ -1108,9 +1108,9 @@ function Register-Tsf ([string]$dir, [string]$suffix) {
 # 注3: 部署在管理员令牌下运行; 同账户 UAC 提升时 HKCU 仍指向本人, 故对当前用户生效。
 function Enable-TsfForUser ([string]$profile) {
     if ($profile -eq "dev") {
-        $tip = "0804:{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62DEB0-5ECF-413A-A476-48D1F29E827C}{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
     } else {
-        $tip = "0804:{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62EE30-5ECF-413A-A476-48D1F29E827C}{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
     }
     try {
         $list = Get-WinUserLanguageList
@@ -1134,7 +1134,7 @@ function Enable-TsfForUser ([string]$profile) {
 # 授权 ALL APPLICATION PACKAGES 读取执行 TSF DLL (开始菜单/搜索等 AppContainer 宿主需要)。
 function Grant-TsfAcl ([string]$dir, [string]$suffix) {
     $sid = "*S-1-15-2-1"
-    foreach ($n in @("wind_tsf$suffix.dll", "wind_tsf_x86${suffix}.dll")) {
+    foreach ($n in @("xinqing_tsf$suffix.dll", "xinqing_tsf_x86${suffix}.dll")) {
         $p = Join-Path $dir $n
         if (Test-Path $p) { & icacls $p /grant "${sid}:(RX)" /c | Out-Null }
     }
@@ -1158,8 +1158,8 @@ function Install-WubiFont ([string]$dir) {
 
 # 写开机自启 (HKCU Run; 免管理员)。
 function Set-AutoStart ([string]$dir, [string]$suffix) {
-    $name = if ($suffix) { "WindInputDev" } else { "WindInput" }
-    $exe  = Join-Path $dir "wind_input$suffix.exe"
+    $name = if ($suffix) { "XinQingDev" } else { "XinQing" }
+    $exe  = Join-Path $dir "xinqing_core$suffix.exe"
     try {
         Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -Value "`"$exe`"" -Force
         Gray "  - 已配置开机自启 ($name)"
@@ -1170,10 +1170,19 @@ function Set-AutoStart ([string]$dir, [string]$suffix) {
 # 背景: Stop-WindService 只杀核心服务 wind_input; 独立打开的设置程序 wind_setting[_dev].exe /
 #       便携版 wind_portable.exe 不随之退出, 覆盖前需先按名杀掉 (对齐 ../wind-setting Do-Copy 的处理)。
 # DLL 由宿主进程加载, 没有独立进程可杀 → 跳过, 仍靠 Copy-Replace 的改名让路兜底。
-function Stop-ProcessForFile ([string]$fileName) {
+# 心晴: 只杀可执行文件位于 $dir 下的进程 (Get-InDirProcesses)。按镜像名杀会误伤同名进程:
+#       同一变体的系统安装与便携部署、以及与官方清风同名的 wind_setting / wind_portable (TC-OPS-04)。
+function Get-InDirProcesses ([string]$procName, [string]$dir) {
+    $prefix = $dir.TrimEnd('\') + "\"
+    @(Get-Process -Name $procName -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -and $_.Path.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)
+    })
+}
+
+function Stop-ProcessForFile ([string]$fileName, [string]$dir) {
     if ($fileName -notmatch '\.exe$') { return }
     $procName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
-    $procs = @(Get-Process -Name $procName -ErrorAction SilentlyContinue)
+    $procs = Get-InDirProcesses $procName $dir
     if ($procs.Count -gt 0) {
         Gray "  - 终止运行中的 $fileName ($($procs.Count) 个进程)..."
         $procs | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -1187,7 +1196,7 @@ function Stop-ProcessForFile ([string]$fileName) {
 function Copy-Replace ([string]$targetDir, [string]$fileName, [string]$srcPath) {
     $dst = Join-Path $targetDir $fileName
     if (-not (Test-Path $dst)) { Copy-Item $srcPath $dst -Force; Gray "  - $fileName"; return }
-    Stop-ProcessForFile $fileName   # 先判断并杀进程等待, 再尝试覆盖; 覆盖失败才改名让路
+    Stop-ProcessForFile $fileName $targetDir   # 先判断并杀进程等待, 再尝试覆盖; 覆盖失败才改名让路
     try { Copy-Item $srcPath $dst -Force -ErrorAction Stop; Gray "  - $fileName"; return } catch { }
     # 让路后缀必须每次唯一: NTFS 允许改名在用文件, 但不允许改名去【覆盖】一个在用文件。
     # 曾用固定 .old 槽复用, 结果上轮 .old 仍被宿主进程 map 着时 Move -Force 直接失败, 部署中断
@@ -1201,8 +1210,8 @@ function Copy-Replace ([string]$targetDir, [string]$fileName, [string]$srcPath) 
     } catch { ErrMsg "  [错误] 无法替换 ${fileName}: 旧文件被锁定且改名让路失败, 请重启后重试" }
 }
 
-function Stop-WindService ([string]$suffix) {
-    Get-Process -Name "wind_input$suffix" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+function Stop-WindService ([string]$suffix, [string]$dir) {
+    Get-InDirProcesses "xinqing_core$suffix" $dir | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 600
 }
 
@@ -1220,11 +1229,11 @@ function Stop-WindService ([string]$suffix) {
 # 没有任何编译期约束能发现这条部署路径漏接。
 #
 # 注: 键按变体分开 —— DLL 读的是 WIND_APP_REGKEY = Software\<WIND_APP_NAME>
-# (wind_tsf\include\Globals.h), dev 变体即 Software\WindInputDev。此前这里写死
+# (wind_tsf\include\Globals.h), dev 变体即 Software\XinQingDev。此前这里写死
 # Software\WindInput, 部署 dev 时闸门写错了键、dev DLL 照样抢跑拉起旧 exe
 # (2026-09-24 靶机实锤, dev.sh 侧同症见 remote_deploy_guard)。
 function Set-InstallerRunning ([bool]$on, [string]$profile = "release") {
-    $app = if ($profile -eq "dev") { "WindInputDev" } else { "WindInput" }
+    $app = if ($profile -eq "dev") { "XinQingDev" } else { "XinQing" }
     $key = "HKLM:\Software\$app"
     try {
         if ($on) {
@@ -1290,20 +1299,20 @@ function Deploy-Full ([string]$profile = "release") {
     $targetDir = if ($profile -eq "dev") { $WIND_DIR_DEV } else { $WIND_DIR_RELEASE }
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
     if (-not (Require-Admin)) { return $false }
-    if (-not (Test-Path "$outdir\wind_input$suffix.exe")) {
+    if (-not (Test-Path "$outdir\xinqing_core$suffix.exe")) {
         ErrMsg "无 $outdir 产物; 请先 '$(if($profile -eq 'dev'){'d1'}else{'1'})' 全构建。"; return $false
     }
     Say "`n========== 系统安装 ($profile) → $targetDir =========="
     # 闸门必须在停服务【之前】拉起 —— 服务一死, 宿主里的 DLL 立刻就有拉起它的动机。
     Set-InstallerRunning $true $profile
     try {
-        Say "[1/7] 停止旧进程..."; Stop-WindService $suffix
+        Say "[1/7] 停止旧进程..."; Stop-WindService $suffix $targetDir
         Say "[2/7] 反注册旧 TSF COM..."; Unregister-Tsf $targetDir $suffix
         Say "[3/7] 准备目录..."; New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
         Say "[4/7] 复制文件..."
-        Copy-Replace $targetDir "wind_input$suffix.exe" "$outdir\wind_input$suffix.exe"
+        Copy-Replace $targetDir "xinqing_core$suffix.exe" "$outdir\xinqing_core$suffix.exe"
         if (Test-Path "$outdir\wind_cli.bat")      { Copy-Replace $targetDir "wind_cli.bat"      "$outdir\wind_cli.bat" }
-        foreach ($dll in (Get-ChildItem "$outdir\wind_tsf*.dll" -ErrorAction SilentlyContinue)) {
+        foreach ($dll in (Get-ChildItem "$outdir\xinqing_tsf*.dll" -ErrorAction SilentlyContinue)) {
             Copy-Replace $targetDir $dll.Name $dll.FullName
         }
         if (Test-Path "$outdir\wind_setting$suffix.exe") { Copy-Replace $targetDir "wind_setting$suffix.exe" "$outdir\wind_setting$suffix.exe" }
@@ -1320,10 +1329,10 @@ function Deploy-Full ([string]$profile = "release") {
         Enable-TsfForUser $profile
         Get-ChildItem "$targetDir\*.old*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
         Say "[7/7] 启动输入法服务..."
-        $exe = Join-Path $targetDir "wind_input$suffix.exe"
-        Start-Process -FilePath $exe; Gray "  - 已启动 wind_input$suffix.exe"
+        $exe = Join-Path $targetDir "xinqing_core$suffix.exe"
+        Start-Process -FilePath $exe; Gray "  - 已启动 xinqing_core$suffix.exe"
         Say "`n系统安装完成 ($profile) → $targetDir"
-        Say "提示: 按 Win+Space 切换到清风输入法$(if($suffix){' (Dev)'})。"
+        Say "提示: 按 Win+Space 切换到心晴输入法$(if($suffix){' (Dev)'})。"
         return $true
     }
     finally {
@@ -1337,9 +1346,9 @@ function Deploy-Full ([string]$profile = "release") {
 # Optional 有则一并带上。系统安装与便携部署共用同一份映射, 免得两处各写一遍而漂移。
 function Get-ModuleFiles ([string]$mod, [string]$suffix) {
     switch ($mod) {
-        "tsf"     { @{ Required = @("wind_tsf$suffix.dll", "wind_tsf_x86${suffix}.dll"); Optional = @() } }
+        "tsf"     { @{ Required = @("xinqing_tsf$suffix.dll", "xinqing_tsf_x86${suffix}.dll"); Optional = @() } }
         # wind_cli.bat 两变体共用一份、且 Build-Core 里是"存在才复制", 故列为可选
-        "core"    { @{ Required = @("wind_input$suffix.exe"); Optional = @("wind_cli.bat") } }
+        "core"    { @{ Required = @("xinqing_core$suffix.exe"); Optional = @("wind_cli.bat") } }
         "setting" { @{ Required = @("wind_setting$suffix.exe"); Optional = @() } }
         # 便携启动器是单一二进制, 不带变体后缀 (运行时按同级有无 _dev exe 自辨变体)
         "portable" { @{ Required = @("wind_portable.exe"); Optional = @() } }
@@ -1371,7 +1380,7 @@ function Deploy-Module ([string]$profile, [string]$mod) {
     # 拉起的是新旧混搭的一代 (如新 DLL 配旧 exe), 故一并上闸门。
     if ($touchesService) { Set-InstallerRunning $true $profile }
     try {
-        if ($touchesService) { Say "[1/4] 停止旧进程..."; Stop-WindService $suffix }
+        if ($touchesService) { Say "[1/4] 停止旧进程..."; Stop-WindService $suffix $targetDir }
         else                 { Say "[1/4] (跳过停服务: $mod 不参与输入法运行时)" }
         if ($mod -eq "tsf") { Say "[2/4] 反注册旧 TSF COM..."; Unregister-Tsf $targetDir $suffix }
         else                { Say "[2/4] ($mod 无需反注册 COM)" }
@@ -1386,8 +1395,8 @@ function Deploy-Module ([string]$profile, [string]$mod) {
         Get-ChildItem "$targetDir\*.old*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
         if ($touchesService) {
             Say "[4/4] 启动输入法服务..."
-            $exe = Join-Path $targetDir "wind_input$suffix.exe"
-            if (Test-Path $exe) { Start-Process -FilePath $exe; Gray "  - 已启动 wind_input$suffix.exe" }
+            $exe = Join-Path $targetDir "xinqing_core$suffix.exe"
+            if (Test-Path $exe) { Start-Process -FilePath $exe; Gray "  - 已启动 xinqing_core$suffix.exe" }
         } else {
             Say "[4/4] (跳过重启服务: $mod 不参与输入法运行时)"
         }
@@ -1423,17 +1432,17 @@ function Test-PortableRoot ([string]$root, [string]$profile = "release") {
             ErrMsg "便携目录不能位于系统保护目录下: $root"
             ErrMsg "  (命中前缀: $p) —— wind_portable 会拒绝在此启动便携模式。"
             $varName = if ($profile -eq 'dev') { 'WIND_DIR_PORTABLE_DEV' } else { 'WIND_DIR_PORTABLE_RELEASE' }
-            ErrMsg "请在 scripts\deploy.local.ps1 中把 `$$varName 改到普通目录, 如 D:\WindInputPortable。"
+            ErrMsg "请在 scripts\deploy.local.ps1 中把 `$$varName 改到普通目录, 如 D:\XinQingPortable。"
             return $false
         }
     }
     return $true
 }
 
-# 只停【本便携目录下】的进程。便携版与系统安装版镜像名完全相同 (都是 wind_input.exe),
+# 只停【本便携目录下】的进程。便携版与系统安装版镜像名完全相同 (都是 xinqing_core.exe),
 # 按名杀会连正在使用的系统安装版一起干掉, 故必须按 Path 前缀过滤。
 function Stop-PortableProcesses ([string]$root, [string]$suffix) {
-    $names = @("wind_portable", "wind_input$suffix", "wind_setting$suffix")
+    $names = @("wind_portable", "xinqing_core$suffix", "wind_setting$suffix")
     $rootPrefix = $root.TrimEnd('\') + "\"
     $killed = 0
     foreach ($n in $names) {
@@ -1447,7 +1456,7 @@ function Stop-PortableProcesses ([string]$root, [string]$suffix) {
 }
 
 # 写便携标记文件 (root\portable_mode)。launcher 启动时也会自建, 此处先写是为了让
-# "复制完还没跑过 launcher"的目录就已经是合法便携包 (直接双击 wind_input.exe 也走便携路径)。
+# "复制完还没跑过 launcher"的目录就已经是合法便携包 (直接双击 xinqing_core.exe 也走便携路径)。
 # 内容与 wind-portable\src\service.rs ensure_portable_layout 一致; 已存在则不覆盖 ——
 # 运行期可能写入 stopped=1 等守卫位, 覆盖会抹掉状态。
 # 存量目录里可能只有旧名: 补写新名完成迁移, 旧名保留 (回退到旧版程序时它仍是唯一被认的标记)。
@@ -1467,7 +1476,7 @@ function Write-PortableMarker ([string]$root) {
 function Start-Portable ([string]$root) {
     $exe = Join-Path $root "wind_portable.exe"
     if (-not (Test-Path $exe)) {
-        Warn "  - 无 wind_portable.exe, 跳过启动 (可手动运行目录下的 wind_input*.exe)"
+        Warn "  - 无 wind_portable.exe, 跳过启动 (可手动运行目录下的 xinqing_core*.exe)"
         return
     }
     Start-Process -FilePath $exe -WorkingDirectory $root
@@ -1481,7 +1490,7 @@ function Deploy-Portable ([string]$profile = "release") {
     $outdir = Out-For $profile
     $root = Portable-TargetFor $profile
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
-    if (-not (Test-Path "$outdir\wind_input$suffix.exe")) {
+    if (-not (Test-Path "$outdir\xinqing_core$suffix.exe")) {
         ErrMsg "无 $outdir 产物; 请先 '$(if($profile -eq 'dev'){'d1'}else{'1'})' 全构建。"; return $false
     }
     if (-not (Test-PortableRoot $root $profile)) { return $false }
@@ -1489,9 +1498,9 @@ function Deploy-Portable ([string]$profile = "release") {
     Say "[1/5] 停止便携进程..."; Stop-PortableProcesses $root $suffix
     Say "[2/5] 准备目录..."; New-Item -ItemType Directory -Path $root -Force | Out-Null
     Say "[3/5] 复制程序文件..."
-    Copy-Replace $root "wind_input$suffix.exe" "$outdir\wind_input$suffix.exe"
+    Copy-Replace $root "xinqing_core$suffix.exe" "$outdir\xinqing_core$suffix.exe"
     if (Test-Path "$outdir\wind_cli.bat") { Copy-Replace $root "wind_cli.bat" "$outdir\wind_cli.bat" }
-    foreach ($dll in (Get-ChildItem "$outdir\wind_tsf*.dll" -ErrorAction SilentlyContinue)) {
+    foreach ($dll in (Get-ChildItem "$outdir\xinqing_tsf*.dll" -ErrorAction SilentlyContinue)) {
         Copy-Replace $root $dll.Name $dll.FullName
     }
     if (Test-Path "$outdir\wind_setting$suffix.exe") { Copy-Replace $root "wind_setting$suffix.exe" "$outdir\wind_setting$suffix.exe" }
@@ -1580,9 +1589,9 @@ function Uninstall-Portable ([string]$profile = "release") {
 # 从当前用户中文输入法列表移除本变体 TIP (Enable-TsfForUser 的逆操作)。
 function Disable-TsfForUser ([string]$profile) {
     if ($profile -eq "dev") {
-        $tip = "0804:{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62DEB0-5ECF-413A-A476-48D1F29E827C}{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
     } else {
-        $tip = "0804:{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
+        $tip = "0804:{EF62EE30-5ECF-413A-A476-48D1F29E827C}{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
     }
     try {
         $list = Get-WinUserLanguageList
@@ -1597,7 +1606,7 @@ function Disable-TsfForUser ([string]$profile) {
 
 # 移除开机自启 (HKCU Run; Set-AutoStart 的逆操作)。
 function Remove-AutoStart ([string]$suffix) {
-    $name = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $name = if ($suffix) { "XinQingDev" } else { "XinQing" }
     Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
     Gray "  - 已移除开机自启 ($name)"
 }
@@ -1637,7 +1646,7 @@ function Uninstall-Full ([string]$profile = "release") {
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
     if (-not (Require-Admin)) { return $false }
     Say "`n========== 系统卸载 ($profile) → $targetDir =========="
-    Say "[1/5] 停止进程..."; Stop-WindService $suffix
+    Say "[1/5] 停止进程..."; Stop-WindService $suffix $targetDir
     Say "[2/5] 移出用户输入法列表..."; Disable-TsfForUser $profile
     Say "[3/5] 反注册 TSF COM..."
     # ⚠️ 不能因「安装目录不存在」跳过: 系统副本在 <System32|SysWOW64>\IME\ 下【独立存在】,
@@ -1668,7 +1677,7 @@ function Uninstall-Full ([string]$profile = "release") {
         }
     } else { Gray "  - 目录不存在, 跳过" }
     Say "`n系统卸载完成 ($profile)。"
-    $appName = if ($suffix) { "WindInputDev" } else { "WindInput" }
+    $appName = if ($suffix) { "XinQingDev" } else { "XinQing" }
     Warn "提示: 个人数据已保留, 如需彻底清除请手动删除:"
     Warn "  漫游配置/词库: $env:APPDATA\$appName"
     Warn "  本机缓存/日志: $env:LOCALAPPDATA\$appName"
@@ -1721,21 +1730,21 @@ function Set-TomlKeysInSection ([string]$text, [string]$section, [hashtable]$kv)
 # 不会被 packer 递归打进包)。GUID 必须与 wind_tsf\src\Globals.cpp 一致 (dev=DEB0/DEB1, release=EE30/EE31)。
 function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPath, [string]$assetsDir) {
     if ($profile -eq "dev") {
-        $id = "WindInputDev"; $disp = "清风输入法 (开发版)"; $mainExe = "wind_input_dev.exe"
-        $menu = "清风输入法 (开发版)"; $title = "清风输入法 (开发版) 安装向导"; $proto = "windinputdev"
+        $id = "XinQingDev"; $disp = "心晴输入法 (开发版)"; $mainExe = "xinqing_core_dev.exe"
+        $menu = "心晴输入法 (开发版)"; $title = "心晴输入法 (开发版) 安装向导"; $proto = "xinqingdev"
         $settingExe = "wind_setting_dev.exe"
-        $procs = '["wind_setting_dev", "wind_portable", "wind_input_dev"]'
-        $acl   = '["wind_tsf_dev.dll", "wind_tsf_x86_dev.dll"]'
-        $clsid = "{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}"; $prof = "{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}"
-        $dllX64 = "wind_tsf_dev.dll"; $dllX86 = "wind_tsf_x86_dev.dll"; $outName = "WindInputDev-Setup"
+        $procs = '["wind_setting_dev", "wind_portable", "xinqing_core_dev"]'
+        $acl   = '["xinqing_tsf_dev.dll", "xinqing_tsf_x86_dev.dll"]'
+        $clsid = "{EF62DEB0-5ECF-413A-A476-48D1F29E827C}"; $prof = "{EF62DEB1-5ECF-413A-A476-48D1F29E827C}"
+        $dllX64 = "xinqing_tsf_dev.dll"; $dllX86 = "xinqing_tsf_x86_dev.dll"; $outName = "XinQingDev-Setup"
     } else {
-        $id = "WindInput"; $disp = "清风输入法"; $mainExe = "wind_input.exe"
-        $menu = "清风输入法"; $title = "清风输入法 安装向导"; $proto = "windinput"
+        $id = "XinQing"; $disp = "心晴输入法"; $mainExe = "xinqing_core.exe"
+        $menu = "心晴输入法"; $title = "心晴输入法 安装向导"; $proto = "xinqing"
         $settingExe = "wind_setting.exe"
-        $procs = '["wind_setting", "wind_portable", "wind_input"]'
-        $acl   = '["wind_tsf.dll", "wind_tsf_x86.dll"]'
-        $clsid = "{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}"; $prof = "{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
-        $dllX64 = "wind_tsf.dll"; $dllX86 = "wind_tsf_x86.dll"; $outName = "WindInput-Setup"
+        $procs = '["wind_setting", "wind_portable", "xinqing_core"]'
+        $acl   = '["xinqing_tsf.dll", "xinqing_tsf_x86.dll"]'
+        $clsid = "{EF62EE30-5ECF-413A-A476-48D1F29E827C}"; $prof = "{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
+        $dllX64 = "xinqing_tsf.dll"; $dllX86 = "xinqing_tsf_x86.dll"; $outName = "XinQing-Setup"
     }
     # 设置程序为可选模块: ../wind-setting 不存在时 Build-Setting 会跳过, build/ 里就没有产物。
     # 此时必须置空 setting_exe, 否则安装器会为不存在的文件建开始菜单快捷方式。
@@ -1762,7 +1771,7 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
 id                = "$id"
 display_name      = "$disp"
 version           = "$Version"
-publisher         = "清风输入法 项目"
+publisher         = "心晴输入法 项目"
 description       = "轻量开源输入法"
 main_exe          = "$mainExe"
 setting_exe       = "$settingExe"
@@ -1817,7 +1826,7 @@ icon        = "$iconFwd"
 function New-UpdateManifest ([string]$profile, [string]$setupPath) {
     $isDev    = ($profile -eq "dev")
     $channel  = if ($isDev) { "dev" } else { "stable" }
-    $base     = if ($isDev) { "WindInputDev" } else { "WindInput" }
+    $base     = if ($isDev) { "XinQingDev" } else { "XinQing" }
     $jsonName = if ($isDev) { "latest-dev.json" } else { "latest.json" }
 
     $item = Get-Item $setupPath
@@ -1855,7 +1864,7 @@ function New-UpdateManifest ([string]$profile, [string]$setupPath) {
 #   分两次调用 (-PrepOnly / -SkipPrep), 中间夹一次签名 —— 卸载器加工完即为终态, 只有
 #   这个窗口能签它; 详见 Do-Installer 第 4a 步。
 # 打包是纯文件 IO + cargo 构建, 不需管理员 (故未纳入 UAC 提权命令)。
-# 便携版压缩包: build[_dev]\ → dist\WindInput[Dev]-Portable-<版本>.zip (+ .sha256)
+# 便携版压缩包: build[_dev]\ → dist\XinQing[Dev]-Portable-<版本>.zip (+ .sha256)
 # 与 dev.sh 的 9/portable-zip 同口径 (同名、同结构), 两边产物可互换。
 # 内容依据 Deploy-Portable (便携部署的权威定义): 程序文件 + data\ + 便携标记。
 # 【不含 userdata\】—— 那是便携版的用户数据目录 (配置/词频/用户词库), 打进包等于把
@@ -1865,12 +1874,12 @@ function Do-PortableZip ([string]$profile = "release", [bool]$skipBuild = $false
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
     if (-not $skipBuild) {
         if (-not (Do-Full $profile)) { return $false }
-    } elseif (-not (Test-Path "$outdir\wind_input$suffix.exe")) {
+    } elseif (-not (Test-Path "$outdir\xinqing_core$suffix.exe")) {
         ErrMsg "无 $outdir 产物; 去掉 skip 先全构建, 或运行 '$(if($profile -eq 'dev'){'d1'}else{'1'})'。"
         return $false
     }
 
-    $base  = if ($profile -eq "dev") { "WindInputDev" } else { "WindInput" }
+    $base  = if ($profile -eq "dev") { "XinQingDev" } else { "XinQing" }
     $name  = "$base-$Version"                       # zip 内顶层目录, 避免解压散落
     $zip   = Join-Path $DistDir "$base-Portable-$Version.zip"
     $stage = Join-Path $DistDir ".portable-stage"
@@ -1885,7 +1894,7 @@ function Do-PortableZip ([string]$profile = "release", [bool]$skipBuild = $false
     Get-ChildItem "$stage\$name\*.old*" -ErrorAction SilentlyContinue | Remove-Item -Force
 
     # 便携标记: 复用 Write-PortableMarker, 与 wind-portable 的 ensure_portable_layout 同内容。
-    # 缺了它 wind_input.exe 会退化成安装版行为把用户数据写进 %APPDATA%。
+    # 缺了它 xinqing_core.exe 会退化成安装版行为把用户数据写进 %APPDATA%。
     Write-PortableMarker "$stage\$name"
 
     $hasLauncher = Test-Path "$stage\$name\wind_portable.exe"
@@ -1911,8 +1920,8 @@ function Do-PortableZip ([string]$profile = "release", [bool]$skipBuild = $false
     if ($hasLauncher) {
         Gray "使用: 解压后运行 wind_portable.exe (注册组件并拉起服务)"
     } else {
-        Gray "使用: 包内无便携启动器 —— 需管理员 regsvr32 注册 wind_tsf.dll"
-        Gray "      (x86 版用 %SystemRoot%\SysWOW64\regsvr32.exe), 再手动运行 wind_input.exe"
+        Gray "使用: 包内无便携启动器 —— 需管理员 regsvr32 注册 xinqing_tsf.dll"
+        Gray "      (x86 版用 %SystemRoot%\SysWOW64\regsvr32.exe), 再手动运行 xinqing_core.exe"
     }
     return $true
 }
@@ -1939,7 +1948,7 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
     if (-not $skipBuild) {
         if (-not (Do-Full $profile)) { return $false }
-    } elseif (-not (Test-Path "$outdir\wind_input$suffix.exe")) {
+    } elseif (-not (Test-Path "$outdir\xinqing_core$suffix.exe")) {
         ErrMsg "无 $outdir 产物; 去掉 skip 先全构建, 或运行 '$(if($profile -eq 'dev'){'d1'}else{'1'})'。"; return $false
     }
 
@@ -1953,7 +1962,7 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
 
     # 3. 生成变体 app.toml → dist\ (在 source 之外)
     New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
-    $cfgName = if ($profile -eq "dev") { "WindInputDev.app.toml" } else { "WindInput.app.toml" }
+    $cfgName = if ($profile -eq "dev") { "XinQingDev.app.toml" } else { "XinQing.app.toml" }
     $cfg = Join-Path $DistDir $cfgName
     New-InstallerConfig $profile $outdir $cfg $assetsDir
 
@@ -2011,7 +2020,7 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
         Remove-Item $uninstExe -Force -ErrorAction SilentlyContinue
     }
 
-    $setup = Join-Path $DistDir "$(if($profile -eq 'dev'){'WindInputDev-Setup'}else{'WindInput-Setup'})-$Version.exe"
+    $setup = Join-Path $DistDir "$(if($profile -eq 'dev'){'XinQingDev-Setup'}else{'XinQing-Setup'})-$Version.exe"
     if (Test-Path $setup) {
         $sz = [math]::Round((Get-Item $setup).Length / 1MB, 1)
         Say "`n安装包已生成: $setup (${sz}MB)"
@@ -2059,12 +2068,12 @@ function Get-InstallerBinaries ([string]$dir = $InstallerDir) {
 function Do-Stage ([string]$profile = "release") {
     $outdir = Out-For $profile
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
-    if (-not (Test-Path "$outdir\wind_input$suffix.exe")) {
+    if (-not (Test-Path "$outdir\xinqing_core$suffix.exe")) {
         ErrMsg "无 $outdir 产物; 先跑全构建 ('$(if($profile -eq 'dev'){'d1'}else{'1'})')。"
         return $false
     }
 
-    $base  = if ($profile -eq "dev") { "WindInputDev" } else { "WindInput" }
+    $base  = if ($profile -eq "dev") { "XinQingDev" } else { "XinQing" }
     $zip   = Join-Path $DistDir "$base-Stage-$Version.zip"
     $stage = Join-Path $DistDir ".stage-pack"
 
@@ -2306,7 +2315,7 @@ function Show-Menu {
     Write-Host "`n  便携包 (免安装 zip, 不依赖 wind-installer):" -ForegroundColor Yellow
     Write-Host "    9    生成便携包 (release)       d9    生成便携包 (dev)"
     Write-Host "    9s   跳过重建直接打包 (release)  d9s   跳过重建直接打包 (dev)"
-    Write-Host "      输出 → $DistDir\WindInput[Dev]-Portable-$Version.zip" -ForegroundColor DarkGray
+    Write-Host "      输出 → $DistDir\XinQing[Dev]-Portable-$Version.zip" -ForegroundColor DarkGray
     Write-Host "`n  发布中转 (CI 编译 → 本机签名打包):" -ForegroundColor Yellow
     Write-Host "    stage          打包中转产物 (build\ + 安装器三件套), CI 上跑"
     Write-Host "    unstage <zip>  还原中转产物, 本机跑; 之后 sign 8s / sign 9s"

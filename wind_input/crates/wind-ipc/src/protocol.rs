@@ -1418,7 +1418,7 @@ pub const ICON_SHM_VERSION: u32 = 1;
 /// 直接拼 [`ICON_SHM_VERSION`] 而不是写死 `_v1`，是为了让「改版本号」与「改名字」
 /// 变成同一个动作——两者分开写就一定会有一次只改其中一个。
 pub fn icon_shm_name(suffix: &str) -> String {
-    format!("Local\\WindInput_IconShm_v{ICON_SHM_VERSION}{suffix}")
+    format!("Local\\XinQing_IconShm_v{ICON_SHM_VERSION}{suffix}")
 }
 
 /// 预渲染的尺寸档，对应 100/125/150/175/200/250/300% DPI。
@@ -2055,8 +2055,8 @@ mod tests {
     /// 全程握不上手且无任何报错。C++ 侧 `Globals.h` 的 `WIND_ICON_SHM_NAME` 必须逐字一致。
     #[test]
     fn icon_shm_name_uses_pipe_style_suffix() {
-        assert_eq!(icon_shm_name(""), "Local\\WindInput_IconShm_v1");
-        assert_eq!(icon_shm_name("_dev"), "Local\\WindInput_IconShm_v1_dev");
+        assert_eq!(icon_shm_name(""), "Local\\XinQing_IconShm_v1");
+        assert_eq!(icon_shm_name("_dev"), "Local\\XinQing_IconShm_v1_dev");
     }
 
     /// 版本号进了名字，所以 bump `ICON_SHM_VERSION` 会静默改掉 SHM 名——而 C++ 侧的

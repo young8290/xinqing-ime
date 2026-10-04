@@ -20,7 +20,7 @@
 #define WS_EX_NOACTIVATE  0x08000000
 #endif
 
-static const wchar_t* HOST_WND_CLASS = L"WindInputHostCandidateWnd";
+static const wchar_t* HOST_WND_CLASS = L"XinQingHostCandidateWnd";
 // Accessed only on the UI thread (STA). No synchronization needed.
 static ATOM s_hostWndClassAtom = 0;
 

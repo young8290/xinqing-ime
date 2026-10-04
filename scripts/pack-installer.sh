@@ -6,7 +6,7 @@
 # 构建 wind-packer(纯 IO,无需 wine),再 pack→bundle 出单文件 Setup.exe。
 # 输出名 WindInput-Setup-<版本>.exe,与 dev.ps1 本地打包口径一致。
 #
-# 前置:BUILD_DIR 内已含 wind_input.exe / wind_tsf.dll / wind_tsf_x86.dll / data/。
+# 前置:BUILD_DIR 内已含 xinqing_core.exe / xinqing_tsf.dll / xinqing_tsf_x86.dll / data/。
 #      Release workflow 还要求 wind_setting.exe / wind_portable.exe。
 #      (由 dev.sh release + build_tsf + assemble_data 产出)。
 #
@@ -68,7 +68,7 @@ echo "  输出:     $OUTPUT"
 echo "================================================"
 
 # ---- 校验构建产物 ----
-required=(wind_input.exe wind_tsf.dll wind_tsf_x86.dll)
+required=(xinqing_core.exe xinqing_tsf.dll xinqing_tsf_x86.dll)
 companions=(wind_setting.exe wind_portable.exe)
 if [[ "$REQUIRE_COMPANIONS" == "1" || "$REQUIRE_COMPANIONS" == "true" ]]; then
   required+=("${companions[@]}")
@@ -115,9 +115,9 @@ rm -rf "$STAGE"; mkdir -p "$STAGE"
 cleanup() { rm -rf "$STAGE"; }
 trap cleanup EXIT
 
-cp -f  "$BUILD_DIR/wind_input.exe"   "$STAGE/"
-cp -f  "$BUILD_DIR/wind_tsf.dll"     "$STAGE/"
-cp -f  "$BUILD_DIR/wind_tsf_x86.dll" "$STAGE/"
+cp -f  "$BUILD_DIR/xinqing_core.exe"   "$STAGE/"
+cp -f  "$BUILD_DIR/xinqing_tsf.dll"     "$STAGE/"
+cp -f  "$BUILD_DIR/xinqing_tsf_x86.dll" "$STAGE/"
 cp -rf "$BUILD_DIR/data"             "$STAGE/"
 # CLI 包装器随核心分发(与 dev.sh Build-Core / dev.ps1 整目录打包口径一致)。
 # Build-Core 里是"存在才复制", 故此处也守卫存在性。

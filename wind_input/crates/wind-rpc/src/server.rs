@@ -21,7 +21,7 @@ use crate::events::EventSink;
 pub fn ctrl_endpoint(suffix: &str) -> String {
     #[cfg(windows)]
     {
-        format!(r"\\.\pipe\wind_input_ctrl{}", suffix)
+        format!(r"\\.\pipe\xinqing_rpc_ctrl{}", suffix)
     }
     #[cfg(unix)]
     {
@@ -38,7 +38,7 @@ pub fn ctrl_endpoint(suffix: &str) -> String {
 pub fn events_endpoint(suffix: &str) -> String {
     #[cfg(windows)]
     {
-        format!(r"\\.\pipe\wind_input{}_events", suffix)
+        format!(r"\\.\pipe\xinqing_rpc{}_events", suffix)
     }
     #[cfg(unix)]
     {

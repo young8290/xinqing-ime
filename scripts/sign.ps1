@@ -3,7 +3,7 @@
 # 可单独运行, 也被 dev.ps1 的 8/9 出包流程自动调用。
 #
 #   .\scripts\sign.ps1 -Status               会话与配置体检 (不签任何文件)
-#   .\scripts\sign.ps1 build\wind_tsf.dll    签指定文件
+#   .\scripts\sign.ps1 build\xinqing_tsf.dll    签指定文件
 #   .\scripts\sign.ps1 -Verify dist\*.exe    只验签
 #
 # ══════════════════════════════════════════════════════════════════════════

@@ -451,7 +451,7 @@ impl Coordinator {
             let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
             (s.chinese_mode, s.caps_lock)
         };
-        const NAME: &str = "清风输入法";
+        const NAME: &str = "心晴输入法";
         match block {
             crate::coordinator::InputBlock::KeyboardDisabled => format!("{NAME} - 已禁用"),
             crate::coordinator::InputBlock::Password => format!("{NAME} - 密码框，已切英文"),

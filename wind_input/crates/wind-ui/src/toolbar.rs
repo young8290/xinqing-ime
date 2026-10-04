@@ -195,7 +195,7 @@ impl Toolbar {
 
     pub fn new(events: Sender<UiEvent>) -> Result<Self, String> {
         let scale = Self::dpi_scale();
-        let window = LayeredWindow::create(None, 160, 40, "WindInputToolbar")?;
+        let window = LayeredWindow::create(None, 160, 40, "XinQingToolbar")?;
         let renderer = TextRenderer::new("Microsoft YaHei UI", Self::FONT_PX * scale)?;
         let hwnd = window.hwnd();
         let mouse = Rc::new(RefCell::new(ToolbarMouse {

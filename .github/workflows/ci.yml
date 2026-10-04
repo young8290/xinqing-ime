@@ -15,8 +15,22 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # 心晴：私有仓库的 runner 磁盘小，msvc 交叉编译和本机测试两套 target 带完整调试信息会写满磁盘
+    # （No space left on device）。调试信息只留行号表，测试失败时回溯仍有文件和行号。
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
+      # 心晴：删掉本任务用不到的预装 SDK（.NET、Android、GHC、CodeQL），腾出二十多 GB
+      - name: 释放 runner 磁盘空间
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: actions/checkout@v7
+
+      # 心晴：身份改造不得有残留（docs/xinqing/identity.md）
+      - name: 心晴身份改造检查
+        run: python3 scripts/xinqing/rebrand.py --check
 
       # 统一 MSVC 工具链:clang-19(C++ TSF 需 clang≥19)+ lld-19 + llvm-19;
       # cargo-xwin 交叉编 Rust、clang 交叉编 C++ TSF,均经 MSVC SDK(无需 mingw)。
@@ -94,6 +108,10 @@ jobs:
   changes:
     name: Detect macOS-related changes
     runs-on: ubuntu-latest
+    # 心晴：私有仓库的默认令牌读不到 PR 文件列表，paths-filter 会报 Resource not accessible
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       macos: ${{ steps.filter.outputs.macos }}
     steps:
@@ -116,7 +134,8 @@ jobs:
   macos-check:
     name: macOS Build & Test
     needs: changes
-    if: needs.changes.outputs.macos == 'true'
+    # 心晴只做 Windows（产品书 02 C-PLT-01），fork 内不跑 macOS 门禁：私有仓库 macOS 分钟数按 10 倍计费
+    if: github.repository == 'huanfeng/WindInput' && needs.changes.outputs.macos == 'true'
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v7

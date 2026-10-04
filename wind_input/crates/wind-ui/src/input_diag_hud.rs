@@ -252,7 +252,7 @@ pub struct InputDiagHud {
 impl InputDiagHud {
     pub fn new(events: std::sync::mpsc::Sender<crate::manager::UiEvent>) -> Result<Self, String> {
         let scale = dpi_scale();
-        let window = LayeredWindow::create(None, 240, 120, "WindInputDiagHud")?;
+        let window = LayeredWindow::create(None, 240, 120, "XinQingDiagHud")?;
         let renderer = TextRenderer::new("Microsoft YaHei UI", FONT_PX * scale)?;
         let state = std::rc::Rc::new(std::cell::RefCell::new(DragState::new(
             window.hwnd(),

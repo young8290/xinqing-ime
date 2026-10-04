@@ -60,9 +60,9 @@ const LANGID_SUBKEY: &str = "0x00000804";
 /// 同一性质的约定——那边也是照抄 `Globals.cpp` 的 GUID。
 fn real_name() -> &'static str {
     if wind_config::variant::is_dev() {
-        "清风输入法 (开发版)"
+        "心晴输入法 (开发版)"
     } else {
-        "清风输入法"
+        "心晴输入法"
     }
 }
 
@@ -239,7 +239,7 @@ mod tests {
         // 只是 C++ 那边读不到记录值 —— 表现为「重装之后别名被冲回真名」。
         let p = app_key_path();
         assert!(
-            p == r"Software\WindInput" || p == r"Software\WindInputDev",
+            p == r"Software\XinQing" || p == r"Software\XinQingDev",
             "{p}"
         );
     }
@@ -249,9 +249,9 @@ mod tests {
         let p = profile_key_path();
         assert!(p.starts_with(r"SOFTWARE\Microsoft\CTF\TIP\{"), "{p}");
         assert!(
-            p.ends_with(r"\LanguageProfile\0x00000804\{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}")
+            p.ends_with(r"\LanguageProfile\0x00000804\{EF62DEB1-5ECF-413A-A476-48D1F29E827C}")
                 || p.ends_with(
-                    r"\LanguageProfile\0x00000804\{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}"
+                    r"\LanguageProfile\0x00000804\{EF62EE31-5ECF-413A-A476-48D1F29E827C}"
                 ),
             "profile 子键必须是本变体的 guidProfile，不是 CLSID: {p}"
         );

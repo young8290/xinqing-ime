@@ -173,7 +173,7 @@ STDAPI CLangBarItemButton::GetTooltipString(BSTR* pbstrToolTip)
     // 与一个「…」图标对不上，这时只说正在加载。
     if (_bIconLoading)
     {
-        *pbstrToolTip = SysAllocString(L"清风输入法：正在加载…");
+        *pbstrToolTip = SysAllocString(L"心晴输入法：正在加载…");
         return (*pbstrToolTip != nullptr) ? S_OK : E_OUTOFMEMORY;
     }
     if (_pTextService != nullptr)
@@ -189,7 +189,7 @@ STDAPI CLangBarItemButton::GetTooltipString(BSTR* pbstrToolTip)
     // 回落：仅在「连接建立前」这段极短窗口内走到（服务端握手时必推一次）。
     // 刻意只给一个中性文案而不在这里重建那套分支——留一份简化版判定，就是留一个会与
     // 服务端漂移的第二真相源，而漂移了也没有任何信号。
-    *pbstrToolTip = SysAllocString(L"清风输入法");
+    *pbstrToolTip = SysAllocString(L"心晴输入法");
     return (*pbstrToolTip != nullptr) ? S_OK : E_OUTOFMEMORY;
 }
 
@@ -603,7 +603,7 @@ STDAPI CLangBarItemButton::UnadviseSink(DWORD dwCookie)
 }
 
 // Message window class name
-static const wchar_t* MSG_WND_CLASS = L"WindInputLangBarMsgWnd";
+static const wchar_t* MSG_WND_CLASS = L"XinQingLangBarMsgWnd";
 static ATOM s_msgWndClass = 0;
 
 LRESULT CALLBACK CLangBarItemButton::_MsgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)

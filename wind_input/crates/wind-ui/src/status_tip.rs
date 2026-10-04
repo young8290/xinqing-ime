@@ -257,7 +257,7 @@ impl StatusTip {
 
     pub fn new(events: Sender<UiEvent>) -> Result<Self, String> {
         let scale = Self::dpi_scale();
-        let window = LayeredWindow::create(None, 200, 80, "WindInputStatusTip")?;
+        let window = LayeredWindow::create(None, 200, 80, "XinQingStatusTip")?;
         let mouse = Rc::new(RefCell::new(StatusTipMouse {
             hwnd: window.hwnd(),
             events,

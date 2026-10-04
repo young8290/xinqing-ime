@@ -53,15 +53,15 @@ const MOD_BASE: u32 = 0xC000;
 pub(crate) fn tip_guid_strings() -> (&'static str, &'static str, &'static str) {
     if wind_config::variant::is_dev() {
         (
-            "{99C2DEB0-5C57-45A2-9C63-FB54B34FD90A}",
-            "{99C2DEB1-5C57-45A2-9C63-FB54B34FD90A}",
-            "{99C2DEB5-5C57-45A2-9C63-FB54B34FD90A}",
+            "{EF62DEB0-5ECF-413A-A476-48D1F29E827C}",
+            "{EF62DEB1-5ECF-413A-A476-48D1F29E827C}",
+            "{EF62DEB5-5ECF-413A-A476-48D1F29E827C}",
         )
     } else {
         (
-            "{99C2EE30-5C57-45A2-9C63-FB54B34FD90A}",
-            "{99C2EE31-5C57-45A2-9C63-FB54B34FD90A}",
-            "{99C2EE35-5C57-45A2-9C63-FB54B34FD90A}",
+            "{EF62EE30-5ECF-413A-A476-48D1F29E827C}",
+            "{EF62EE31-5ECF-413A-A476-48D1F29E827C}",
+            "{EF62EE35-5ECF-413A-A476-48D1F29E827C}",
         )
     }
 }

@@ -6,7 +6,7 @@ use super::*;
 /// 语言栏图标发布器（Windows 桌面形态）。
 ///
 /// 做成进程级单例而非 [`Coordinator`] 字段，理由是它对应的资源本身就是进程级唯一的：
-/// 共享内存名固定（`Local\WindInput_IconShm{_dev}`），一个进程开两份没有意义。
+/// 共享内存名固定（`Local\XinQing_IconShm{_dev}`），一个进程开两份没有意义。
 /// 附带好处是不必改动全部构造器。
 ///
 /// 内层 `Option` 为 `None` = 创建失败。这不是致命错误——DLL 侧读不到 SHM 会退回

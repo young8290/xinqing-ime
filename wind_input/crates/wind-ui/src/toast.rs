@@ -45,7 +45,7 @@ impl Toast {
 
     pub fn new() -> Result<Self, String> {
         let scale = crate::dpi::scale_for_point(0, 0);
-        let window = LayeredWindow::create(None, 240, 60, "WindInputToast")?;
+        let window = LayeredWindow::create(None, 240, 60, "XinQingToast")?;
         let renderer = TextRenderer::new("Microsoft YaHei UI", Self::DEFAULT_FONT_PX * scale)?;
         Ok(Self {
             window,

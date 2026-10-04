@@ -12,7 +12,7 @@
 # ══════════════════════════════════════════════════════════════════════════
 #
 #  ⚠️ 编译机必须是 Windows —— 不能用 Linux / WSL / macOS。
-#     原因见 scripts\remote-build.ps1 顶部: clang 交叉编译的 wind_tsf.dll 在加固宿主
+#     原因见 scripts\remote-build.ps1 顶部: clang 交叉编译的 xinqing_tsf.dll 在加固宿主
 #     (企业微信 / TIM / QQ / UU浏览器) 里 COM 激活失败, 已由 A/B 实测锁定。
 #
 #  1. 开 SSH 并配免密 (在编译机的【管理员 PowerShell】里):
@@ -116,6 +116,6 @@ $WIND_REMOTE_ROOT = "C:\build\WindInput"
 #     照绿。remote-build.ps1 会在开跑前拦住这种情况, 不必自己记着。
 #
 #  ⚠️ 改了 C++ 但没改 docs\VERSION 时, CMake 增量构建可能跳过重编 —— 这个坑在远程一样
-#     存在且更难察觉。判据不变: 输出里要有「已构建: wind_tsf_dev.dll」。
+#     存在且更难察觉。判据不变: 输出里要有「已构建: xinqing_tsf_dev.dll」。
 #
 #  ⚠️ 部署始终在本机执行 —— 编译机不注册 COM、不装输入法。远程构建只搬产物, 不碰部署链。
