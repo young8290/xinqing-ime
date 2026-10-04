@@ -442,6 +442,7 @@ python3 tools/check_templates.py hub_templates && python3 tools/check_xqp_script
 心晴部分的约定（上面的提交纪律、格式化规则同样适用）：
 
 - CI：`xinqing.yml` 只在心晴路径变化时跑（Linux 上 fmt / clippy / 测试与前端绑定核对、前端 lint 与 Vitest、Windows 上编译测试并构建 Hub、契约校验）；`xinqing-secrets.yml` 的 gitleaks 每次都跑；上游 `ci.yml` 在只改心晴部分时跳过。
+- 安装包：`xinqing-package.yml`（手动触发，或改了 `config/app.toml`、`scripts/dev.ps1` 的 PR）在 Windows 上跑 `scripts/dev.ps1 8`，产物 `XinQing-Setup-<版本>.exe` 挂在 Actions 页面上供试装；`dev.ps1` 的 `Build-Hub` 把 `xinqing_hub.exe` 与 `hub_templates/` 放进 `build/`。上游 `release.yml` 仍是清风的三平台发版流程，心晴不用。
 - **禁止提交任何真实 API 密钥或私有接口地址**，示例只用占位符 `<...>`；本地密钥放 `secrets.toml`（已忽略），模板见 `secrets.example.toml`。
 - 危机词表、禁用词表、提示词的修改至少 2 人评审，其中 1 人是 E（产品书 15 第 5 节）。
 - 改清风原有文件时，在改动处加以 `心晴：` 开头的注释（产品书 13 第 6.1 节），合并上游时 `git grep 心晴：` 就能找全；身份改造脚本做的替换不另加注释，合并上游的步骤见 `docs/xinqing/identity.md`。

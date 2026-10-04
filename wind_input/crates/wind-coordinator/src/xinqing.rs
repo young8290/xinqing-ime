@@ -696,13 +696,63 @@ pub(crate) fn on_focus(app: &str, scope: Scope) {
     let Some(tap) = tap() else {
         return;
     };
+    // 先定安全桌面，再报焦点：锁屏、UAC 框里连 focus 也不发（C-PLT-05）
+    tap.set_secure_desktop(on_secure_desktop(app));
     tap.hook_focus(FocusHook {
         app: (!app.is_empty()).then_some(app),
         scope,
     });
 }
 
-/// 宿主终止了组字（FR-SEN-04）。
+/// 安全桌面上的宿主进程（C-PLT-05）：登录与锁屏界面、UAC 提权框。
+const SECURE_DESKTOP_HOSTS: [&str; 2] = ["logonui.exe", "consent.exe"];
+
+/// 输入焦点是否在安全桌面上。进程名命中 [`SECURE_DESKTOP_HOSTS`]，或当前输入桌面不是
+/// `Default`（锁屏、登录、UAC 都切到 `Winlogon` 桌面）。
+fn on_secure_desktop(app: &str) -> bool {
+    SECURE_DESKTOP_HOSTS
+        .iter()
+        .any(|h| app.eq_ignore_ascii_case(h))
+        || input_desktop_is_secure()
+}
+
+#[cfg(windows)]
+fn input_desktop_is_secure() -> bool {
+    use windows::Win32::Foundation::{E_ACCESSDENIED, HANDLE};
+    use windows::Win32::System::StationsAndDesktops::{
+        CloseDesktop, DESKTOP_CONTROL_FLAGS, DESKTOP_READOBJECTS, GetUserObjectInformationW,
+        OpenInputDesktop, UOI_NAME,
+    };
+    // SAFETY: 句柄只在本函数里用，用完关闭；名字缓冲按字节长度传入。
+    unsafe {
+        let desk = match OpenInputDesktop(DESKTOP_CONTROL_FLAGS(0), false, DESKTOP_READOBJECTS) {
+            Ok(h) => h,
+            // 普通用户进程打不开 Winlogon 桌面，拒绝访问就是在安全桌面上；其他错误不下结论
+            Err(e) => return e.code() == E_ACCESSDENIED,
+        };
+        let mut buf = [0u16; 64];
+        let ok = GetUserObjectInformationW(
+            HANDLE(desk.0),
+            UOI_NAME,
+            Some(buf.as_mut_ptr().cast()),
+            std::mem::size_of_val(&buf) as u32,
+            None,
+        )
+        .is_ok();
+        let _ = CloseDesktop(desk);
+        if !ok {
+            return false;
+        }
+        let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        !String::from_utf16_lossy(&buf[..len]).eq_ignore_ascii_case("Default")
+    }
+}
+
+#[cfg(not(windows))]
+fn input_desktop_is_secure() -> bool {
+    false
+}
+
 /// 宿主里的选区变了（用户点了别处、选中了文字）：“最近上屏”与光标前的文字对不上了。
 pub(crate) fn on_selection_changed() {
     if let Some(t) = tap() {
@@ -710,6 +760,7 @@ pub(crate) fn on_selection_changed() {
     }
 }
 
+/// 宿主终止了组字（FR-SEN-04）。
 pub(crate) fn on_comp_terminated() {
     if let Some(tap) = tap() {
         tap.hook_comp(CompOp::Terminated, 0);
@@ -749,6 +800,14 @@ mod tests {
         for vk in [0x10, 0x11, 0x12, 0xA4, 0xA5, 0x5B, 0x5C] {
             assert_eq!(key_kind(vk), None, "单按修饰键 {vk:#x}");
         }
+    }
+
+    #[test]
+    fn logon_and_uac_hosts_are_on_the_secure_desktop() {
+        assert!(on_secure_desktop("LogonUI.exe"));
+        assert!(on_secure_desktop("consent.exe"));
+        assert!(!on_secure_desktop("notepad.exe"));
+        assert!(!on_secure_desktop(""));
     }
 
     #[test]

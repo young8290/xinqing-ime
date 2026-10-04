@@ -3,11 +3,14 @@
 //! 领域逻辑都在 `xinqing-hub-core`，这里只做参数校验 → 调用领域服务 → 转成 `UiError`（ADR 0007）。
 
 mod args;
+mod cleanup;
 mod commands;
 mod error;
 mod events;
 mod fullscreen;
+mod gateway;
 mod paths;
+mod secrets;
 mod sensing;
 mod state;
 mod windows;
@@ -43,11 +46,16 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::consent_get,
             commands::consent_set,
             commands::open_window,
+            commands::ai::ai_config_get,
+            commands::ai::secrets_set,
+            commands::ai::ai_test_connection,
+            commands::ai::ai_usage_today,
         ])
         .events(collect_events![
             events::StatusChanged,
             events::SettingsChanged,
-            events::SelfReportChanged
+            events::SelfReportChanged,
+            events::GatewayHealthChanged,
         ])
 }
 
@@ -72,13 +80,17 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
-            let state = state::AppState::init(&paths::hub_data_dir()?)?;
+            let data_dir = paths::hub_data_dir()?;
+            let state = state::AppState::init(&data_dir)?;
             let needs_onboarding = state.needs_onboarding()?;
             let cfg = consent::xqp_cfg(&ConsentState::load(&state.db())?);
             app.manage(state);
+            // 第 4 步：AI 网关（无配置时为离线模式）
+            app.manage(gateway::start(app.handle(), &data_dir));
             // 第 5 步：XQP 客户端与实时感知。Hub 是同意状态的唯一真相源，握手后立即下发 cfg
             let sensing = sensing::start(app.handle(), cfg);
             app.manage(sensing);
+            cleanup::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。

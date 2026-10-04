@@ -5,6 +5,7 @@ use specta::Type;
 use tauri_specta::Event;
 use xinqing_hub_core::domain::self_report::SelfWeather;
 use xinqing_hub_core::domain::status::StatusSnapshot;
+use xinqing_hub_core::infra::gateway::GatewayHealth;
 
 /// `status:changed`：载荷同 `get_status`。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -27,3 +28,8 @@ pub struct SelfReportChanged {
     /// Unix 毫秒（前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的）
     pub until_ts: f64,
 }
+
+/// `gateway:health`：Jev 与大模型两侧是否可用（`{jev, llm}`），任一侧不可用时小组件显示“离线”角标。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "gateway:health")]
+pub struct GatewayHealthChanged(pub GatewayHealth);

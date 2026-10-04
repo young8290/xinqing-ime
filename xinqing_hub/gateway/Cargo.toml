@@ -10,6 +10,7 @@ publish.workspace = true
 xinqing-hub-core = { path = "../core" }
 serde.workspace = true
 serde_json.workspace = true
+toml.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 async-trait = "0.1"

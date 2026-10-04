@@ -3,14 +3,21 @@
 use std::collections::HashMap;
 
 use chrono::NaiveDate;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
 pub enum BudgetKind {
+    /// Jev 调用
     Jev,
     /// 大模型调用（不含对话）
     Llm,
+    /// 对话轮数
     ChatTurn,
+    /// 日程初筛命中的句子
     SchedulePrefilter,
+    /// 温柔改写
     Rewrite,
 }
 
@@ -52,6 +59,11 @@ impl Budget {
         self.caps.insert(kind, cap);
     }
 
+    /// 当前上限：设置覆盖过的值，否则是默认值。
+    pub fn cap(&self, kind: BudgetKind) -> u32 {
+        self.caps.get(&kind).copied().unwrap_or(kind.default_cap())
+    }
+
     fn roll(&mut self, today: NaiveDate) {
         if self.day != Some(today) {
             self.day = Some(today);
@@ -62,7 +74,7 @@ impl Budget {
     /// 占用 1 次额度；超限返回 `false`。
     pub fn try_take(&mut self, kind: BudgetKind, today: NaiveDate) -> bool {
         self.roll(today);
-        let cap = self.caps.get(&kind).copied().unwrap_or(kind.default_cap());
+        let cap = self.cap(kind);
         let used = self.used.entry(kind).or_insert(0);
         if *used >= cap {
             return false;
@@ -92,5 +104,7 @@ mod tests {
         assert!(!b.try_take(BudgetKind::Rewrite, d1));
         assert!(b.try_take(BudgetKind::Rewrite, d2));
         assert_eq!(b.used(BudgetKind::Rewrite, d2), 1);
+        assert_eq!(b.cap(BudgetKind::Rewrite), 2);
+        assert_eq!(b.cap(BudgetKind::Llm), 200);
     }
 }

@@ -428,6 +428,15 @@ fn coordinator_events_reach_hub() {
     let (_, skipped) = hub.until(|u| matches!(u, Up::Focus { .. }));
     assert!(skipped.is_empty(), "密码框里的事件漏出：{skipped:?}");
 
+    // 安全桌面（C-PLT-05）：锁屏、UAC 提权框里焦点和按键都不出管道，回来后补发焦点
+    coord.handle_focus_gained(&focus(4444, "LogonUI.exe", 0));
+    coord.handle_key_event_policed(&key(VK_A));
+    coord.handle_key_event_policed(&key(VK_ESCAPE));
+    coord.handle_focus_gained(&focus(4242, "Notepad.exe", 0));
+    let (up, skipped) = hub.until(|u| matches!(u, Up::Focus { .. }));
+    assert!(skipped.is_empty(), "安全桌面里的事件漏出：{skipped:?}");
+    assert!(matches!(up, Up::Focus { app: Some(ref a), .. } if a == "notepad.exe"));
+
     // 无痕快捷键（A-05，FR-SEN-06）：Ctrl+Alt+P 被吃掉，Hub 收到 pause_changed{hotkey}，
     // 之后的按键不出管道
     let mut ctrl_alt_p = key(VK_P);
