@@ -6,8 +6,10 @@ use tauri_specta::Event;
 use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::explain::Explanation;
+use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
+use xinqing_hub_core::sense::SenseCmd;
 
 use crate::error::UiError;
 use crate::events::{SettingsChanged, StatusChanged};
@@ -44,6 +46,36 @@ pub fn state_explain(
         return Ok(None);
     };
     Ok(state.db().explain_mood_state(i64::from(id), baseline)?)
+}
+
+/// 状态“准 / 不准”（FR-STA-07）。不带 `target_id` 时评价的是当前显示状态。
+/// 写入 `feedback` 表后，“不准”交给感知任务上调个人阈值；交不过去时（任务没运行或队列满）
+/// 也不报错，下次启动会从库里重放。还没有任何状态记录时什么也不做。
+#[tauri::command]
+#[specta::specta]
+pub fn submit_feedback(
+    state: State<'_, AppState>,
+    sensing: State<'_, Sensing>,
+    target: FeedbackTarget,
+    target_id: Option<u32>,
+    verdict: Verdict,
+) -> Result<(), UiError> {
+    match target {
+        FeedbackTarget::MoodState => {
+            let ts = chrono::Utc::now().timestamp_millis();
+            let rec = feedback::record(&state.db(), target_id.map(i64::from), verdict, ts)?;
+            if let Some(f) = rec
+                && f.verdict == Verdict::Unfit
+                && sensing
+                    .cmds
+                    .try_send(SenseCmd::Unfit { state: f.state, ts })
+                    .is_err()
+            {
+                eprintln!("“不准”反馈未能交给感知任务，下次启动时重放");
+            }
+        }
+    }
+    Ok(())
 }
 
 /// 暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。

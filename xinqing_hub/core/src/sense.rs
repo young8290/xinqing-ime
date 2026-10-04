@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::{Instant, MissedTickBehavior};
-use xqp::{Down, OpenTarget, RewriteFailReason, Scope, Up};
+use xqp::{Down, MoodState, OpenTarget, RewriteFailReason, Scope, Up};
 
 use crate::bus::{HubEvent, MoodEvent};
 use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
@@ -57,6 +57,8 @@ pub struct WindowRecord<'a> {
 pub enum SenseCmd {
     /// 用户在 Hub 里暂停 / 恢复感知（FR-WGT-06 右键菜单），同时经 XQP 下发给核心。
     Pause(bool),
+    /// 用户对某个显示状态点了“不准”（FR-STA-07），`ts` 为 Unix 毫秒；已由外壳写入 `feedback` 表。
+    Unfit { state: MoodState, ts: i64 },
 }
 
 pub struct Sense {
@@ -177,6 +179,7 @@ impl Sense {
                 self.apply_pause(on);
                 self.xqp.send(Down::Pause { on });
             }
+            SenseCmd::Unfit { state, ts } => self.pipeline.fusion_mut().record_unfit(state, ts),
         }
     }
 
@@ -331,7 +334,7 @@ mod tests {
     use std::sync::Mutex;
 
     use chrono::{Local, TimeZone};
-    use xqp::{ByeReason, KeyKind, KeySrc, MoodState};
+    use xqp::{ByeReason, KeyKind, KeySrc};
 
     use super::*;
     use crate::domain::features::Baseline;
@@ -534,6 +537,21 @@ mod tests {
         assert_eq!(hesitant.source, ExplainSource::Rule);
         assert_eq!(hesitant.prob, None);
         assert_eq!(r.sense.explanation(), explained.last());
+    }
+
+    #[test]
+    fn unfit_feedback_reaches_fusion() {
+        // FR-STA-07：外壳写库后把“不准”交给感知任务，30 分钟内 3 次 → 阈值 +0.05
+        let mut r = rig();
+        for t in [0, 60_000, 120_000] {
+            r.sense.on_cmd(SenseCmd::Unfit {
+                state: MoodState::Low,
+                ts: t,
+            });
+        }
+        let f = r.sense.pipeline.fusion_mut();
+        assert!((f.bump(MoodState::Low, 130_000) - 0.05).abs() < 1e-9);
+        assert_eq!(f.bump(MoodState::Hesitant, 130_000), 0.0);
     }
 
     #[test]

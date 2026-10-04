@@ -21,6 +21,12 @@ export const commands = {
 	/**  冷启动期间追加“还在熟悉你的习惯，判断可能不准”。 */
 	cold_start: boolean,
 } | null, UiError>(__TAURI_INVOKE("state_explain", { moodStateId })),
+	/**
+	 *  状态“准 / 不准”（FR-STA-07）。不带 `target_id` 时评价的是当前显示状态。
+	 *  写入 `feedback` 表后，“不准”交给感知任务上调个人阈值；交不过去时（任务没运行或队列满）
+	 *  也不报错，下次启动会从库里重放。还没有任何状态记录时什么也不做。
+	 */
+	submitFeedback: (target: FeedbackTarget, targetId: number | null, verdict: Verdict) => typedError<null, UiError>(__TAURI_INVOKE("submit_feedback", { target, targetId, verdict })),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
@@ -80,6 +86,11 @@ export type Explanation = {
 	/**  冷启动期间追加“还在熟悉你的习惯，判断可能不准”。 */
 	cold_start: boolean,
 };
+
+/**  反馈对象（`feedback.target`）。 */
+export type FeedbackTarget = 
+/**  一条状态记录（`mood_state`） */
+"mood_state";
 
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
@@ -150,6 +161,9 @@ export type UiError = {
 	/**  `hub_templates/ui_copy.toml` 里的文案键，前端据此显示提示 */
 	message_key: string,
 };
+
+/**  “准 / 不准”（`feedback.verdict`）。 */
+export type Verdict = "fit" | "unfit";
 
 /**  情绪天气（04 第 3.1 节、07 DS-COLOR）。`Wind` 只用于打错字的瞬时动画，不作为持续状态。 */
 export type Weather = "sunny" | "wind" | "cloudy" | "rain" | "storm" | "night";
