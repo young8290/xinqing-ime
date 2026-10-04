@@ -1,0 +1,15 @@
+<svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <!-- 心晴：天气按钮“多云”（犹豫）：太阳从云后露出一角 -->
+  <circle cx="360" cy="360" r="150"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(0 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(45 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(90 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(135 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(180 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(225 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(270 360 360)"/>
+  <rect x="333" y="60" width="54" height="100" rx="27" transform="rotate(315 360 360)"/>
+  <circle cx="470" cy="640" r="170"/>
+  <circle cx="680" cy="560" r="220"/>
+  <rect x="160" y="640" width="780" height="270" rx="135"/>
+</svg>

@@ -2683,6 +2683,11 @@ impl Coordinator {
                 self.run_toolbar_button(i);
                 return;
             }
+            // 心晴：天气按钮（FR-ENT-02）
+            ToolbarAction::Xinqing => {
+                self.xinqing_weather_click();
+                return;
+            }
             ToolbarAction::ToggleSoftKeyboard => {
                 // 不走 `handle_menu_command` 的动词表：软键盘开启要接管后续按键，
                 // 与 `add_word` 同类，不符 `dispatch_hotkey` 的 bool 契约。
@@ -2703,6 +2708,7 @@ impl Coordinator {
             | ToolbarAction::ToggleT2s
             | ToolbarAction::OpenSettings
             | ToolbarAction::Custom(_)
+            | ToolbarAction::Xinqing
             | ToolbarAction::ToggleSoftKeyboard => {
                 unreachable!()
             }
@@ -2985,6 +2991,8 @@ impl Coordinator {
         } else {
             self.mode_icon_label(chinese_mode, caps_lock)
         };
+        // 心晴：天气按钮。在取 state 锁之前算，它要读 Hub 下发状态的锁
+        let xinqing = self.xinqing_toolbar_cell();
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let tb = ToolbarState {
             chinese_mode,
@@ -3001,6 +3009,7 @@ impl Coordinator {
             // 与语言栏图标读**同一个** effective_input_block，不会再出现「图标说英文、
             // 工具栏说中文」的错位——那正是把判据分给两个负责者的代价。
             input_blocked,
+            xinqing,
         };
         drop(s);
         // 焦点换屏则先把工具栏挪到那块屏（内部按显示器 key 去重，未换屏时零下发）。
@@ -3419,7 +3428,8 @@ mod tests {
             assert!(!items.is_empty(), "{a:?} 的定制菜单是空的");
         }
         // 没定制的格：必须返回 None 才会回落主菜单。
-        for a in [A::OpenSettings, A::Custom(0)] {
+        // 心晴天气格：没装心晴组件（单元测试里就是）时回落主菜单
+        for a in [A::OpenSettings, A::Custom(0), A::Xinqing] {
             assert!(
                 c.build_toolbar_cell_menu(a).is_none(),
                 "{a:?} 不该有定制菜单——它要回落完整主菜单"
@@ -3698,6 +3708,7 @@ mod toolbar_push_dedup_tests {
             s2t_shown: false,
             soft_keyboard_on: false,
             input_blocked: false,
+            xinqing: None,
         }))
     }
 
@@ -4095,6 +4106,8 @@ impl Coordinator {
                 Some(self.schema_menu_children(chinese))
             }
             ToolbarAction::ToggleSoftKeyboard => Some(self.soft_keyboard_menu_children()),
+            // 心晴：天气按钮的小菜单（暂停感知、情绪看板）；没装心晴组件时回落主菜单
+            ToolbarAction::Xinqing => self.xinqing_weather_menu(),
             // 简繁格也走这一份：它本来就是那三项之一，右键给同一张表最省记忆。
             ToolbarAction::TogglePunct | ToolbarAction::ToggleWidth | ToolbarAction::ToggleS2t => {
                 let (punct, full, s2t) = {

@@ -274,6 +274,25 @@ impl Coordinator {
             .collect()
     }
 
+    /// 心晴：工具栏天气按钮的状态（测试用）。
+    pub fn debug_xinqing_toolbar_cell(&self) -> Option<wind_ui_types::XinqingCell> {
+        self.xinqing_toolbar_cell()
+    }
+
+    /// 心晴：点工具栏某一格（测试用）。
+    pub fn debug_toolbar_click(&self, action: wind_ui_types::ToolbarAction) {
+        self.mouse_toolbar(action);
+    }
+
+    /// 心晴：右键工具栏某一格弹出的菜单文字；回落主菜单时 `None`（测试用）。
+    pub fn debug_toolbar_cell_menu_labels(
+        &self,
+        action: wind_ui_types::ToolbarAction,
+    ) -> Option<Vec<String>> {
+        self.build_toolbar_cell_menu(action)
+            .map(|v| v.into_iter().map(|it| it.label).collect())
+    }
+
     /// 密码框强制英文的运行时两态：`(策略开关, 当前是否正在抑制)`（测试/诊断用）。
     pub fn debug_password_suppress(&self) -> (bool, bool) {
         use std::sync::atomic::Ordering::Relaxed;

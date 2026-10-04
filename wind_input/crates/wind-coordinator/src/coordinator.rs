@@ -1146,6 +1146,8 @@ pub(crate) fn parse_toolbar_items(
             "s2t" => sink.push(ToolbarItem::S2t),
             "t2s" => sink.push(ToolbarItem::T2s),
             "soft_keyboard" => sink.push(ToolbarItem::SoftKeyboard),
+            // 心晴：天气按钮
+            "xinqing" => sink.push(ToolbarItem::Xinqing),
             "settings" => sink.push(ToolbarItem::Settings),
             "" => {}
             other => match other.strip_prefix("custom:") {
@@ -16985,6 +16987,7 @@ mod toolbar_items_tests {
                 ToolbarItem::S2t,
                 ToolbarItem::T2s,
                 ToolbarItem::SoftKeyboard,
+                ToolbarItem::Xinqing,
                 ToolbarItem::Settings,
             ]
         );

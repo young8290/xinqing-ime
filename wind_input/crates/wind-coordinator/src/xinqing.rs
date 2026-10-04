@@ -7,7 +7,7 @@
 //!
 //! Hub 守护（A-06，17 第 1.5 节）也在这里装：`start` 时起 `xq-hub-guard`，配置热重载时更新
 //! 是否需要 Hub。下行的 `mood`、`badge`、`pending` 记进 [`hub_view`]，菜单与工具栏从那里读。
-//! 输入法里的心晴入口（A-07）：主菜单“心晴”分组、`tip` 的光标旁气泡。
+//! 输入法里的心晴入口（A-07）：主菜单“心晴”分组、`tip` 的光标旁气泡、工具栏天气按钮。
 
 use std::cell::Cell;
 use std::net::SocketAddr;
@@ -32,7 +32,9 @@ use wind_xinqing_tap::{
 };
 
 use crate::coordinator::Coordinator;
-use wind_ui_types::{MenuCmd, MenuItemSpec, MenuKind, ToastKind, ToastPosition};
+use wind_ui_types::{
+    MenuCmd, MenuItemSpec, MenuKind, ToastKind, ToastPosition, XinqingCell, XinqingWeather,
+};
 
 use crate::input_diag::InputDiagReason;
 use crate::key_convert::numpad_char;
@@ -134,6 +136,7 @@ fn start_guard(tap: Arc<Tap>, wanted: bool) {
         wanted,
     ) {
         Ok(g) => {
+            watch_link(&g);
             let _ = GUARD.set(g);
         }
         Err(e) => tracing::warn!("心晴 Hub 守护线程启动失败：{e}"),
@@ -159,6 +162,30 @@ pub(crate) fn apply_config(cfg: &XinqingConfig) {
     // 总开关关掉时 Tap 发 bye{disabled} 并停止监听，守护不再拉起；打开时立即拉起（FR-IME-02）
     if let Some(g) = GUARD.get() {
         g.set_wanted(cfg.enabled && cfg.hub_autostart);
+    }
+}
+
+/// Hub 连上或断开时刷新工具栏：天气按钮跟着变灰或恢复。连上后 Hub 补发的 `mood` 也会再刷一次；
+/// 这里主要管没发 `bye` 就断开的情况（Hub 崩溃）。测试自己装守护时也调它。
+pub fn watch_link(g: &HubGuard) {
+    g.on_link_change(Box::new(|_| refresh_toolbar()));
+}
+
+/// 下行状态变了，重画工具栏天气按钮。
+fn refresh_toolbar() {
+    if let Some(c) = COORD.get().and_then(Weak::upgrade) {
+        c.notify_toolbar();
+    }
+}
+
+/// `mood` → 天气图标（04 第 3.1 节）。还没收到过时显示晴。
+pub fn weather_of(mood: Option<MoodState>) -> XinqingWeather {
+    match mood {
+        Some(MoodState::Hesitant) => XinqingWeather::Cloudy,
+        Some(MoodState::Low) => XinqingWeather::Rain,
+        Some(MoodState::Agitated) => XinqingWeather::Storm,
+        Some(MoodState::Tired) => XinqingWeather::Night,
+        Some(MoodState::Fluent | MoodState::Unknown) | None => XinqingWeather::Clear,
     }
 }
 
@@ -261,6 +288,8 @@ impl Coordinator {
             tracing::warn!("写入 xinqing.enabled 失败：{e}");
         }
         self.refresh_config_in_memory(|c| c.xinqing.enabled = next);
+        // 天气按钮跟着出现或消失
+        self.notify_toolbar();
         self.show_toast(
             if next {
                 "已开启心晴功能"
@@ -290,6 +319,64 @@ impl Coordinator {
         // 10 第 2.5 节：≤ 16 字。Hub 发送前已校验，这里只防万一
         let text: String = text.chars().take(16).collect();
         self.show_xinqing_tip(&text, u64::from(ms.clamp(1500, 2500)));
+    }
+
+    /// 工具栏天气按钮的状态（FR-ENT-02）；心晴没启动或总开关关着时 `None`，这一格不画。
+    /// Hub 没连上或正在无痕时淡显；有未读暖心话时加小圆点。不取 `state` 锁。
+    pub(crate) fn xinqing_toolbar_cell(&self) -> Option<XinqingCell> {
+        let t = tap()?;
+        if !self.rt().config.xinqing.enabled {
+            return None;
+        }
+        let linked = t.is_linked();
+        let v = hub_view();
+        Some(XinqingCell {
+            weather: weather_of(v.mood),
+            dot: v.badge,
+            dim: !linked || t.paused(),
+        })
+    }
+
+    /// 左键天气按钮：打开和晴晴的对话。Hub 没连上时改为重新拉起它，免得点了没反应。
+    pub(crate) fn xinqing_weather_click(&self) {
+        let Some(t) = tap() else {
+            return;
+        };
+        if t.is_linked() {
+            t.send_open(OpenTarget::Chat);
+        } else {
+            retry_hub();
+            self.show_toast(
+                "心晴组件未运行，正在重新启动",
+                ToastPosition::BottomCenter,
+                ToastKind::Info,
+            );
+        }
+    }
+
+    /// 右键天气按钮的小菜单：暂停 / 恢复感知、情绪看板（FR-ENT-02）。没装心晴时 `None`，
+    /// 回落主菜单。
+    pub(crate) fn xinqing_weather_menu(&self) -> Option<Vec<MenuItemSpec>> {
+        let t = tap()?;
+        let pause = if t.paused() {
+            "恢复感知"
+        } else {
+            "暂停感知"
+        };
+        Some(vec![
+            MenuItemSpec::leaf(
+                pause.to_string(),
+                MenuKind::Command(MenuCmd::XinqingTogglePause),
+                true,
+                false,
+            ),
+            MenuItemSpec::leaf(
+                "情绪看板".to_string(),
+                MenuKind::Command(MenuCmd::XinqingOpen(1)),
+                t.is_linked(),
+                false,
+            ),
+        ])
     }
 
     /// 主菜单“心晴”分组（FR-ENT-01）。心晴没启动时为空；总开关关着时只剩“开启心晴功能”；
@@ -347,6 +434,8 @@ impl Coordinator {
     pub(crate) fn xinqing_toggle_pause(&self, by: PauseBy) -> Option<bool> {
         let on = toggle_pause(by)?;
         self.xinqing_store_pause(on);
+        // 天气按钮跟着淡显或恢复
+        self.notify_toolbar();
         self.show_toast(
             if on {
                 "心晴已暂停感知"
@@ -367,14 +456,24 @@ pub fn downlink(msg: Down) {
             if let Some(c) = COORD.get().and_then(Weak::upgrade) {
                 // 小组件右键等 Hub 侧入口切的无痕，与菜单、快捷键一样按需记住
                 c.xinqing_store_pause(on);
+                c.notify_toolbar();
             }
         }
         Down::Mood { state, offline } => {
-            let mut v = HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner());
-            v.mood = Some(state);
-            v.offline = offline;
+            {
+                let mut v = HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner());
+                // “未知”保持上一状态（04 第 3.1 节）
+                if state != MoodState::Unknown {
+                    v.mood = Some(state);
+                }
+                v.offline = offline;
+            }
+            refresh_toolbar();
         }
-        Down::Badge { on } => HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()).badge = on,
+        Down::Badge { on } => {
+            HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()).badge = on;
+            refresh_toolbar();
+        }
         Down::Pending { count } => {
             HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()).pending = count;
         }
@@ -384,6 +483,7 @@ pub fn downlink(msg: Down) {
                 g.hub_quit();
             }
             *HUB_VIEW.lock().unwrap_or_else(|e| e.into_inner()) = HubView::default();
+            refresh_toolbar();
         }
         Down::Tip { text, ms } => {
             if let Some(c) = COORD.get().and_then(Weak::upgrade) {
