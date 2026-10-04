@@ -4,6 +4,7 @@
 //! 依赖本 crate，本 crate 不反向依赖它们，因此可以在 Linux CI 上完整测试。
 
 pub mod bus;
+pub mod care;
 pub mod domain;
 pub mod infra;
 pub mod pipeline;

@@ -16,8 +16,18 @@ pub const BUS_CAPACITY: usize = 1024;
 
 #[derive(Debug, Clone)]
 pub enum MoodEvent {
-    StateChanged { ts: i64, state: MoodState },
-    Sample { ts: i64, out: FusionOut },
+    StateChanged {
+        ts: i64,
+        state: MoodState,
+    },
+    /// 每个窗口一次。`need_comfort`（0–1）与 `valence`（0–4）来自 Jev，降级运行时为 `None`；
+    /// 暖心话服务据此判断是否主动关怀（FR-CMF-01）。
+    Sample {
+        ts: i64,
+        out: FusionOut,
+        need_comfort: Option<f64>,
+        valence: Option<f64>,
+    },
 }
 
 #[derive(Debug, Clone)]
