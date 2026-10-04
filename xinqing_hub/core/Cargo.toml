@@ -21,6 +21,9 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 async-trait = "0.1"
 futures = "0.3"
 zeroize = "1"
+# 导出我的数据（FR-DAT-03）：zip 只开 deflate，后端是纯 Rust 的 zlib-rs；sha2 给 manifest 算校验和
+zip = { version = "8.6", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+sha2 = "0.10"
 specta = { version = "=2.0.0-rc.25", features = ["derive"], optional = true }
 
 [features]
