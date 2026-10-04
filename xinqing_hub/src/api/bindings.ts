@@ -7,7 +7,7 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	getStatus: () => typedError<StatusSnapshot, UiError>(__TAURI_INVOKE("get_status")),
-	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）。连上输入法后还要经 XQP 下发，见 C-02。 */
+	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
 	settingsSet: (key: string, value: SettingValue) => typedError<null, UiError>(__TAURI_INVOKE("settings_set", { key, value })),
