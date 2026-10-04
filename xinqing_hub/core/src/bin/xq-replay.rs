@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use chrono::{Local, NaiveTime, TimeZone};
 use clap::Parser;
+use xinqing_hub_core::domain::explain::{self, Evidence, ExplainCopy, ExplainSource};
 use xinqing_hub_core::domain::features::{Baseline, Bucket};
 use xinqing_hub_core::domain::fusion::JevVerdict;
 use xinqing_hub_core::domain::rules::{Hint, Hints};
@@ -120,15 +121,38 @@ fn main() -> Result<()> {
         args.mock_jev.then(|| mock_verdict(&w.hints))
     });
 
+    let copy = ExplainCopy::load(&dirs)?;
+    let evidence = |k: usize| Evidence {
+        features: &report.windows[k].window.features,
+        hints: &report.windows[k].window.hints,
+    };
     for (i, r) in report.windows.iter().enumerate() {
         let (w, f) = (&r.window, &r.fusion);
         let n = i + 1;
+        // 切换窗口附上状态解释（FR-STA-09），与 Hub 实时生成的一致
+        let explanation = f.changed.then(|| {
+            let (prob, source) = if args.mock_jev {
+                let p = mock_verdict(&w.hints).p(f.shown);
+                (Some(p), ExplainSource::Jev)
+            } else {
+                (None, ExplainSource::Rule)
+            };
+            explain::build(
+                f.shown,
+                prob,
+                source,
+                evidence(i),
+                i.checked_sub(1).map(evidence),
+                p.baseline(),
+            )
+        });
         if args.json {
             println!(
                 "{}",
                 serde_json::json!({"window": n, "start_ts": w.start_ts, "end_ts": w.end_ts,
                     "app_cat": w.app_cat, "features": w.features, "hints": w.hints.joined(),
-                    "cand": f.cand, "shown": f.shown, "changed": f.changed, "conflict": f.conflict})
+                    "cand": f.cand, "shown": f.shown, "changed": f.changed, "conflict": f.conflict,
+                    "explain": explanation, "explain_text": explanation.as_ref().map(|e| copy.render(e))})
             );
         } else {
             println!(
@@ -147,6 +171,9 @@ fn main() -> Result<()> {
                 f.shown.as_str(),
                 if f.changed { "  ← 切换" } else { "" }
             );
+            if let Some(e) = &explanation {
+                println!("       {}", copy.render(e));
+            }
         }
     }
     if !args.json {
