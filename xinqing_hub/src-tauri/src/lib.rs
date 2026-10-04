@@ -52,6 +52,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::ai::secrets_set,
             commands::ai::ai_test_connection,
             commands::ai::ai_usage_today,
+            commands::comfort::comfort_feedback,
         ])
         .events(collect_events![
             events::StatusChanged,
@@ -59,6 +60,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::SelfReportChanged,
             events::GatewayHealthChanged,
             events::ComfortNew,
+            events::CareReduced,
         ])
 }
 

@@ -3,7 +3,7 @@
 #       温柔改写原文也会经过本表（FR-RWR-05 第 3 条）；不扫描其他应用中的打字。
 # 原则：宁可多报，不可漏报。命中后显示求助卡片（12356 等），不依赖网络和大模型。
 # 修改本文件必须两人评审，其中一人为 E；每次修改后重跑 E-CRISIS 评测集，召回率必须 100%。
-# 版本：v1（初稿，2026-10-04），状态：待评审
+# 版本：v2（2026-10-04，E-08 评审补充，见 eval/datasets/README.md），状态：待第二人评审
 #
 # 判定算法（Hub safety 模块实现）：
 #   1. 预处理：全角转半角、去空格和标点、繁转简；
@@ -16,7 +16,7 @@
 #   注意：修饰只“降低权重但不排除”——weight 1.0 的条目即使被否定（×0.6）也低于阈值，
 #   所以高危条目（farewell、method）的 weight 设为 1.2 以上，被否定后仍可能触发，交给 Jev 通道复核。
 
-version = 1
+version = 2
 threshold = 1.0
 threshold_after_dismiss = 1.6
 negation_factor = 0.6
@@ -51,6 +51,43 @@ weight = 1.2
 category = "ideation"
 pattern = "(自杀|轻生|自残|自伤|割自己|伤害自己)"
 weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(想|好想|真想|我要)去死"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "死了(才|就|反而|倒)?(算了|更好|最好|就好了|干净|解脱)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "活(着|下去|得).{0,3}有什么(意思|意义|用|盼头)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(活着|活得|人生|这辈子).{0,10}(想|只想|好想)(要)?解脱"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "不配(再)?活(着|下去)?"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "((不想|不愿|别让我)再(醒来|醒过来|睁开眼)|永远(不要|不想|别)(再)?醒)"
+weight = 1.0
+# 网络谐音和缩写：紫砂、自鲨＝自杀；“想s”＝想死。“紫砂”本身是茶具，只认“想/要 + 紫砂”或“紫砂了/算了”
+[[entry]]
+category = "ideation"
+pattern = "((想|要|好想|去)(紫砂|自鲨)|(紫砂|自鲨)(了|算了|吧))"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "想[sS]($|了|算了)"
+weight = 1.0
+[[entry]]
+category = "ideation"
+pattern = "(撑|熬|坚持)不(下去|住)了"
+weight = 0.6
 [[entry]]
 category = "ideation"
 pattern = "(想|好想|希望自己).{0,4}(消失|不存在|没出生)"
@@ -103,7 +140,7 @@ pattern = "(割腕|跳楼|跳河|跳桥|烧炭|上吊|服毒|喝农药|卧轨)"
 weight = 1.2
 [[entry]]
 category = "method"
-pattern = "(安眠药|药片|药).{0,6}(攒|囤|吞|一把|全吃|吃光|一次吃)"
+pattern = "(安眠药|药片|药)(都|全|全部)?.{0,4}(攒|囤|一把|全吃|吃光|全部吃|一口气吃)"
 weight = 1.2
 [[entry]]
 category = "method"
@@ -112,6 +149,18 @@ weight = 1.0
 [[entry]]
 category = "method"
 pattern = "(就差|只差)最后(一步|下决心|的决心)"
+weight = 1.0
+[[entry]]
+category = "method"
+pattern = "(从|在)?(楼上|楼顶|天台|阳台|窗户|窗台|桥上).{0,4}跳(下去|下来)"
+weight = 1.2
+[[entry]]
+category = "method"
+pattern = "(吞|吃)(了|掉|下)?(一整瓶|一瓶|一把|整瓶|所有的?|全部的?)(安眠药|药片|药)"
+weight = 1.2
+[[entry]]
+category = "method"
+pattern = "(准备|备)好了?(绳子|刀片|木炭|炭|农药)"
 weight = 1.0
 [[entry]]
 category = "method"
@@ -134,6 +183,14 @@ weight = 1.2
 [[entry]]
 category = "farewell"
 pattern = "(下辈子|来世)(再见|再做|见)"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "((和|跟|向)(这个)?世界(告别|说再见|道别)|告别(这个)?世界)"
+weight = 1.2
+[[entry]]
+category = "farewell"
+pattern = "((再也|永远)见不到我|不会再(见到|看到)我)"
 weight = 1.2
 [[entry]]
 category = "farewell"
@@ -168,7 +225,7 @@ weight = 1.2
 [[benign]]
 pattern = "(笑|累|烦|气|热|冷|饿|困|忙|丑|帅|美|尬|吓|馋|酸)死(我|人|了)"
 [[benign]]
-pattern = "想死你(们)?了"
+pattern = "想死(你|我|你们|我们)了"
 [[benign]]
 pattern = "(原地消失|原地爆炸|原地升天)"
 [[benign]]

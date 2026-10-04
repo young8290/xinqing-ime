@@ -1,5 +1,8 @@
 //! 危机词表 Rust 实现与 Python 参考实现（eval/tools/check_crisis.py）对拍，并检查 E-CRISIS 门槛。
-//! 重新生成对拍文件：python3 eval/tools/check_crisis.py --golden eval/datasets/e_crisis.golden.json
+//! 两份数据集都要过：E-CRISIS（`e_crisis.jsonl`）和 E-08 评审补充的扩充集（`e_crisis_ext.jsonl`）。
+//! 重新生成对拍文件：
+//!   python3 eval/tools/check_crisis.py --golden eval/datasets/e_crisis.golden.json
+//!   python3 eval/tools/check_crisis.py --golden eval/datasets/e_crisis_ext.golden.json hub_templates/crisis_lexicon.toml eval/datasets/e_crisis_ext.jsonl
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -25,26 +28,25 @@ struct Golden {
     hit: bool,
 }
 
-#[test]
-fn matches_python_reference_and_meets_thresholds() {
-    let lex =
-        CrisisLexicon::load(&TemplateDirs::factory_only(repo().join("hub_templates"))).unwrap();
-    let data = std::fs::read_to_string(repo().join("eval/datasets/e_crisis.jsonl")).unwrap();
+/// 逐条与 Python 的得分和判定对拍，再检查召回率 100%、误报率 < 10%。
+fn check_dataset(lex: &CrisisLexicon, name: &str) {
+    let dir = repo().join("eval/datasets");
+    let data = std::fs::read_to_string(dir.join(format!("{name}.jsonl"))).unwrap();
     let golden: HashMap<String, Golden> = serde_json::from_str(
-        &std::fs::read_to_string(repo().join("eval/datasets/e_crisis.golden.json")).unwrap(),
+        &std::fs::read_to_string(dir.join(format!("{name}.golden.json"))).unwrap(),
     )
     .unwrap();
 
     let (mut pos, mut tp, mut neg, mut fp) = (0, 0, 0, 0);
     for line in data.lines().filter(|l| !l.trim().is_empty()) {
         let s: Sample = serde_json::from_str(line).unwrap();
-        let v = check_local(&s.text, &lex, lex.threshold);
+        let v = check_local(&s.text, lex, lex.threshold);
         let g = golden
             .get(&s.id)
-            .unwrap_or_else(|| panic!("{} 不在对拍文件中，请重新生成", s.id));
+            .unwrap_or_else(|| panic!("{name} {} 不在对拍文件中，请重新生成", s.id));
         assert!(
             (v.score - g.score).abs() < 1e-6 && v.hit == g.hit,
-            "{}：Rust {:.4}/{} ≠ Python {:.4}/{}",
+            "{name} {}：Rust {:.4}/{} ≠ Python {:.4}/{}",
             s.id,
             v.score,
             v.hit,
@@ -59,8 +61,19 @@ fn matches_python_reference_and_meets_thresholds() {
             fp += v.hit as u32;
         }
     }
-    assert_eq!(tp, pos, "召回率必须 100%");
-    assert!((fp as f64) / (neg as f64) < 0.10, "误报率必须 < 10%");
+    assert_eq!(tp, pos, "{name}：召回率必须 100%");
+    assert!(
+        (fp as f64) / (neg as f64) < 0.10,
+        "{name}：误报率必须 < 10%"
+    );
+}
+
+#[test]
+fn matches_python_reference_and_meets_thresholds() {
+    let lex =
+        CrisisLexicon::load(&TemplateDirs::factory_only(repo().join("hub_templates"))).unwrap();
+    check_dataset(&lex, "e_crisis");
+    check_dataset(&lex, "e_crisis_ext");
 }
 
 #[test]

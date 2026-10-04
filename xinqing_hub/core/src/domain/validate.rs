@@ -70,11 +70,13 @@ impl BannedWords {
             raw.routine,
         ]
         .concat();
+        // 词表条目和待查文字走同一套归一化，否则 `PTSD` 这类大写条目永远匹配不上转成小写的文字
+        let words = words.iter().map(|w| normalize(w)).collect();
         Ok(Self {
             version: raw.version,
             words,
             patterns,
-            chat_allow: raw.chat_allow.into_iter().collect(),
+            chat_allow: raw.chat_allow.iter().map(|w| normalize(w)).collect(),
             exempt: raw.exempt_copy_ids.into_iter().collect(),
         })
     }

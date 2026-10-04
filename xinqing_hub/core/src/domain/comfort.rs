@@ -60,6 +60,24 @@ impl CareLevel {
         }
     }
 
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CareLevel::More => "more",
+            CareLevel::Normal => "normal",
+            CareLevel::Less => "less",
+            CareLevel::Off => "off",
+        }
+    }
+
+    /// 自动降一档（FR-CMF-06 第 2 条）：最低降到“少一些”，不会自动关掉；已经是“少一些”或关闭时为 `None`。
+    pub fn reduced(self) -> Option<CareLevel> {
+        match self {
+            CareLevel::More => Some(CareLevel::Normal),
+            CareLevel::Normal => Some(CareLevel::Less),
+            CareLevel::Less | CareLevel::Off => None,
+        }
+    }
+
     pub fn cooldown_ms(self) -> i64 {
         const MIN: i64 = 60_000;
         match self {
@@ -198,6 +216,8 @@ pub struct Gate {
     pub paused: bool,
     /// 勿扰情形（FR-CMF-01 第 5 条）
     pub dnd: bool,
+    /// 用户点了 🔕 今天先别说了（FR-CMF-05）
+    pub muted: bool,
 }
 
 /// 这一次没有主动关怀的原因（只用于测试和调试日志，不含用户数据）。
@@ -213,6 +233,7 @@ pub enum Skip {
     Cooldown,
     Paused,
     Dnd,
+    Muted,
 }
 
 /// `ComfortWanted`（10 第 5.3 节）：要为哪个状态说一句话、这个状态持续了多久。
@@ -271,6 +292,9 @@ impl Trigger {
             .is_some_and(|last| ts - last < gate.level.cooldown_ms())
         {
             return Err(Skip::Cooldown);
+        }
+        if gate.muted {
+            return Err(Skip::Muted);
         }
         if gate.paused {
             return Err(Skip::Paused);
@@ -581,6 +605,7 @@ mod tests {
             last_ms: None,
             paused: false,
             dnd: false,
+            muted: false,
         }
     }
 
@@ -638,6 +663,10 @@ mod tests {
             t.on_sample(now, s, Some(0.8), gate(|g| g.dnd = true)),
             Err(Skip::Dnd)
         );
+        assert_eq!(
+            t.on_sample(now, s, Some(0.8), gate(|g| g.muted = true)),
+            Err(Skip::Muted)
+        );
         let mut f = Trigger::default();
         f.on_sample(0, MoodState::Fluent, Some(0.9), open())
             .unwrap_err();
@@ -656,6 +685,16 @@ mod tests {
         let less = CareLevel::parse("less");
         assert_eq!((less.daily_cap(), less.cooldown_ms()), (2, 60 * MIN));
         assert_eq!(CareLevel::parse("off").daily_cap(), 0);
+        for l in [
+            CareLevel::More,
+            CareLevel::Normal,
+            CareLevel::Less,
+            CareLevel::Off,
+        ] {
+            assert_eq!(CareLevel::parse(l.as_str()), l);
+        }
+        assert_eq!(CareLevel::More.reduced(), Some(CareLevel::Normal));
+        assert_eq!(CareLevel::Less.reduced(), None, "不会自动关掉");
     }
 
     #[test]

@@ -10,6 +10,7 @@ members = [
     "xinqing_hub/src-tauri",
     "tools/xq-sim",
     "tools/mock-ai",
+    "tools/typer",
 ]
 
 [workspace.package]

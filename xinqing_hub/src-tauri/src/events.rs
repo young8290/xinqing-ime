@@ -46,3 +46,11 @@ pub struct ComfortNew {
     pub source: ComfortSource,
     pub ai_generated: bool,
 }
+
+/// `care:reduced`：连续 3 天的反馈都是 👎 / 🔕，主动关怀频率自动降了一档（FR-CMF-06 第 2 条）。
+/// 小组件一句话区显示 `widget.care_reduced`（“我会少打扰你一些”）。`level` 是降档后的 `care.level`。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "care:reduced")]
+pub struct CareReduced {
+    pub level: String,
+}
