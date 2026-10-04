@@ -4,7 +4,7 @@
 > 输入法里的心晴入口（菜单、工具栏、气泡）、温柔改写的核心一侧、DLL 全量按键时序、安装包、上游同步；
 > 另是 XQP 协议（`protocol/xqp.schema.json`、`crates/xqp`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.1 节。本文件随 A 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（A-08 温柔改写，核心一侧）
+> 最后更新：2026-10-04（安全桌面闸门；A-08 已合并）
 
 ## 1. 任务状态
 
@@ -14,11 +14,11 @@
 | A-02 | XQP v1 schema 与 Rust 类型 | 完成 | `protocol/xqp.schema.json`、`crates/xqp/`（Hub、xq-sim、核心三方共用） | 改协议要走契约 PR（A 负责） |
 | A-03 | `wind-xinqing-tap`：队列、XQP 服务端、心跳、背压 | 代码完成 | [#4](https://github.com/young8290/xinqing-ime/pull/4)，`wind_input/crates/wind-xinqing-tap/`，ADR 0009 第 1–9 条 | 命名管道与 ACL 没在真 Windows 上跑过；ADR 0009 待评审 |
 | A-04 | 核心钩子：按键、上屏、焦点、组字、候选 | 完成 | [#5](https://github.com/young8290/xinqing-ime/pull/5)，`wind-coordinator/src/xinqing.rs` | 组字长度只看 `input_buffer`，临时拼音等独占模式的缓冲不计 |
-| A-05 | 隐私闸门、无痕模式（菜单、`Ctrl+Alt+P`） | 完成 | [#8](https://github.com/young8290/xinqing-ime/pull/8)，配置段 `[xinqing]`、state.toml `xinqing_paused` | 安全桌面闸门 `Tap::set_secure_desktop` 还没有调用方 |
+| A-05 | 隐私闸门、无痕模式（菜单、`Ctrl+Alt+P`） | 完成 | [#8](https://github.com/young8290/xinqing-ime/pull/8)，配置段 `[xinqing]`、state.toml `xinqing_paused` | 安全桌面闸门见第 3 节（本 PR） |
 | A-06 | Hub 守护、总开关、下行处理 | 完成 | [#9](https://github.com/young8290/xinqing-ime/pull/9)，`wind-xinqing-tap/src/guard.rs`，ADR 0009 第 10 条 | Hub 收到 `bye{disabled}` 后自己退出，是 Hub 侧的事，没做 |
 | A-07 | 主菜单“心晴”分组、工具栏天气按钮、光标旁气泡 | 完成 | [#10](https://github.com/young8290/xinqing-ime/pull/10)、[#13](https://github.com/young8290/xinqing-ime/pull/13)；`docs/design/toolbar-customization.md` 第十三节 | 图标大小、小圆点位置、菜单与气泡要在真机上看一眼 |
-| A-08 | 温柔改写（核心一侧） | **进行中** | [#18](https://github.com/young8290/xinqing-ime/pull/18)，`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 3 节 |
-| A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 未开始 | — | 计划 W9；要改 C++（`wind_tsf/`），只能在 Windows 上调 |
+| A-08 | 温柔改写（核心一侧） | 大部分完成 | [#18](https://github.com/young8290/xinqing-ime/pull/18)（已合并），`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 4 节 |
+| A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 暂不做 | — | 按 16 推荐的方案甲，FR-SEN-08 在 13 第 2.1 节降级清单第 1 项，提前降为 P2；团队改选别的方案再做。要改 C++（`wind_tsf/`） |
 | A-10 | 安装包、卸载 | 未开始 | — | 计划 W10；需要 Hub 能打包 |
 | A-11 | typer 打字脚本、兼容矩阵测试支援 | 未开始 | — | 计划 W6/W9；TC-RWR-09（改写替换在各宿主里的表现）要真机 |
 | A-12 | 每 2 周上游同步 | 未开始 | 基线 `xinqing/base` = `df6f966`，`upstream` 远端已设 | 步骤见 [identity.md](../identity.md) |
@@ -48,7 +48,15 @@ wind_input/crates/wind-ui(-types)/  工具栏天气格与 weather_*.svg
 `cargo test -p wind-coordinator --lib xinqing`；与 Hub 联调：两边都设 `XQ_XQP_TCP=127.0.0.1:18765`，或用 `xq-sim --tcp` 扮演一方。
 提交规则（只 `git add` 显式路径、`cargo fmt` 单独提交、提交信息不加 AI 署名）见根目录 AGENTS.md。
 
-## 3. 进行中：A-08
+## 3. 进行中：安全桌面闸门（A-05 遗留）
+
+C-PLT-05：登录、锁屏、UAC 提权框处于安全桌面，输入法不采集也不显示心晴界面。协调器在每次焦点事件里先判断
+是否在安全桌面（`xinqing::on_secure_desktop`：进程名是 `LogonUI.exe` / `consent.exe`，或 `OpenInputDesktop`
+被拒绝、桌面名不是 `Default`），再调 `Tap::set_secure_desktop` 并报焦点。闸门关着时焦点、按键都不发，最近上屏清空；
+回到普通桌面的第一个焦点事件打开闸门并补发焦点。测试只覆盖进程名这条路，`OpenInputDesktop` 这条要在真机上锁屏验证。
+本仓现在可以在 Linux 上做 Windows 编译检查：`cargo check -p wind-coordinator --target x86_64-pc-windows-gnu`（`rustup` 里已有该目标）。
+
+## 4. A-08 剩余事项
 
 | 部分 | 需求 | 状态 |
 |---|---|---|
@@ -65,27 +73,29 @@ wind_input/crates/wind-ui(-types)/  工具栏天气格与 weather_*.svg
 
 Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrite_log`）是 C 的 C-09，不在这里。
 
-## 4. 关键决定与待评审
+## 5. 关键决定与待评审
 
 - ADR 0009（核心侧 XQP 服务端的实现约定，11 条）：状态“提议”，等 A 自己以外的人评审（建议 C 看第 6、7、10 条，E 看第 11 条）。
   接受后要改产品书 17 第 1.1–1.6 节、10 第 2.1 节、06 FR-RWR-03、04 FR-SEN-01，并写 00 第 5 节修订记录。
 - 范围按产品书 16 推荐的方案甲在做，团队还没正式确认。
 
-## 5. 已知问题
+## 6. 已知问题
 
 - 本仓的开发会话没有 Windows：命名管道、TSF 吃键与重放、`ReplaceBackward`、工具栏图标都只在 Linux 无头测试和 CI 的 Windows 编译里验证过。
 - “最近上屏”按 10 第 2.4 节最多留 300 字；06 FR-RWR-01 写的是 200 字，两处要统一。
 - 改写模式里的 `1`–`3`、`Tab`、`Esc` 仍照常报 `key`，Hub 的感知会看到这些键。
 - 改写快捷键在中英文两种状态下都能用；英文状态下单按 Shift 切中英的逻辑仍会生效（与快捷加词一样）。
 
-## 6. 下一步（按优先级）
+## 7. 下一步（按优先级）
 
-1. A-08 收尾：首次使用说明的归属定下来后实现；与 C 联调真实的 `rewrite_result`；
-2. 真机验证清单（需要有 Windows 的组员）：并装、命名管道、改写替换（含 emoji 和扩展区汉字）、工具栏；
-3. A-09 DLL 全量按键时序（W9）、A-10 安装包（W10）。
+1. A-10 安装包：把 Hub、WebView2 检测、开始菜单快捷方式、卸载时结束 Hub 和询问删除数据加进 `config/app.toml` 的清单；
+2. A-08 收尾：首次使用说明的归属定下来后实现；与 C 联调真实的 `rewrite_result`；
+3. 真机验证清单（需要有 Windows 的组员）：并装、命名管道、改写替换（含 emoji 和扩展区汉字）、锁屏与 UAC、工具栏；
+4. A-11 typer 打字脚本与兼容测试支援、A-12 上游同步。
 
-## 7. 修订记录
+## 8. 修订记录
 
 | 日期 | 改动 |
 |---|---|
 | 2026-10-04 | 初版：盘点 A-01～A-12 现状；A-08 温柔改写核心一侧与 ADR 0009 第 11 条 |
+| 2026-10-04 | A-08 已合并；安全桌面闸门；A-09 按方案甲暂不做 |
