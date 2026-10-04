@@ -14,7 +14,7 @@
 | B-04 | 个人基线、冷启动默认值 | 部分完成 | `domain/features/baseline.rs`、`hub_templates/baseline_default.toml` | 每天 04:00 重算、写读 `baseline` 表（D-09）、设置里“重置基线”都没做；外壳目前每次启动都用出厂默认值（`src-tauri/src/sensing.rs`）；默认值 `calibrated = false`，等 B-02 录制后校准 |
 | B-05 | 本地规则 R1–R6 | 完成（R1b 除外） | `domain/rules.rs`、`domain/features/typo.rs` | R1b 需要核心在 `comp` 里加 `invalid` 字段（ADR 0008 第 5 条），待 A 决定 |
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
-| B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成（第四部分合并后） | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：本 PR，ADR 0011 | 见第 3 节 |
+| B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成（第四部分合并后） | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)，ADR 0011 | 见第 3 节 |
 | B-08 | 使用时长与四类休息提醒等（P0） | 未开始 | — | 计划 W7–W8 |
 | B-09 | 作息洞察统计 | 未开始 | — | 计划 W9 |
 | B-10 | 演示模式（clock 替换、演示数据库） | 未开始 | `infra/clock.rs` 已有 `Clock` / `ManualClock` 可用 | 计划 W10 |
@@ -48,7 +48,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | `state_explain` 命令（10 第 5.1 节）：不带参数返回当前解释 | FR-STA-09 | 完成（#12），绑定 `commands.stateExplain(null)`，等 D 接到小组件悬停 |
 | 看板时间线历史状态点的解释 `state_explain(mood_state_id)` | FR-STA-09 | 完成（#12）：`Db::explain_mood_state` 用 `mood_state.window_id` 找回窗口和上一个窗口重新生成，不另存解释、不加迁移。参数是 `u32`（specta 不导出 i64） |
 | “准 / 不准”反馈：`submit_feedback` → `feedback` 表 → `SenseCmd::Unfit` → `Fusion::record_unfit` | FR-STA-07 | 完成（#15）：`domain/feedback.rs`；不带 `target_id` 时记到最近一条 `mood_state`；Hub 启动时用 `feedback::recent_unfit` 重放最近 7 天的“不准”恢复阈值上调。等 D 接到小组件悬停和看板时间线 |
-| 自评天气：`self_report_set(weather, note?)` / `self_report_list(date)`、`self_report:changed`、`HubEvent::SelfReport` | FR-STA-10 | 完成（本 PR）：`domain/self_report.rs` 写库、按本地日期列出、判断校准；显示覆盖在 `Sense`（`SenseCmd::SelfReport`），60 分钟后或“说不上来”时回到自动判断；覆盖期间 `state_explain()` 返回 `source = self` 的解释。解释见 ADR 0011 |
+| 自评天气：`self_report_set(weather, note?)` / `self_report_list(date)`、`self_report:changed`、`HubEvent::SelfReport` | FR-STA-10 | 完成（#17）：`domain/self_report.rs` 写库、按本地日期列出、判断校准；显示覆盖在 `Sense`（`SenseCmd::SelfReport`），60 分钟后或“说不上来”时回到自动判断；覆盖期间 `state_explain()` 返回 `source = self` 的解释。解释见 ADR 0011 |
 | 负面自评后晴晴立即回应（P-COMFORT 或本地模板）、“和晴晴聊聊”按钮 | FR-STA-10 第 2 条 | 不归 B：C 的暖心话订阅 `HubEvent::SelfReport`（`weather.is_negative()`）处理，不受冷却和每日上限限制 |
 | 研究模式的定时自评邀请（`source = esm`） | FR-DMO-04 | 未做（B-10 演示 / 研究模式时一起做）：`self_report_set` 目前固定写 `source = user` |
 
@@ -58,7 +58,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 - ADR 0010（状态解释的信号挑选与拼句）：D 已同意（D 交接文档第 4 节），等 E 评审。D 的三点建议已处理：
   ① ADR 第 5 条写明界面自己定版式；② `Explanation.prob` 改名为 `prob_pct`（0–100），与快照的 `prob`（0–1）区分；
   ③ 实时路径改为先交出解释再推送 `status:changed`，界面收到状态变化后取到的一定是同一次切换的解释，界面也可以用 `Explanation.state` 与快照核对。
-- ADR 0011（自评天气的实现解释：“说不上来”不覆盖、校准的计法、自评期间的解释、总线字段类型、覆盖不跨重启）：本 PR 提出，等 D 与 E 评审。
+- ADR 0011（自评天气的实现解释：“说不上来”不覆盖、校准的计法、自评期间的解释、总线字段类型、覆盖不跨重启）：#17 提出，等 D 与 E 评审。
 - 这几份 ADR 接受后都要回产品书仓库改 04 FR-STA-01/04/06/08/09/10、10 第 5.3 节和 15，并写 00 第 5 节修订记录。
 
 ## 5. 已知问题
