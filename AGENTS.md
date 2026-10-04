@@ -31,6 +31,7 @@
 | `wind-dict` | 多层复合词典引擎：DictLayer/CompositeDict 查询 + wdat mmap 二进制词库 | [AGENTS.md](wind_input/crates/wind-dict/AGENTS.md) |
 | `wind-store` | 基于 redb 的用户数据持久化：按方案隔离用户词/词频/Shadow，全局存短语 | [AGENTS.md](wind_input/crates/wind-store/AGENTS.md) |
 | `wind-rpc` | core ↔ 设置端 JSON-RPC IPC 双通道（ctrl 请求-响应 + events 广播） | [AGENTS.md](wind_input/crates/wind-rpc/AGENTS.md) |
+| `wind-xinqing-tap` | 心晴：核心侧 XQP 服务端（采集钩子、隐私闸门、命名管道），Hub 通过它拿到按键与上屏事件 | [AGENTS.md](wind_input/crates/wind-xinqing-tap/AGENTS.md) |
 | `wind-config` | 配置系统：TOML 三层合并、字段注册表 SSOT、热键编译、变体探测、运行时状态 | [AGENTS.md](wind_input/crates/wind-config/AGENTS.md) |
 | `wind-theme` | 加载并求值 v3 主题，输出调色板 + 盒模型树供 wind-ui 渲染 | [AGENTS.md](wind_input/crates/wind-theme/AGENTS.md) |
 | `wind-bridge` | Named Pipe 服务器 + Push 管道，桥接 Rust 服务与 C++ TSF DLL | [AGENTS.md](wind_input/crates/wind-bridge/AGENTS.md) |
@@ -418,7 +419,7 @@ cargo test -p wind-rpc --test wind_setting_assets
 | 位置 | 内容 | 文档 |
 |---|---|---|
 | `Cargo.toml`（根目录） | 心晴的 Cargo workspace，与 `wind_input/` 互不包含，edition 2024 | [ADR 0007](docs/adr/0007-Hub核心与外壳分离.md) |
-| `crates/xqp/`、`protocol/` | XQP 协议：Rust 类型与帧编解码、`xqp.schema.json` 契约（Hub、`xq-sim`、将来的 `wind-xinqing-tap` 共用） | — |
+| `crates/xqp/`、`protocol/` | XQP 协议：Rust 类型与帧编解码、`xqp.schema.json` 契约（Hub、`xq-sim`、`wind-xinqing-tap` 共用） | — |
 | `xinqing_hub/core/` | Hub 领域层与平台无关的基础层（**禁止**依赖 tauri / windows） | [README](xinqing_hub/core/README.md) |
 | `xinqing_hub/gateway/` | AI 网关的 HTTP 实现（Jev、OpenAI 兼容大模型），core 不依赖它 | [README](xinqing_hub/gateway/README.md) |
 | `xinqing_hub/src-tauri/`、`xinqing_hub/src/` | Hub 的 Tauri 外壳与 Vue 3 前端 | [README](xinqing_hub/README.md) |

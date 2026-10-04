@@ -1,0 +1,23 @@
+[package]
+name = "wind-xinqing-tap"
+description = "心晴：核心服务侧的 XQP 服务端（采集钩子、隐私闸门、命名管道），产品书 17 第 1 节"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# XQP 消息类型与帧编解码，与 Hub、xq-sim 共用（仓库根目录的心晴工作区）
+xqp = { path = "../../../crates/xqp" }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }
+
+[dev-dependencies]
+# 集成测试扮演 Hub，直接收发 XQP 帧
+xqp = { path = "../../../crates/xqp" }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
