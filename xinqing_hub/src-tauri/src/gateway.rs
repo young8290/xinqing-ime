@@ -1,7 +1,7 @@
 //! AI 网关的外壳接线（C-03，17 第 2.2 节第 4 步、第 2.5 节）：按配置建网关、出网日志写入 `net_log`、
 //! 健康状态同步到状态快照并推送 `gateway:health`、启动时和之后每 30 分钟刷新模型列表（FR-AIG-04）。
 //!
-//! 配置来源按优先级（ADR 0011）：dev 构建的明文 `secrets.toml` → `secrets.bin`（DPAPI）→ dev 构建连本机
+//! 配置来源按优先级（ADR 0012）：dev 构建的明文 `secrets.toml` → `secrets.bin`（DPAPI）→ dev 构建连本机
 //! mock-ai → 都没有则离线（两侧都走降级，03 第 8 节）。设置页保存后用新配置原地换掉网关，
 //! 领域服务拿的是 [`Ai`]（它本身实现 `AiGateway`），不用重新取。
 

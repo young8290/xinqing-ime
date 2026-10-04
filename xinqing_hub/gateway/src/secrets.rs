@@ -1,7 +1,7 @@
 //! AI 服务地址与密钥（09 D-19、08 FR-AIG-06）。
 //!
 //! 结构与仓库里的 `secrets.example.toml` 一致；Hub 把它序列化成 TOML 文本后整份用 DPAPI 加密存为
-//! `hub\secrets.bin`（加解密在外壳，见 ADR 0011）。本模块只负责格式、校验、合并与转成 [`GatewayConfig`]，
+//! `hub\secrets.bin`（加解密在外壳，见 ADR 0012）。本模块只负责格式、校验、合并与转成 [`GatewayConfig`]，
 //! 不碰文件和平台接口。TOML 文本里有明文密钥，调用方必须放在 `Zeroizing` 里，用完即清零。
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

@@ -1,4 +1,4 @@
-//! AI 服务地址与密钥的存取（08 FR-AIG-06、09 D-19，ADR 0011）。
+//! AI 服务地址与密钥的存取（08 FR-AIG-06、09 D-19，ADR 0012）。
 //!
 //! Windows：整份 TOML 用 DPAPI（`CryptProtectData`，当前用户范围）加密后写成 `hub\secrets.bin`，
 //! 只有同一台电脑上的同一个用户能解开，复制到别处无效（09 第 6 节“不导入”）。
