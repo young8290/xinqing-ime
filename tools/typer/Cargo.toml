@@ -1,0 +1,19 @@
+[package]
+name = "typer"
+description = "节奏打字脚本：按预设间隔经 SendInput 发键（经过 TSF），用于性能测试与 R1 打错字测试（产品书 12 第 2 节、17 第 4 节）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Media",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }

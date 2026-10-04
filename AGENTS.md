@@ -424,7 +424,7 @@ cargo test -p wind-rpc --test wind_setting_assets
 | `xinqing_hub/gateway/` | AI 网关的 HTTP 实现（Jev、OpenAI 兼容大模型），core 不依赖它 | [README](xinqing_hub/gateway/README.md) |
 | `xinqing_hub/src-tauri/`、`xinqing_hub/src/` | Hub 的 Tauri 外壳与 Vue 3 前端 | [README](xinqing_hub/README.md) |
 | `hub_templates/` | 出厂模板：危机词表、禁用词表、暖心话、界面文案、提示词 | — |
-| `tools/` | `xq-sim`（扮演核心服务的 XQP 模拟器）、`mock-ai`（模拟 AI 接口）、校验脚本 | — |
+| `tools/` | `xq-sim`（扮演核心服务的 XQP 模拟器）、`mock-ai`（模拟 AI 接口）、`typer`（经 SendInput 按节奏发键，性能与 R1 测试用）、校验脚本 | [typer](tools/typer/README.md) |
 | `eval/` | 评测数据集与危机词表参考实现 | — |
 | `docs/xinqing/`、`docs/adr/` | 身份改造说明、心晴的架构决策记录（0007 起） | — |
 
@@ -435,6 +435,7 @@ cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo run -p xinqing-hub --bin export-bindings     # 改了命令或事件后重新生成 xinqing_hub/src/api/bindings.ts
 cargo run -p mock-ai -- --port 18080 --scenario normal   # normal/slow/timeout/500/422/model_not_found/stream_cut
 cargo run -p xq-sim -- --script tools/xq-sim/scripts/hesitant.jsonl --speed 5   # 非 Windows 加 --tcp 127.0.0.1:18765
+cargo run -p typer -- gen r1 -o r1.txt && cargo run -p typer -- check r1.txt   # 发键 `typer run` 只在 Windows 上可用
 cd xinqing_hub && pnpm install && pnpm lint && pnpm test && pnpm tauri dev
 python3 tools/check_templates.py hub_templates && python3 tools/check_xqp_scripts.py && python3 eval/tools/check_crisis.py
 ```

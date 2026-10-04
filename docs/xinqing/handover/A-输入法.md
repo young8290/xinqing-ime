@@ -4,7 +4,7 @@
 > 输入法里的心晴入口（菜单、工具栏、气泡）、温柔改写的核心一侧、DLL 全量按键时序、安装包、上游同步；
 > 另是 XQP 协议（`protocol/xqp.schema.json`、`crates/xqp`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.1 节。本文件随 A 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（A-10 第一部分：安装包带上 Hub）
+> 最后更新：2026-10-04（A-11 第一部分：typer 打字脚本）
 
 ## 1. 任务状态
 
@@ -19,9 +19,9 @@
 | A-07 | 主菜单“心晴”分组、工具栏天气按钮、光标旁气泡 | 完成 | [#10](https://github.com/young8290/xinqing-ime/pull/10)、[#13](https://github.com/young8290/xinqing-ime/pull/13)；`docs/design/toolbar-customization.md` 第十三节 | 图标大小、小圆点位置、菜单与气泡要在真机上看一眼 |
 | A-08 | 温柔改写（核心一侧） | 大部分完成 | [#18](https://github.com/young8290/xinqing-ime/pull/18)（已合并），`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 4 节 |
 | A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 暂不做 | — | 按 16 推荐的方案甲，FR-SEN-08 在 13 第 2.1 节降级清单第 1 项，提前降为 P2；团队改选别的方案再做。要改 C++（`wind_tsf/`） |
-| A-10 | 安装包、卸载 | **进行中** | 第一部分：`config/app.toml`、`scripts/dev.ps1` 的 `Build-Hub`、`.github/workflows/xinqing-package.yml` | 见第 4 节 |
-| A-11 | typer 打字脚本、兼容矩阵测试支援 | 未开始 | — | 计划 W6/W9；TC-RWR-09（改写替换在各宿主里的表现）要真机 |
-| A-12 | 每 2 周上游同步 | 未开始 | 基线 `xinqing/base` = `df6f966`，`upstream` 远端已设 | 步骤见 [identity.md](../identity.md) |
+| A-10 | 安装包、卸载 | **进行中** | 第一部分 [#24](https://github.com/young8290/xinqing-ime/pull/24)（已合并）：`config/app.toml`、`scripts/dev.ps1` 的 `Build-Hub`、`.github/workflows/xinqing-package.yml` | 见第 4 节 |
+| A-11 | typer 打字脚本、兼容矩阵测试支援 | **进行中** | 第一部分：`tools/typer`（[README](../../../tools/typer/README.md)） | 核心侧还没有每键处理耗时的埋点，TC-PERF-01 出不了数；`typer run` 没在真机上跑过；兼容矩阵与 TC-RWR-09 要真机 |
+| A-12 | 每 2 周上游同步 | 未开始 | 基线 `xinqing/base` = `df6f966`，`upstream` 远端已设 | 步骤见 [identity.md](../identity.md)；2026-10-04 查过，上游 main 仍是 `df6f966`，没有要合的 |
 
 ## 2. 代码地图（A 负责的部分）
 
@@ -40,6 +40,7 @@ wind_input/crates/wind-coordinator/
 └─ tests/xinqing_tap.rs             端到端测试（测试扮演 Hub，A-04～A-08 全在这一个测试里）
 wind_input/crates/wind-config/      [xinqing] 配置段、热键动作 xinqing_pause / xinqing_rewrite
 wind_input/crates/wind-ui(-types)/  工具栏天气格与 weather_*.svg
+tools/typer/                        节奏打字脚本（SendInput 发键；gen perf / gen r1 / check / run）
 ```
 
 改清风原有文件时用 `心晴：` 开头的注释标出来，方便合并上游。各 crate 的细节在它们自己的 AGENTS.md。
@@ -48,7 +49,7 @@ wind_input/crates/wind-ui(-types)/  工具栏天气格与 weather_*.svg
 `cargo test -p wind-coordinator --lib xinqing`；与 Hub 联调：两边都设 `XQ_XQP_TCP=127.0.0.1:18765`，或用 `xq-sim --tcp` 扮演一方。
 提交规则（只 `git add` 显式路径、`cargo fmt` 单独提交、提交信息不加 AI 署名）见根目录 AGENTS.md。
 
-## 3. 进行中：安全桌面闸门（A-05 遗留）
+## 3. 安全桌面闸门（A-05 遗留，#24 已合并）
 
 C-PLT-05：登录、锁屏、UAC 提权框处于安全桌面，输入法不采集也不显示心晴界面。协调器在每次焦点事件里先判断
 是否在安全桌面（`xinqing::on_secure_desktop`：进程名是 `LogonUI.exe` / `consent.exe`，或 `OpenInputDesktop`
@@ -74,7 +75,7 @@ C-PLT-05：登录、锁屏、UAC 提权框处于安全桌面，输入法不采�
 | 完成页提示“按 Win + Space 切换到心晴输入法”、许可页放 MIT 全文与“基于清风输入法”声明 | FR-OPS-01、FR-OPS-06 | **未做**：安装器的文案段没有这两处 |
 | 卸载时删掉 Hub 的“登录时后台启动”启动项 | FR-OPS-02 | **未做**：Hub 侧这项设置也还没做；安装器只撤销自己写过的东西 |
 
-标“未做”的前三项都要给 wind-installer 加通用能力（它的 AGENTS.md 有“新增一种能力的标准套路”），需要先 fork 到 young8290 名下，或者向上游提 PR。
+标“未做”的几项都要给 wind-installer 加通用能力（它的 AGENTS.md 有“新增一种能力的标准套路”）。young 2026-10-04 定了 fork：等 young 把它 fork 到 young8290 名下，在 fork 里补这几项，再把 `xinqing-package.yml` 改为检出 fork。
 
 ## 5. A-08 剩余事项
 
@@ -111,7 +112,7 @@ Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrit
 1. A-10 剩余：WebView2、应用标识、完成页与许可页文案（要先定 wind-installer 怎么改）；在真机上试装一次 Actions 产出的安装包；
 2. A-08 收尾：首次使用说明的归属定下来后实现；与 C 联调真实的 `rewrite_result`；
 3. 真机验证清单（需要有 Windows 的组员）：并装、命名管道、改写替换（含 emoji 和扩展区汉字）、锁屏与 UAC、工具栏；
-4. A-11 typer 打字脚本与兼容测试支援、A-12 上游同步。
+4. A-11 剩余：核心侧按键处理耗时埋点（TC-PERF-01）、真机跑 `typer run`、兼容矩阵；A-12 每两周查一次上游。
 
 ## 9. 修订记录
 
@@ -120,3 +121,4 @@ Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrit
 | 2026-10-04 | 初版：盘点 A-01～A-12 现状；A-08 温柔改写核心一侧与 ADR 0009 第 11 条 |
 | 2026-10-04 | A-08 已合并；安全桌面闸门；A-09 按方案甲暂不做 |
 | 2026-10-04 | A-10 第一部分：Hub 进安装包、开始菜单快捷方式、卸载结束 Hub 与删除心晴数据、试装用的打包流水线 |
+| 2026-10-04 | A-10 第一部分已合并，安装器缺项定为 fork wind-installer；A-11 第一部分：`tools/typer`；A-12 查过上游无更新 |
