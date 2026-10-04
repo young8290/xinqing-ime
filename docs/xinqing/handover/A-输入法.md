@@ -17,7 +17,7 @@
 | A-05 | 隐私闸门、无痕模式（菜单、`Ctrl+Alt+P`） | 完成 | [#8](https://github.com/young8290/xinqing-ime/pull/8)，配置段 `[xinqing]`、state.toml `xinqing_paused` | 安全桌面闸门 `Tap::set_secure_desktop` 还没有调用方 |
 | A-06 | Hub 守护、总开关、下行处理 | 完成 | [#9](https://github.com/young8290/xinqing-ime/pull/9)，`wind-xinqing-tap/src/guard.rs`，ADR 0009 第 10 条 | Hub 收到 `bye{disabled}` 后自己退出，是 Hub 侧的事，没做 |
 | A-07 | 主菜单“心晴”分组、工具栏天气按钮、光标旁气泡 | 完成 | [#10](https://github.com/young8290/xinqing-ime/pull/10)、[#13](https://github.com/young8290/xinqing-ime/pull/13)；`docs/design/toolbar-customization.md` 第十三节 | 图标大小、小圆点位置、菜单与气泡要在真机上看一眼 |
-| A-08 | 温柔改写（核心一侧） | **进行中** | 本 PR（`claude/project-thread-34z2sh`），`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 3 节 |
+| A-08 | 温柔改写（核心一侧） | **进行中** | [#18](https://github.com/young8290/xinqing-ime/pull/18)，`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 3 节 |
 | A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 未开始 | — | 计划 W9；要改 C++（`wind_tsf/`），只能在 Windows 上调 |
 | A-10 | 安装包、卸载 | 未开始 | — | 计划 W10；需要 Hub 能打包 |
 | A-11 | typer 打字脚本、兼容矩阵测试支援 | 未开始 | — | 计划 W6/W9；TC-RWR-09（改写替换在各宿主里的表现）要真机 |
