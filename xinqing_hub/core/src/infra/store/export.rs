@@ -303,7 +303,7 @@ fn readme(conn: &rusqlite::Connection, tables: &[String]) -> Result<String, rusq
          - `ai_generated: true` 表示这段文字由 AI 生成，正文末尾也附了“（内容由 AI 生成）”。\n\
          - AI 服务的地址和密钥不在导出包里。\n\
          - `manifest.json` 记录了每个文件的 SHA-256，导入时用它检查文件是否完整、是否被改过。\n\
-         - 心晴不是医疗产品，这些数据只反映打字节奏，不是诊断。\n",
+         - 心晴不是医疗产品，这些数据只反映打字节奏的变化，不代表任何健康结论。\n",
     );
     for t in tables {
         let (data, what) = TABLES
@@ -596,6 +596,21 @@ mod tests {
         println!("导出 {} 个文件、{size} 字节，用时 {took:?}", m.files.len());
         assert!(took.as_secs() < 30);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 导出包里的说明是给用户看的文字，同样要过禁用词表（DS-COPY-03）。
+    #[test]
+    fn readme_passes_banned_words() {
+        use crate::domain::validate::{BannedWords, Scene};
+        use crate::infra::templates::TemplateDirs;
+        let bw = BannedWords::load(&TemplateDirs::factory_only(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates"),
+        ))
+        .unwrap();
+        let db = Db::open_in_memory().unwrap();
+        let tables = table_names(db.conn()).unwrap();
+        let text = readme(db.conn(), &tables).unwrap();
+        assert_eq!(bw.find(&text, Scene::Other), None);
     }
 
     #[test]
