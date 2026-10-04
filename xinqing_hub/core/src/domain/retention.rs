@@ -272,7 +272,10 @@ mod tests {
     use chrono::TimeZone;
 
     fn at(y: i32, m: u32, d: u32, h: u32, min: u32) -> DateTime<Local> {
-        Local.with_ymd_and_hms(y, m, d, h, min, 0).earliest().unwrap()
+        Local
+            .with_ymd_and_hms(y, m, d, h, min, 0)
+            .earliest()
+            .unwrap()
     }
 
     fn count(db: &Db, sql: &str) -> i64 {
@@ -309,11 +312,12 @@ mod tests {
                 [ms(days)],
             )
             .unwrap();
-            for t in ["reminder_log (ts, kind, action) VALUES (?1, 'eye', 'done')",
+            for t in [
+                "reminder_log (ts, kind, action) VALUES (?1, 'eye', 'done')",
                 "feedback (ts, target, verdict) VALUES (?1, 'mood_state', 'unfit')",
                 "safety_log (ts, channel) VALUES (?1, 'lexicon')",
-                "rewrite_log (ts, source, style, len_in, outcome) VALUES (?1, 'recent', 'gentle', 3, 'replaced')"]
-            {
+                "rewrite_log (ts, source, style, len_in, outcome) VALUES (?1, 'recent', 'gentle', 3, 'replaced')",
+            ] {
                 c.execute(&format!("INSERT INTO {t}"), [ms(days)]).unwrap();
             }
         }
