@@ -284,6 +284,13 @@ impl Coordinator {
         self.mouse_toolbar(action);
     }
 
+    /// 心晴：改写模式的阶段，如 `waiting:更温和`、`showing:更温和:甲|乙`、`failed:…`；
+    /// 不在模式里时 `None`（测试用）。
+    pub fn debug_xinqing_rewrite_phase(&self) -> Option<String> {
+        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        crate::xinqing::debug_rewrite_phase(&s)
+    }
+
     /// 心晴：右键工具栏某一格弹出的菜单文字；回落主菜单时 `None`（测试用）。
     pub fn debug_toolbar_cell_menu_labels(
         &self,

@@ -699,7 +699,7 @@ impl MessageHandler for Coordinator {
         // 心晴：按键先于它可能触发的上屏发给 Hub（FR-SEN-01）；没装 Tap 时不取锁
         let xq_before = crate::xinqing::snap(self);
         if let Some(b) = xq_before {
-            crate::xinqing::before_key(data, b);
+            crate::xinqing::before_key(data, b, self.is_xinqing_rewrite_hotkey(data));
         }
         // 「上一次按键送达之后、这一按之前，有键被透传给了宿主」⇒ 智能符号武装态失效。
         //
@@ -723,6 +723,8 @@ impl MessageHandler for Coordinator {
             }
         }
         let action = self.handle_key_event(data);
+        // 心晴：改写模式被表外的键退出时，这个键 C++ 已经吃了，要交给宿主就得由它重放
+        let action = crate::xinqing::replay_if_exited(data, action);
         // 上屏换行改写。与 record_input_stats / note_commit_action 同一收口理由（上屏路径
         // 40+ 个返回点，散点接线必漏），而且这里还多一条：换行形式是**平台/宿主**的表达
         // 约定，属于服务端的职责——DLL 拿到什么就写什么，不再自己判断（A3-3）。
@@ -1090,6 +1092,11 @@ impl MessageHandler for Coordinator {
             return KeyAction::PassThrough;
         }
 
+        // 心晴：温柔改写模式在最前（FR-RWR-03）。表外的键返回 None，退出模式后照常往下走。
+        if let Some(act) = self.xinqing_rewrite_key(data) {
+            return act;
+        }
+
         // ── 右键菜单打开时：方向键/回车/ESC 由菜单消费（优先于一切）──
         // 菜单由服务自绘的两种形态：Windows 进程内窗口、Linux 光栅帧交 addon 贴图（二者同一份
         // `popup_menu`）。macOS 用 IMK 原生菜单自行消费键，协调器不应吞键 (否则 menu_open 一旦
@@ -1152,6 +1159,11 @@ impl MessageHandler for Coordinator {
                     .is_some()
                 {
                     return KeyAction::Consumed;
+                }
+            } else if action == hotkey::XINQING_REWRITE_ACTION {
+                // 心晴：温柔改写（FR-RWR-01）。心晴没启动时同上，不吞键。
+                if let Some(act) = self.xinqing_enter_rewrite() {
+                    return act;
                 }
             } else if let Some(act) = self.dispatch_bound_action_hotkey(&action) {
                 // 其余动词统一按 `BoundAction` 分派——组合键与单键、修饰键同一个值域。
@@ -4102,6 +4114,8 @@ impl MessageHandler for Coordinator {
         self.caret_cache_verified
             .store(false, std::sync::atomic::Ordering::Relaxed);
         self.terminate_auto_phrase("selection_changed");
+        // 心晴：光标被挪走，“最近上屏”不再紧挨光标，不能拿来替换（10 第 3.1 节）
+        crate::xinqing::on_selection_changed();
     }
 
     fn handle_commit_request(&self, data: &CommitRequestData) -> Option<CommitResultData> {

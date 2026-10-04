@@ -782,6 +782,9 @@ pub(crate) struct State {
     /// 快捷加词模式（对齐 Go addWordState）：候选窗内从最近上屏字符选字组词加入用户词库。
     /// 与 `active`（独占输入模式）正交：加词模式不处理编码输入，仅 ↑↓ 调词长 / Enter 确认。
     pub(crate) add_word_active: bool,
+    /// 心晴：温柔改写模式（A-08，`Some` 即在模式里）。与加词一样是热键进入、与 `active`
+    /// 正交的模态，原因见 `xinqing/rewrite.rs` 模块文档与 ADR 0009 第 11 条。
+    pub(crate) xq_rewrite: Option<crate::xinqing::RewriteMode>,
     /// 加词候选字符池（最近上屏字符，时间序：旧→新，末尾为最近一字）。
     pub(crate) add_word_chars: Vec<char>,
     /// 当前选取的词长（取 `add_word_chars` 末尾 N 字；0 = 无可用字符）。
@@ -2615,6 +2618,7 @@ impl Coordinator {
                 menu_target_page_local: 0,
                 menu_target_text: String::new(),
                 add_word_active: false,
+                xq_rewrite: None,
                 add_word_chars: Vec::new(),
                 add_word_len: 0,
                 add_word_code: String::new(),
@@ -7155,6 +7159,8 @@ impl Coordinator {
     pub(crate) fn hotkey_session_now(&self) -> bool {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         s.add_word_active
+            // 心晴：改写模式期间 C++ 吃下所有键转发过来（10 第 3.1 节）
+            || s.xq_rewrite.is_some()
             || matches!(
                 s.active,
                 Some(
