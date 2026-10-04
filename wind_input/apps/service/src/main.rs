@@ -395,7 +395,7 @@ fn main() {
     let coordinator = wind_coordinator::Coordinator::new(push_server.clone());
     startup_trace::stage("coordinator-done");
     // 心晴：开 XQP 管道，Hub 连上并下发同意后才开始采集（10 第 2.3 节）。失败只记日志。
-    wind_coordinator::xinqing::start(env!("WIND_APP_VERSION"), pipe_suffix);
+    wind_coordinator::xinqing::start(&coordinator, env!("WIND_APP_VERSION"), pipe_suffix);
     // 语言栏图标：状态推送只在状态**变化**时发生，这里补一次初始发布，否则开机后到
     // 用户第一次切换中英/标点之前，DLL 都读不到共享内存、只能本地绘制（图标正常但
     // 没有标点角标）。非 Windows 桌面形态下是空操作。

@@ -701,6 +701,12 @@ static REGISTRY: &[ConfigField] = &[
     f("stats.enabled", Bool),
     f("stats.track_english", Bool),
     f("stats.speed_factor", Float),
+    // -- xinqing（心晴）--
+    f("xinqing.enabled", Bool),
+    f("xinqing.app_blocklist", StrList),
+    f("xinqing.app_allowlist", StrList),
+    f("xinqing.pause_hotkey", Str),
+    f("xinqing.remember_pause", Bool),
     // -- debug（调试）--
     // `off` = 整个日志功能关闭：主日志文件不创建，连 `startup_stage.log` 也不写
     // （见 startup_trace::disabled）。它排在最前是因为值域按"由关到详"排。

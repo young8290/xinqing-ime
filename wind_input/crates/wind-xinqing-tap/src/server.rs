@@ -12,7 +12,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex, MutexGuard, RwLock, TryLockError};
 use std::time::{Duration, Instant};
 
-use xqp::{ByeReason, Down, FrameError, PROTOCOL_VERSION, Scope, Up};
+use xqp::{ByeReason, Down, FrameError, PROTOCOL_VERSION, PauseBy, Scope, Up};
 
 use crate::gate::{AppFilter, Gate};
 use crate::recent::Recent;
@@ -351,6 +351,19 @@ impl Shared {
                 seq: 0,
                 closer: closer.clone(),
             });
+        }
+        // 无痕状态可能是连上之前定的（启动时恢复的“记住无痕”、Hub 断开期间按的快捷键），
+        // 协议没有别的地方告诉 Hub，这里补一条 pause_changed（A-05）。
+        if self.gate.enabled() && self.gate.paused() {
+            self.push(
+                false,
+                Up::PauseChanged {
+                    ts: self.ts(),
+                    seq: None,
+                    on: true,
+                    by: PauseBy::Menu,
+                },
+            );
         }
         tracing::info!("Hub 已连接");
         let _ = reader.set_read_timeout(None);

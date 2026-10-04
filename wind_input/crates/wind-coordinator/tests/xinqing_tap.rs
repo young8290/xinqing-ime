@@ -9,15 +9,19 @@ use std::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
 
+use wind_bridge::handler::KeyAction;
 use wind_bridge::handler::{FocusData, KeyEventData, MessageHandler};
 use wind_config::Config;
 use wind_coordinator::Coordinator;
 use wind_ipc::protocol::EVENT_KEY_DOWN;
-use wind_xinqing_tap::{CompOp, Down, Endpoint, KeyKind, Scope, Tap, TapConfig};
+use wind_ipc::protocol::{MOD_ALT, MOD_CTRL};
+use wind_ui_types::MenuCmd;
+use wind_xinqing_tap::{CompOp, Down, Endpoint, KeyKind, PauseBy, Scope, Tap, TapConfig};
 use xqp::Up;
 
 const VK_A: u32 = 0x41;
 const VK_B: u32 = 0x42;
+const VK_P: u32 = 0x50;
 const VK_RETURN: u32 = 0x0D;
 const VK_ESCAPE: u32 = 0x1B;
 const PASSWORD_MASK: u64 = 1 << 31;
@@ -220,6 +224,42 @@ fn coordinator_events_reach_hub() {
     coord.handle_focus_gained(&focus(4242, "Notepad.exe", 0));
     let (_, skipped) = hub.until(|u| matches!(u, Up::Focus { .. }));
     assert!(skipped.is_empty(), "密码框里的事件漏出：{skipped:?}");
+
+    // 无痕快捷键（A-05，FR-SEN-06）：Ctrl+Alt+P 被吃掉，Hub 收到 pause_changed{hotkey}，
+    // 之后的按键不出管道
+    let mut ctrl_alt_p = key(VK_P);
+    ctrl_alt_p.modifiers = MOD_CTRL | MOD_ALT;
+    assert!(matches!(
+        coord.handle_key_event_policed(&ctrl_alt_p),
+        KeyAction::Consumed
+    ));
+    let (up, _) = hub.until(|u| matches!(u, Up::PauseChanged { .. }));
+    assert!(matches!(
+        up,
+        Up::PauseChanged {
+            on: true,
+            by: PauseBy::Hotkey,
+            ..
+        }
+    ));
+    assert!(tap.paused());
+    coord.handle_key_event_policed(&key(VK_A));
+    coord.handle_key_event_policed(&key(VK_ESCAPE));
+
+    // 菜单恢复：pause_changed{menu}，随后补发焦点；中间不应夹着无痕期间的按键
+    coord.debug_run_menu_cmd(MenuCmd::XinqingTogglePause);
+    let (up, skipped) = hub.until(|u| matches!(u, Up::PauseChanged { .. }));
+    assert!(skipped.is_empty(), "无痕期间的事件漏出：{skipped:?}");
+    assert!(matches!(
+        up,
+        Up::PauseChanged {
+            on: false,
+            by: PauseBy::Menu,
+            ..
+        }
+    ));
+    assert!(matches!(hub.recv(), Up::Focus { .. }));
+    assert!(!tap.paused());
 
     // 核心退出：Hub 收到 bye
     wind_coordinator::xinqing::shutdown();

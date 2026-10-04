@@ -393,6 +393,19 @@ fn pause_from_hub_and_from_core() {
 }
 
 #[test]
+fn pause_set_before_hub_connects_is_reported_after_hello() {
+    let (tap, got) = start();
+    // 启动时恢复“记住无痕”、或 Hub 没连上时按了快捷键
+    tap.set_paused(true, PauseBy::Hotkey);
+    let mut hub = Hub::hello(&tap, &got, 1);
+    assert!(matches!(hub.recv(), Up::Hello { .. }));
+    assert!(matches!(hub.recv(), Up::PauseChanged { on: true, .. }));
+    hub.cfg(true, false, false);
+    tap.hook_key(key(KeyKind::Letter, 65));
+    hub.expect_nothing_before_marker(&tap);
+}
+
+#[test]
 fn downlink_messages_reach_the_callback() {
     let (tap, got) = start();
     let mut hub = Hub::linked(&tap, &got, true, false, false);

@@ -21,6 +21,9 @@ pub struct RuntimeState {
     /// 上次全角/半角。
     #[serde(default)]
     pub last_full_width: bool,
+    /// 心晴：无痕模式（暂停感知）是否开着。只在 `xinqing.remember_pause` 打开时写入和读取。
+    #[serde(default)]
+    pub xinqing_paused: bool,
     /// 上次中/英标点。缺字段（旧 state.toml）默认 true（中文标点，与配置默认一致）。
     #[serde(default = "default_true")]
     pub last_chinese_punct: bool,
@@ -104,6 +107,7 @@ impl Default for RuntimeState {
         Self {
             last_chinese_mode: true,
             last_full_width: false,
+            xinqing_paused: false,
             last_chinese_punct: true,
             langbar_icon_size_marks: None,
             toolbar_anchors: HashMap::new(),

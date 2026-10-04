@@ -130,6 +130,8 @@ pub enum MenuCmd {
     InputDiagToggleFreeze,
     /// 输入诊断 HUD：切换窗口置顶（关掉可让 HUD 沉到被观察窗口之下）
     InputDiagToggleTopmost,
+    /// 心晴：暂停 / 恢复感知（无痕模式，FR-SEN-06）。id 取 900，远离上游顺序编号的区段。
+    XinqingTogglePause,
     /// 悬停提示：复制全部（取原始行，未截断、未折行）
     TooltipCopy,
     /// 悬停提示：复制右键点中的那一段（原始行，不含段名）
@@ -288,6 +290,7 @@ impl MenuKind {
                 MenuCmd::TooltipCommitSection => 134,
                 MenuCmd::TooltipCopyLine => 135,
                 MenuCmd::TooltipCommitLine => 136,
+                MenuCmd::XinqingTogglePause => 900,
                 MenuCmd::IconBadgeStyle(i) => 10000 + i as i32,
                 MenuCmd::SoftKeyboardPage(i) => 11000 + i as i32,
                 MenuCmd::InputDiagToggleSection(i) => 8000 + i as i32,
@@ -357,6 +360,7 @@ impl MenuKind {
             134 => MenuCmd::TooltipCommitSection,
             135 => MenuCmd::TooltipCopyLine,
             136 => MenuCmd::TooltipCommitLine,
+            900 => MenuCmd::XinqingTogglePause,
             10000..=10099 => MenuCmd::IconBadgeStyle((id - 10000) as u8),
             11000..=11999 => MenuCmd::SoftKeyboardPage((id - 11000) as usize),
             8000..=8999 => MenuCmd::InputDiagToggleSection((id - 8000) as u8),

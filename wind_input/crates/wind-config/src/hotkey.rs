@@ -402,6 +402,9 @@ pub fn compile_session_key(name: &str) -> Option<(bool, HotkeyEntry)> {
     }
 }
 
+/// 心晴：无痕模式快捷键在热键表里的动作名（来自 `xinqing.pause_hotkey`，不是 `keys.*`）。
+pub const XINQING_PAUSE_ACTION: &str = "xinqing_pause";
+
 /// 热键编译器
 pub struct Compiler {
     config: Config,
@@ -425,6 +428,8 @@ impl Compiler {
             ("open_settings", &h.open_settings),
             ("open_dictionary", &h.open_dictionary),
             ("take_screenshot", &h.take_screenshot),
+            // 心晴：无痕模式开关（FR-SEN-06），英文态下也要能暂停
+            (XINQING_PAUSE_ACTION, &self.config.xinqing.pause_hotkey),
         ] {
             if let Some(raw) = parse_hotkey(value) {
                 result.key_down.push(HotkeyEntry {
@@ -1960,6 +1965,30 @@ mod tests {
             .iter()
             .filter(|e| (e.match_hash >> 16) == MOD_ALT)
             .collect()
+    }
+
+    /// 心晴：无痕快捷键出厂为 Ctrl+Alt+P，中英文态都生效（不带任何策略位）；
+    /// 填 `none` 时不进表。
+    #[test]
+    fn xinqing_pause_hotkey_compiles_without_policy_bits() {
+        let compiled = Compiler::new(Config::default()).compile();
+        let e = compiled
+            .key_down
+            .iter()
+            .find(|e| e.action == XINQING_PAUSE_ACTION)
+            .expect("出厂应绑定无痕快捷键");
+        assert_eq!(Some(e.match_hash), parse_hotkey("ctrl+alt+p"));
+        assert_eq!(e.tsf_hash, e.match_hash, "不带中文态限制，英文态也能暂停");
+
+        let mut cfg = Config::default();
+        cfg.xinqing.pause_hotkey = "none".into();
+        let compiled = Compiler::new(cfg).compile();
+        assert!(
+            compiled
+                .key_down
+                .iter()
+                .all(|e| e.action != XINQING_PAUSE_ACTION)
+        );
     }
 
     /// 出厂关：一个 Alt 组合都不进表——Alt+数字 / Alt+空格 原样归宿主（菜单加速键、系统菜单）。

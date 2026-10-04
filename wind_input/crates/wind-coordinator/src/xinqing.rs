@@ -9,9 +9,10 @@
 
 use std::cell::Cell;
 use std::net::SocketAddr;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, Weak};
 
 use wind_bridge::handler::KeyEventData;
+use wind_config::XinqingConfig;
 use wind_ipc::protocol::{EVENT_KEY_DOWN, MOD_SHORTCUT};
 use wind_keys::keymap::{
     VK_0, VK_9, VK_A, VK_BACK, VK_BACKSLASH, VK_BACKTICK, VK_CAPITAL, VK_COMMA, VK_DELETE, VK_DOWN,
@@ -22,8 +23,11 @@ use wind_keys::keymap::{
 use wind_store::stats::CommitSource;
 use wind_xinqing_tap::{
     CandOp, CommitHook, CompOp, Down, Endpoint, FocusHook, KeyHook, KeyKind, PIPE_NAME,
-    PIPE_NAME_DEV, Scope, Tap, TapConfig,
+    PIPE_NAME_DEV, PauseBy, Scope, Tap, TapConfig,
 };
+
+use crate::coordinator::Coordinator;
+use wind_ui_types::{ToastKind, ToastPosition};
 
 use crate::input_diag::InputDiagReason;
 use crate::key_convert::numpad_char;
@@ -33,13 +37,18 @@ use crate::key_convert::numpad_char;
 pub const XQP_TCP_ENV: &str = "XQ_XQP_TCP";
 
 static TAP: OnceLock<Arc<Tap>> = OnceLock::new();
+/// 下行回调要回到协调器（记住 Hub 发来的无痕状态）；弱引用，不延长协调器寿命。
+static COORD: OnceLock<Weak<Coordinator>> = OnceLock::new();
 
 /// 启动 XQP 服务端（10 第 2.1 节）。`pipe_suffix` 取 `wind_config::variant::pipe_suffix()`，
 /// dev 构建用 `xinqing_tap_dev`。失败只记日志：心晴组件出问题不能影响打字。
-pub fn start(ime_ver: &str, pipe_suffix: &str) {
+///
+/// 总开关与应用名单取自 `[xinqing]` 配置；`xinqing.remember_pause` 打开时恢复上次的无痕状态。
+pub fn start(c: &Arc<Coordinator>, ime_ver: &str, pipe_suffix: &str) {
     if TAP.get().is_some() {
         return;
     }
+    let _ = COORD.set(Arc::downgrade(c));
     let endpoint = match std::env::var(XQP_TCP_ENV) {
         Ok(addr) => match addr.parse::<SocketAddr>() {
             Ok(a) => Endpoint::Tcp(a),
@@ -57,14 +66,43 @@ pub fn start(ime_ver: &str, pipe_suffix: &str) {
             Endpoint::Pipe(name.to_string())
         }
     };
-    let cfg = TapConfig::new(ime_ver, endpoint);
+    let xq = c.rt().config.xinqing.clone();
+    let mut cfg = TapConfig::new(ime_ver, endpoint);
+    cfg.enabled = xq.enabled;
+    cfg.app_blocklist = xq.app_blocklist.clone();
+    cfg.app_allowlist = xq.app_allowlist.clone();
     match Tap::start(cfg, Box::new(on_downlink)) {
         Ok(tap) => {
+            if xq.remember_pause && c.xinqing_stored_pause() {
+                // 还没有连接，不会发 pause_changed；Hub 连上后从焦点事件看出闸门关着
+                tap.set_paused(true, PauseBy::Menu);
+            }
             let _ = TAP.set(tap);
             tracing::info!("心晴 XQP 服务端已启动");
         }
         Err(e) => tracing::warn!("心晴 XQP 服务端启动失败：{e}"),
     }
+}
+
+/// 配置热重载后调用：总开关与应用名单即时生效。
+pub(crate) fn apply_config(cfg: &XinqingConfig) {
+    if let Some(t) = tap() {
+        t.set_app_lists(&cfg.app_blocklist, &cfg.app_allowlist);
+        t.set_enabled(cfg.enabled);
+    }
+}
+
+/// 无痕模式是否开着；没装 Tap 时 `None`（菜单据此不显示心晴项）。
+pub(crate) fn paused() -> Option<bool> {
+    tap().map(|t| t.paused())
+}
+
+/// 切换无痕模式，返回切换后的状态；没装 Tap 时 `None`。
+pub(crate) fn toggle_pause(by: PauseBy) -> Option<bool> {
+    let t = tap()?;
+    let on = !t.paused();
+    t.set_paused(on, by);
+    Some(on)
 }
 
 /// 测试用：安装一个已启动的 Tap。进程内只能装一次，已装过返回假。
@@ -83,7 +121,46 @@ fn tap() -> Option<&'static Arc<Tap>> {
     TAP.get()
 }
 
+impl Coordinator {
+    /// state.toml 里记着的无痕状态（`xinqing.remember_pause` 打开时启动恢复用）。
+    fn xinqing_stored_pause(&self) -> bool {
+        wind_config::Config::state_dir()
+            .map(|d| wind_config::RuntimeState::load(&d).xinqing_paused)
+            .unwrap_or(false)
+    }
+
+    /// 记下当前无痕状态。不管 `remember_pause` 开没开都记，开关只决定启动时用不用它：
+    /// 这样之后再打开「记住」，恢复的也是最后一次的真实状态，而不是很久以前的旧值。
+    pub(crate) fn xinqing_store_pause(&self, on: bool) {
+        self.state_writer
+            .schedule("xinqing_pause", move |rs| rs.xinqing_paused = on);
+    }
+
+    /// 菜单与 Ctrl+Alt+P 的共同出口（FR-SEN-05/06）：切换、记住、气泡提示。
+    /// 心晴没启动时什么都不做，返回 `None`。
+    pub(crate) fn xinqing_toggle_pause(&self, by: PauseBy) -> Option<bool> {
+        let on = toggle_pause(by)?;
+        self.xinqing_store_pause(on);
+        self.show_toast(
+            if on {
+                "心晴已暂停感知"
+            } else {
+                "心晴已恢复感知"
+            },
+            ToastPosition::BottomCenter,
+            ToastKind::Info,
+        );
+        Some(on)
+    }
+}
+
 fn on_downlink(msg: Down) {
+    if let Down::Pause { on } = msg
+        && let Some(c) = COORD.get().and_then(Weak::upgrade)
+    {
+        // 小组件右键等 Hub 侧入口切的无痕，与菜单、快捷键一样按需记住
+        c.xinqing_store_pause(on);
+    }
     // A-06/A-07 接入工具栏、气泡与菜单；内容可能是提示文字，只记类型
     let kind = match &msg {
         Down::Pause { .. } => "pause",
