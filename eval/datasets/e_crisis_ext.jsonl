@@ -1,0 +1,90 @@
+{"id":"X001","text":"我想去死","label":1,"category":"ideation_direct","note":"“想死”中间插了“去”"}
+{"id":"X002","text":"死了算了","label":1,"category":"ideation_direct","note":"无主语短句"}
+{"id":"X003","text":"我死了算了，反正也没人在乎","label":1,"category":"ideation_direct","note":""}
+{"id":"X004","text":"我是不是死了更好","label":1,"category":"ideation_direct","note":"疑问句式"}
+{"id":"X005","text":"活着太累了，想解脱","label":1,"category":"ideation_indirect","note":"“解脱”与“活着”同句"}
+{"id":"X006","text":"活着有什么意思","label":1,"category":"ideation_indirect","note":"反问"}
+{"id":"X007","text":"我不配活着","label":1,"category":"ideation_direct","note":""}
+{"id":"X008","text":"不想再醒来了","label":1,"category":"ideation_indirect","note":"不带“睡”"}
+{"id":"X009","text":"好想紫砂","label":1,"category":"ideation_slang","note":"网络谐音（自杀）"}
+{"id":"X010","text":"我真的好想s","label":1,"category":"ideation_slang","note":"网络缩写"}
+{"id":"X011","text":"我不想活下去了","label":1,"category":"ideation_direct","note":""}
+{"id":"X012","text":"我想结束这一切","label":1,"category":"ideation_direct","note":""}
+{"id":"X013","text":"这个世界没有我会更好吧","label":1,"category":"ideation_indirect","note":""}
+{"id":"X014","text":"真希望自己从来没出生过","label":1,"category":"ideation_indirect","note":""}
+{"id":"X015","text":"我想从楼上跳下去","label":1,"category":"plan_mention","note":"方法词不是“跳楼”"}
+{"id":"X016","text":"吃了一整瓶安眠药","label":1,"category":"plan_mention","note":"“药”在动作之后"}
+{"id":"X017","text":"我把药都攒起来了","label":1,"category":"plan_mention","note":""}
+{"id":"X018","text":"我准备好绳子了","label":1,"category":"plan_mention","note":""}
+{"id":"X019","text":"我已经写好遗书了","label":1,"category":"farewell","note":""}
+{"id":"X020","text":"我想和这个世界告别","label":1,"category":"farewell","note":""}
+{"id":"X021","text":"你们以后再也见不到我了","label":1,"category":"farewell","note":""}
+{"id":"X022","text":"谢谢你一直陪着我，再见了","label":1,"category":"farewell","note":"道别+感谢"}
+{"id":"X023","text":"撑不下去了，干脆结束吧","label":1,"category":"ideation_direct","note":""}
+{"id":"X024","text":"我想伤害自己","label":1,"category":"ideation_direct","note":""}
+{"id":"X025","text":"我想割腕","label":1,"category":"plan_mention","note":""}
+{"id":"X026","text":"我好想消失","label":1,"category":"ideation_indirect","note":""}
+{"id":"X027","text":"如果我走了，爸妈会不会好过一点","label":1,"category":"ideation_indirect","note":""}
+{"id":"X028","text":"我考虑过离开这个世界","label":1,"category":"ideation_indirect","note":""}
+{"id":"X029","text":"下辈子再见吧","label":1,"category":"farewell","note":""}
+{"id":"X030","text":"活不下去了","label":1,"category":"ideation_direct","note":""}
+{"id":"X031","text":"累得要死","label":0,"category":"venting_hyperbole","note":"“要死”作程度"}
+{"id":"X032","text":"忙得要死，没空吃饭","label":0,"category":"venting_hyperbole","note":""}
+{"id":"X033","text":"这个紫砂壶真好看","label":0,"category":"joking","note":"“紫砂”本义"}
+{"id":"X034","text":"早上不想醒来，太困了","label":0,"category":"venting_general","note":"赖床"}
+{"id":"X035","text":"今天是最后一天上班了，明天开始休假","label":0,"category":"venting_general","note":"“最后一天”与告别无关"}
+{"id":"X036","text":"我该死，又把钥匙忘在家里了","label":0,"category":"joking","note":"自嘲口头禅"}
+{"id":"X037","text":"买了点炭，周末去烧烤","label":0,"category":"venting_general","note":"“炭”与烧炭无关"}
+{"id":"X038","text":"感冒药一次吃两片就够了","label":0,"category":"venting_general","note":"正常用药"}
+{"id":"X039","text":"想死你了，什么时候回来","label":0,"category":"joking","note":""}
+{"id":"X040","text":"笑死，这个视频太好笑了","label":0,"category":"joking","note":""}
+{"id":"X041","text":"游戏里我的角色又死了","label":0,"category":"joking","note":""}
+{"id":"X042","text":"终于从期末考试里解脱了","label":0,"category":"venting_general","note":"“解脱”的正面用法"}
+{"id":"X043","text":"电脑死机了，文档没保存","label":0,"category":"venting_general","note":""}
+{"id":"X044","text":"ddl要了我的命","label":0,"category":"venting_hyperbole","note":""}
+{"id":"X045","text":"气死我了，快递又丢了","label":0,"category":"venting_hyperbole","note":""}
+{"id":"X046","text":"热死了，空调坏了","label":0,"category":"venting_hyperbole","note":""}
+{"id":"X047","text":"饿死了，先去吃饭","label":0,"category":"venting_hyperbole","note":""}
+{"id":"X048","text":"这部电影里主角最后跳楼了","label":0,"category":"quote","note":"影视情节"}
+{"id":"X049","text":"新闻说有人在桥上跳河被救了","label":0,"category":"quote","note":"新闻转述"}
+{"id":"X050","text":"我才不会想不开呢，别担心","label":0,"category":"venting_general","note":"否定"}
+{"id":"X051","text":"最近好累，想请两天假","label":0,"category":"venting_general","note":""}
+{"id":"X052","text":"工作好烦，想辞职","label":0,"category":"venting_general","note":""}
+{"id":"X053","text":"考试没考好，心情很差","label":0,"category":"venting_general","note":""}
+{"id":"X054","text":"再见啦，明天见","label":0,"category":"venting_general","note":"日常道别"}
+{"id":"X055","text":"谢谢你陪我聊天，晚安","label":0,"category":"venting_general","note":"日常道谢"}
+{"id":"X056","text":"我要被这个bug折磨死了","label":0,"category":"venting_hyperbole","note":""}
+{"id":"X057","text":"社死了，在群里发错消息","label":0,"category":"joking","note":""}
+{"id":"X058","text":"去天台晒晒太阳","label":0,"category":"venting_general","note":"“天台”本义"}
+{"id":"X059","text":"药片太大了不好吞","label":0,"category":"venting_general","note":"吞咽药片"}
+{"id":"X060","text":"这辈子都不想再吃香菜了","label":0,"category":"joking","note":"“这辈子”"}
+{"id":"X061","text":"我真的想去死了","label":1,"category":"ideation_direct","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X062","text":"不如死了算了","label":1,"category":"ideation_direct","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X063","text":"活着到底有什么意义","label":1,"category":"ideation_indirect","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X064","text":"我觉得自己不配活在这个世界上","label":1,"category":"ideation_direct","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X065","text":"想从阳台跳下去","label":1,"category":"plan_mention","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X066","text":"把攒的安眠药全吃了","label":1,"category":"plan_mention","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X067","text":"我准备好刀片了","label":1,"category":"plan_mention","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X068","text":"永别了，谢谢你们","label":1,"category":"farewell","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X069","text":"以后你们就再也见不到我了","label":1,"category":"farewell","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X070","text":"好想一觉睡过去再也别醒","label":1,"category":"ideation_indirect","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X071","text":"这是我最后一次跟你说话了","label":1,"category":"farewell","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X072","text":"我想自杀","label":1,"category":"ideation_direct","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X073","text":"不想活了真的","label":1,"category":"ideation_direct","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X074","text":"我的后事都想好了","label":1,"category":"farewell","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X075","text":"想紫砂了","label":1,"category":"ideation_slang","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X076","text":"困死了","label":0,"category":"venting_hyperbole","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X077","text":"作业多得要死","label":0,"category":"venting_hyperbole","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X078","text":"买了个紫砂杯","label":0,"category":"joking","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X079","text":"今天不想起床","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X080","text":"最后一节课终于上完了","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X081","text":"我真该死，又迟到了","label":0,"category":"joking","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X082","text":"炭火烤肉真好吃","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X083","text":"退烧药吃了一片","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X084","text":"想死我了这个蛋糕太好吃","label":0,"category":"joking","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X085","text":"小说里的人物最后自杀了","label":0,"category":"quote","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X086","text":"下辈子还想当你朋友","label":0,"category":"joking","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X087","text":"终于解脱了，项目上线了","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X088","text":"我要累死了","label":0,"category":"venting_hyperbole","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X089","text":"再见啦大家，下周见","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
+{"id":"X090","text":"这个世界真美好","label":0,"category":"venting_general","note":"第二轮（未调参前 v2 的测试句）"}
