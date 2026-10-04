@@ -210,7 +210,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn missing_value_falls_back_to_default() {
         let db = Db::open_in_memory().unwrap();
