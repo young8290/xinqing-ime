@@ -2,7 +2,7 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（B-07 第四部分：自评天气后端）
+> 最后更新：2026-10-04（B-04：基线持久化与重算）
 
 ## 1. 任务状态
 
@@ -11,10 +11,10 @@
 | B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 大部分完成 | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`） | `--baseline`、`--start-at` 目前只在 `xq-replay` 里；FR-DMO-01 要求 `xq-sim` 也支持（改写时间戳的会话起点、发给 Hub 的基线），未做 |
 | B-02 | 录制 7 个 E-STATE 脚本与双人标注 | 未开始（需要人） | 剧本：`eval/datasets/e_state_scripts.md` | 要全员真人录制，Claude 做不了；剧本待两人评审。现在只有 3 个合成脚本（`tools/xq-sim/scripts/`，由 `gen_synthetic.py` 生成） |
 | B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008 | 与 Python 对拍目前只有危机词表（`tests/crisis_parity.rs`），特征对拍脚本未写 |
-| B-04 | 个人基线、冷启动默认值 | 部分完成 | `domain/features/baseline.rs`、`hub_templates/baseline_default.toml` | 每天 04:00 重算、写读 `baseline` 表（D-09）、设置里“重置基线”都没做；外壳目前每次启动都用出厂默认值（`src-tauri/src/sensing.rs`）；默认值 `calibrated = false`，等 B-02 录制后校准 |
+| B-04 | 个人基线、冷启动默认值 | 完成（本 PR 合并后） | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；本 PR，ADR 0012 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准 |
 | B-05 | 本地规则 R1–R6 | 完成（R1b 除外） | `domain/rules.rs`、`domain/features/typo.rs` | R1b 需要核心在 `comp` 里加 `invalid` 字段（ADR 0008 第 5 条），待 A 决定 |
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
-| B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成（第四部分合并后） | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)，ADR 0011 | 见第 3 节 |
+| B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
 | B-08 | 使用时长与四类休息提醒等（P0） | 未开始 | — | 计划 W7–W8 |
 | B-09 | 作息洞察统计 | 未开始 | — | 计划 W9 |
 | B-10 | 演示模式（clock 替换、演示数据库） | 未开始 | `infra/clock.rs` 已有 `Clock` / `ManualClock` 可用 | 计划 W10 |
@@ -58,27 +58,29 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 - ADR 0010（状态解释的信号挑选与拼句）：**已接受**（D、E 同意，产品书 V1.4 已同步）。D 的三点建议已处理：
   ① ADR 第 5 条写明界面自己定版式；② `Explanation.prob` 改名为 `prob_pct`（0–100），与快照的 `prob`（0–1）区分；
   ③ 实时路径改为先交出解释再推送 `status:changed`，界面收到状态变化后取到的一定是同一次切换的解释，界面也可以用 `Explanation.state` 与快照核对。
+- ADR 0012（个人基线的持久化与重算：数据来源、重算时机、窗口数口径、最少样本数、重置基线）：本 PR 提出，等 C 与 E 评审。
 - ADR 0011（自评天气的实现解释：“说不上来”不覆盖、校准的计法、自评期间的解释、总线字段类型、覆盖不跨重启）：#17 提出，等 D 与 E 评审。
-- 这几份 ADR 接受后都要回产品书仓库改 04 FR-STA-01/04/06/08/09/10、10 第 5.3 节和 15，并写 00 第 5 节修订记录。
+- 这几份 ADR 接受后都要回产品书仓库改 04 FR-STA-01/03/04/06/08/09/10、10 第 5.1/5.3 节、15 和 17 第 2.3 节，并写 00 第 5 节修订记录。
 
 ## 5. 已知问题
 
 - 实时路径没有 Jev 结果，`Explanation.prob_pct` 恒为 `None`，界面不显示百分比；Jev 接入后要把显示状态的概率传给 `explain::build`（`sense.rs` 的 `on_window`）。
-- 解释里的冷启动判断看的是生成那一刻的 `Baseline::is_cold()`；B-04 接入持久化前，每次重启 Hub 都会回到冷启动。
-  历史解释改用“截至该窗口库里已有的窗口数”判断，因此重启后两者可能不一致；B-04 应在启动时用库里的窗口数初始化 `Baseline::windows`，两边就一致了。
+- 冷启动的“有效窗口数”口径（ADR 0012 第 3 条）：最近 7 天、上次重置之后的窗口数；启动时从库里重算，实时路径与历史解释口径一致。
 - 历史解释的 `{p}` 用的是当前基线的中位数，不是当时的；“上一个窗口”取库里 id 紧挨着的那条，可能跨会话（实时路径在新会话时会清掉上一个窗口）。
 - 阈值上调只作用于 Jev 路径（FR-STA-06 第 4、5 条的阈值）。现在实时路径全部走降级（只用本地规则），所以“不准”目前只写库、记入融合，暂时不改变显示结果，Jev 接入后自动生效。
 - `feedback` 表要按 D-17 保留 90 天、`self_report` 按 D-24 保留 1 年，清理归 E-01（自动清理）。
 - 时间戳（`SelfReportItem.ts`、`self_report:changed.until_ts`）用 f64 毫秒导出，因为 specta 不导出 i64；specta 把 f64 导出成 `number | null`，实际不会是 `null`。根治是在 `export_bindings` 里把 BigInt 导出为 number（毫秒时间戳小于 2^53，安全），那是 D 的导出配置，建议 D 评估后统一改。
 - 自评覆盖只在内存里，重启 Hub 后回到自动判断（ADR 0011 第 5 条）。
-- 外壳的 `Sensing::baseline` 是启动时的一份拷贝，B-04 做基线重算后要同步更新它（或改成从库里读）。
+- 外壳的 `Sensing` 保存一份基线拷贝（历史解释用），启动、04:00 重算和重置后都会同步。
+- 04:00 重算目前由感知任务按时钟判断；C 的 `scheduler` 就绪后可以改由它触发（ADR 0012 第 2 条）。
+- 重置时间存在 `settings` 表的内部键 `baseline.reset_ts`，不在设置键注册表里（ADR 0012 第 5 条），等 C 确认。
 - 只有合成脚本，阈值（如 R6、解释里的 z 阈值）没有用真实数据校验过，B-02 录完后要用 `xq-replay --json` 复核。
 
 ## 6. 下一步（按优先级）
 
-1. B-04 剩余：`baseline` 表读写、04:00 重算、重置基线（重算任务依赖 C 的 `scheduler`，没有就先在 `Sense` 里按 `Clock` 判断）；
-2. B-08 休息提醒（P0，W7–W8）；
-3. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`。
+1. B-08 休息提醒（P0，W7–W8）：使用时长计时、四类休息提醒、时机与勿扰、疲劳联动、统计；
+2. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`；
+3. B-03 剩余：特征计算与 Python 参考实现对拍。
 
 ## 7. 修订记录
 
@@ -88,3 +90,4 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-04 | B-07 第二部分：`state_explain` 命令（当前与历史）、外壳缓存解释；本地开发可装 WebKitGTK 编译外壳（包名见 `xinqing.yml`） |
 | 2026-10-04 | B-07 第三部分：`submit_feedback`、`feedback` 表读写、启动时重放“不准” |
 | 2026-10-04 | B-07 第四部分：自评天气后端与 ADR 0011；处理 D 对 ADR 0010 的三点建议（`prob_pct`、先交解释再推送状态） |
+| 2026-10-04 | B-04：基线写读 `baseline` 表、启动和 04:00 重算、`baseline_reset` 命令与 ADR 0012；修复 #16 / #17 交叉合并后的前端字段名（#22） |
