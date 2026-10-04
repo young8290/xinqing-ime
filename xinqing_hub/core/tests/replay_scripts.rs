@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 
 use chrono::{Local, TimeZone};
+use xinqing_hub_core::domain::explain::{self, Evidence, ExplainCopy, ExplainSource, SignalKind};
 use xinqing_hub_core::domain::features::Baseline;
 use xinqing_hub_core::domain::fusion::JevVerdict;
 use xinqing_hub_core::domain::rules::Hint;
@@ -89,4 +90,60 @@ fn typo_script_triggers_r1() {
     assert!(r.typos >= 5, "打错字次数 {}", r.typos);
     let in_windows: u32 = r.windows.iter().map(|w| w.window.features.typo_cnt).sum();
     assert!(in_windows > 0);
+}
+
+#[test]
+fn every_switch_in_scripts_is_explained() {
+    // FR-STA-09 / KPI-10：每次切换都至少有一条说明；犹豫切换要说出犹豫的证据
+    let dirs = TemplateDirs::factory_only(repo().join("hub_templates"));
+    let copy = ExplainCopy::load(&dirs).unwrap();
+    let base = Baseline::from_defaults(&BaselineDefault::load(&dirs).unwrap());
+    let mut total = 0;
+    for name in ["fluent", "hesitant", "typo_burst"] {
+        for jev in [true, false] {
+            let r = run(name, jev);
+            for (i, w) in r.windows.iter().enumerate() {
+                if !w.fusion.changed {
+                    continue;
+                }
+                total += 1;
+                let ev = |k: usize| Evidence {
+                    features: &r.windows[k].window.features,
+                    hints: &r.windows[k].window.hints,
+                };
+                let source = if jev {
+                    ExplainSource::Jev
+                } else {
+                    ExplainSource::Rule
+                };
+                let e = explain::build(
+                    w.fusion.shown,
+                    jev.then_some(0.85),
+                    source,
+                    ev(i),
+                    i.checked_sub(1).map(ev),
+                    &base,
+                );
+                let text = copy.render(&e);
+                assert!(
+                    text.contains(" · ") || text.contains("· "),
+                    "{name}: {text}"
+                );
+                if w.fusion.shown == MoodState::Hesitant {
+                    assert!(
+                        e.signals.iter().any(|s| matches!(
+                            s.kind,
+                            SignalKind::Pause
+                                | SignalKind::Abandon
+                                | SignalKind::DeleteCommitted
+                                | SignalKind::PageFlips
+                        )),
+                        "{name} 第 {} 个窗口：{text}",
+                        i + 1
+                    );
+                }
+            }
+        }
+    }
+    assert!(total >= 2, "脚本里应至少有进出犹豫两次切换");
 }

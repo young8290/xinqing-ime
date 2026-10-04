@@ -17,7 +17,10 @@ use tokio::time::{Instant, MissedTickBehavior};
 use xqp::{Down, OpenTarget, RewriteFailReason, Scope, Up};
 
 use crate::bus::{HubEvent, MoodEvent};
-use crate::domain::fusion::FusionOut;
+use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
+use crate::domain::features::WindowFeatures;
+use crate::domain::fusion::{FusionOut, Source};
+use crate::domain::rules::Hints;
 use crate::domain::status::StatusSnapshot;
 use crate::infra::clock::Clock;
 use crate::infra::xqp::{LinkEvent, XqpHandle};
@@ -36,6 +39,8 @@ pub trait SensePort: Send + Sync {
     fn save_window(&self, rec: &WindowRecord<'_>);
     /// 运行日志。只会传入连接状态、计数这类不含用户数据的内容（NFR-LOG）。
     fn note(&self, msg: &str);
+    /// 显示状态切换了，附上本次的状态解释（FR-STA-09），外壳缓存到下一次切换，供 `state_explain` 返回。
+    fn explained(&self, _e: &Explanation) {}
 }
 
 /// 一个已结束的窗口，时间已换算成 Unix 毫秒。
@@ -70,6 +75,10 @@ pub struct Sense {
     user_paused: bool,
     /// 当前输入框是密码框、禁用输入或黑名单应用（FR-SEN-05），小组件显示“闭眼”。
     gate_closed: bool,
+    /// 上一个窗口的特征和规则提示，状态解释要看“触发窗口和上一个窗口”（FR-STA-09）。
+    prev_window: Option<(WindowFeatures, Hints)>,
+    /// 最近一次切换的状态解释，缓存到下一次切换。
+    explanation: Option<Explanation>,
 }
 
 impl Sense {
@@ -91,7 +100,14 @@ impl Sense {
             anchor: None,
             user_paused: false,
             gate_closed: false,
+            prev_window: None,
+            explanation: None,
         }
+    }
+
+    /// 最近一次状态切换的解释；还没切换过时为 `None`。
+    pub fn explanation(&self) -> Option<&Explanation> {
+        self.explanation.as_ref()
     }
 
     /// 运行到 `cmds` 的发送端全部丢弃为止。`link` 关闭（没有连接核心）后只处理命令。
@@ -128,6 +144,7 @@ impl Sense {
                     self.session = Some(peer.session.clone());
                     self.needs_base = true;
                     self.anchor = None;
+                    self.prev_window = None;
                     self.pipeline.reset_session(self.clock.now());
                 }
                 self.pipeline.push(&peer.to_hello());
@@ -275,6 +292,26 @@ impl Sense {
                 | StatusSnapshot::set(&mut s.baseline_progress, progress)
         });
         if fusion.changed {
+            // 可能性随 Jev 接入后给出；只有本地规则时界面不显示百分比
+            let source = match fusion.source {
+                Source::Jev => ExplainSource::Jev,
+                Source::Rule => ExplainSource::Rule,
+            };
+            let e = explain::build(
+                fusion.shown,
+                None,
+                source,
+                Evidence {
+                    features: &w.features,
+                    hints: &w.hints,
+                },
+                self.prev_window
+                    .as_ref()
+                    .map(|(features, hints)| Evidence { features, hints }),
+                self.pipeline.baseline(),
+            );
+            self.port.explained(&e);
+            self.explanation = Some(e);
             let _ = self.bus.send(HubEvent::Mood(MoodEvent::StateChanged {
                 ts,
                 state: fusion.shown,
@@ -284,6 +321,7 @@ impl Sense {
                 offline,
             });
         }
+        self.prev_window = Some((w.features, w.hints));
     }
 }
 
@@ -293,7 +331,7 @@ mod tests {
     use std::sync::Mutex;
 
     use chrono::{Local, TimeZone};
-    use xqp::{ByeReason, KeyKind, KeySrc};
+    use xqp::{ByeReason, KeyKind, KeySrc, MoodState};
 
     use super::*;
     use crate::domain::features::Baseline;
@@ -308,6 +346,7 @@ mod tests {
         opened: Mutex<Vec<OpenTarget>>,
         saved: Mutex<Vec<(i64, i64)>>,
         notes: Mutex<Vec<String>>,
+        explained: Mutex<Vec<Explanation>>,
     }
 
     impl SensePort for FakePort {
@@ -324,6 +363,9 @@ mod tests {
         }
         fn note(&self, msg: &str) {
             self.notes.lock().unwrap().push(msg.to_string());
+        }
+        fn explained(&self, e: &Explanation) {
+            self.explained.lock().unwrap().push(e.clone());
         }
     }
 
@@ -442,6 +484,56 @@ mod tests {
             });
         }
         assert!(kinds.contains(&"window") && kinds.contains(&"sample"));
+    }
+
+    #[test]
+    fn state_change_comes_with_explanation() {
+        // 回放合成的犹豫脚本（只有本地规则），每次切换都带解释（FR-STA-09、KPI-10）
+        let mut r = rig();
+        r.sense.on_link(connected("s1"), r.t0);
+        let text = std::fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tools/xq-sim/scripts/hesitant.jsonl"),
+        )
+        .unwrap();
+        let mut changes = Vec::new();
+        // 边回放边读总线，脚本事件多于总线容量
+        let mut drain = |bus: &mut broadcast::Receiver<HubEvent>| {
+            while let Ok(ev) = bus.try_recv() {
+                if let HubEvent::Mood(MoodEvent::StateChanged { state, .. }) = ev {
+                    changes.push(state);
+                }
+            }
+        };
+        let mut last = 0;
+        for line in text.lines() {
+            let ev: Up = serde_json::from_str(line).unwrap();
+            if let Some(ts) = ev.ts() {
+                for t in (last..ts).step_by(250).skip(1) {
+                    r.sense.on_tick(r.t0 + Duration::from_millis(t));
+                }
+                last = ts;
+            }
+            r.up(ev);
+            drain(&mut r.bus);
+        }
+        r.sense.on_tick(r.t0 + Duration::from_millis(last + 5_000));
+        drain(&mut r.bus);
+
+        let explained = r.port.explained.lock().unwrap().clone();
+        assert!(changes.contains(&MoodState::Hesitant), "{changes:?}");
+        assert_eq!(
+            explained.iter().map(|e| e.state).collect::<Vec<_>>(),
+            changes
+        );
+        let hesitant = explained
+            .iter()
+            .find(|e| e.state == MoodState::Hesitant)
+            .unwrap();
+        assert!(!hesitant.signals.is_empty());
+        assert_eq!(hesitant.source, ExplainSource::Rule);
+        assert_eq!(hesitant.prob, None);
+        assert_eq!(r.sense.explanation(), explained.last());
     }
 
     #[test]

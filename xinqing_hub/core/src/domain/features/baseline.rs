@@ -77,9 +77,9 @@ impl Baseline {
         ((self.windows.min(COLD_START_WINDOWS) * 100) / COLD_START_WINDOWS) as u8
     }
 
-    /// `z = (x − med) / max(1.4826 × mad, ε)`，ε = 人群默认标准差的 10%，截断到 [−5, 5]。
-    pub fn z(&self, bucket: Bucket, feature: &str, x: Option<f64>) -> Option<f64> {
-        let x = x?;
+    /// 当前生效的统计值：冷启动用人群默认值，否则用个人值（没有个人值时退回默认值）。
+    /// 返回 (生效值, 人群默认值)。
+    fn used(&self, bucket: Bucket, feature: &str) -> Option<(&MedMad, &MedMad)> {
         let key = (bucket, *BASE_FEATURES.iter().find(|f| **f == feature)?);
         let default = self.defaults.get(&key)?;
         let used = if self.is_cold() {
@@ -87,6 +87,18 @@ impl Baseline {
         } else {
             self.personal.get(&key).unwrap_or(default)
         };
+        Some((used, default))
+    }
+
+    /// 当前生效的中位数（FR-STA-09 说明文案中 `{p}` 的分母）。
+    pub fn med(&self, bucket: Bucket, feature: &str) -> Option<f64> {
+        self.used(bucket, feature).map(|(u, _)| u.med)
+    }
+
+    /// `z = (x − med) / max(1.4826 × mad, ε)`，ε = 人群默认标准差的 10%，截断到 [−5, 5]。
+    pub fn z(&self, bucket: Bucket, feature: &str, x: Option<f64>) -> Option<f64> {
+        let x = x?;
+        let (used, default) = self.used(bucket, feature)?;
         let eps = MAD_TO_SD * default.mad * 0.1;
         let denom = (MAD_TO_SD * used.mad).max(eps);
         if denom <= 0.0 {
@@ -163,6 +175,9 @@ mad = 55.0
         b.windows = 200;
         // mad = 0 时使用 ε = 1.4826 × 55 × 0.1，结果被截断到 5
         assert_eq!(b.z(Bucket::Day, "kpm", Some(200.0)), Some(5.0));
+        assert_eq!(b.med(Bucket::Day, "kpm"), Some(100.0));
+        // 个人值只在白天桶，夜间退回人群默认值
+        assert_eq!(b.med(Bucket::Night, "kpm"), Some(200.0));
         assert_eq!(b.z(Bucket::Day, "kpm", None), None);
     }
 
