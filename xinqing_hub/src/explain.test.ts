@@ -4,7 +4,7 @@ import { explainLines } from './explain'
 
 const base: Explanation = {
   state: 'hesitant',
-  prob: 85,
+  prob_pct: 85,
   signals: [
     { kind: 'abandon', value: null },
     { kind: 'pause', value: 2 },
@@ -24,7 +24,7 @@ describe('explainLines', () => {
   })
 
   it('没有可能性时标题只有不确定说法；冷启动附注接在来源后面', () => {
-    const l = explainLines({ ...base, prob: null, source: 'rule', cold_start: true })
+    const l = explainLines({ ...base, prob_pct: null, source: 'rule', cold_start: true })
     expect(l.header).toBe('看起来有点犹豫')
     expect(l.footer).toBe('本地规则判断（离线） · 还在熟悉你的习惯，判断可能不准')
   })

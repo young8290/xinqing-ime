@@ -30,7 +30,7 @@ export function explainLines(e: Explanation): ExplainLines {
   const notes = [t(`explain.source.${e.source}` satisfies CopyKey)]
   if (e.cold_start) notes.push(t('explain.note.cold_start'))
   return {
-    header: explainHeader(e.state, e.prob),
+    header: explainHeader(e.state, e.prob_pct),
     signals: signals.length > 0 ? signals : [t('explain.note.no_signal')],
     footer: notes.join(t('explain.note.separator')),
   }
