@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   openWindow: vi.fn(),
   pauseSet: vi.fn(),
   hide: vi.fn(),
+  show: vi.fn(),
   setAlwaysOnTop: vi.fn(),
   popup: vi.fn(),
   menuItems: [] as Item[],
@@ -38,7 +39,7 @@ vi.mock('@tauri-apps/api/window', () => ({
       public y: number,
     ) {}
   },
-  getCurrentWindow: () => ({ hide: mocks.hide, setAlwaysOnTop: mocks.setAlwaysOnTop }),
+  getCurrentWindow: () => ({ hide: mocks.hide, show: mocks.show, setAlwaysOnTop: mocks.setAlwaysOnTop }),
   // 定位需要的接口不给：useWidgetWindow 会失败并只打警告，界面照常显示
 }))
 vi.mock('@tauri-apps/api/menu', () => ({
@@ -71,11 +72,17 @@ describe('小组件', () => {
       connected: true,
       baseline_progress: 100,
     }
+    mocks.show.mockReset().mockResolvedValue(undefined)
     for (const f of [mocks.openWindow, mocks.pauseSet, mocks.hide, mocks.popup])
       f.mockReset().mockReturnValue(ok())
     mocks.setAlwaysOnTop.mockReset().mockResolvedValue(undefined)
     mocks.menuItems = []
     mocks.stateExplain.mockReset().mockReturnValue(ok(null))
+  })
+
+  it('外壳建窗口时不显示，前端定位后再显示；定位失败也照样显示（FR-WGT-01）', async () => {
+    await mountWidget()
+    expect(mocks.show).toHaveBeenCalledTimes(1)
   })
 
   it('Shift+F10 在左上角弹出右键菜单（FR-WGT-06）', async () => {

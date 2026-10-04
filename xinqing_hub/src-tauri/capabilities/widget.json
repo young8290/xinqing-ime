@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "widget",
-  "description": "只给小组件：贴边吸附与贴边隐藏要挪动、缩放窗口，置顶跟随设置 widget.topmost（07 FR-WGT-01）。",
+  "description": "只给小组件：贴边吸附与贴边隐藏要挪动、缩放窗口，定好位置后再显示，置顶跟随设置 widget.topmost（07 FR-WGT-01）。",
   "windows": ["widget"],
-  "permissions": ["core:window:allow-set-position", "core:window:allow-set-size", "core:window:allow-set-always-on-top"]
+  "permissions": [
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-show",
+    "core:window:allow-set-always-on-top"
+  ]
 }

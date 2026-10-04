@@ -30,6 +30,7 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focus": false,
+        "visible": false,
         "create": false
       },
       {

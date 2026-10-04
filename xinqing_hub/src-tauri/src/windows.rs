@@ -1,5 +1,6 @@
 //! 窗口管理（07 第 2 节窗口清单）。窗口的尺寸与样式都写在 `tauri.conf.json`，且全部 `create: false`：
 //! 启动时由 `lib.rs` 按引导状态决定先开哪个，其余按需创建；关掉的窗口下次再从配置重建。
+//! 小组件例外：建好后由前端定好位置再显示（`visible: false`）。
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -46,8 +47,8 @@ impl WindowTarget {
 /// 显示一个窗口；还没创建就按配置创建。小组件不抢焦点（FR-WGT-07 的“不抢焦点”不变量）。
 pub fn open<R: Runtime, M: Manager<R>>(app: &M, target: WindowTarget) -> Result<(), UiError> {
     let label = target.label();
-    let win = match app.get_webview_window(label) {
-        Some(w) => w,
+    let (win, created) = match app.get_webview_window(label) {
+        Some(w) => (w, false),
         None => {
             let config = app
                 .config()
@@ -57,9 +58,17 @@ pub fn open<R: Runtime, M: Manager<R>>(app: &M, target: WindowTarget) -> Result<
                 .find(|w| w.label == label)
                 .cloned()
                 .ok_or_else(|| UiError::internal("window.not_configured", label))?;
-            WebviewWindowBuilder::from_config(app, &config)?.build()?
+            (
+                WebviewWindowBuilder::from_config(app, &config)?.build()?,
+                true,
+            )
         }
     };
+    // 小组件建好时先不显示（配置里 `visible: false`）：前端挪到记住的位置后自己 show()，
+    // 免得先在配置的位置闪一下再跳过去（FR-WGT-01）
+    if created && target == WindowTarget::Widget {
+        return Ok(());
+    }
     if win.is_minimized()? {
         win.unminimize()?;
     }
@@ -98,5 +107,16 @@ mod tests {
             assert_eq!(w["url"], format!("{}/index.html", t.label()));
         }
         assert_eq!(windows.len(), WindowTarget::ALL.len());
+    }
+
+    /// 小组件建好时不显示，等前端定位后再 show()（`useWidgetWindow.ts`）；其余窗口照常显示。
+    #[test]
+    fn only_the_widget_starts_hidden() {
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        for w in conf["app"]["windows"].as_array().unwrap() {
+            let hidden = w["visible"] == false;
+            assert_eq!(hidden, w["label"] == "widget", "{}", w["label"]);
+        }
     }
 }

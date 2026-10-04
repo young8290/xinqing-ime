@@ -6,6 +6,7 @@ mod args;
 mod commands;
 mod error;
 mod events;
+mod fullscreen;
 mod paths;
 mod sensing;
 mod state;
@@ -85,6 +86,8 @@ pub fn run() {
             if let Some(target) = launch.open {
                 windows::open(app.handle(), target)?;
             }
+            // 前台全屏时自动隐藏小组件（FR-WGT-01）
+            fullscreen::start(app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())

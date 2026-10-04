@@ -37,3 +37,7 @@ chrono.workspace = true
 tokio.workspace = true
 async-trait = "0.1"
 dirs = "6"
+
+[target.'cfg(windows)'.dependencies]
+# 前台全屏检测（src/fullscreen.rs）；与 tauri 依赖树里已有的版本一致
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell"] }
