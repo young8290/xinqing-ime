@@ -3,6 +3,7 @@
 //! 领域逻辑都在 `xinqing-hub-core`，这里只做参数校验 → 调用领域服务 → 转成 `UiError`（ADR 0007）。
 
 mod args;
+mod cleanup;
 mod commands;
 mod error;
 mod events;
@@ -79,6 +80,7 @@ pub fn run() {
             // 第 5 步：XQP 客户端与实时感知。Hub 是同意状态的唯一真相源，握手后立即下发 cfg
             let sensing = sensing::start(app.handle(), cfg);
             app.manage(sensing);
+            cleanup::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。
