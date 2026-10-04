@@ -4,6 +4,7 @@
 
 mod args;
 mod cleanup;
+mod comfort;
 mod commands;
 mod error;
 mod events;
@@ -56,6 +57,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::SettingsChanged,
             events::SelfReportChanged,
             events::GatewayHealthChanged,
+            events::ComfortNew,
         ])
 }
 
@@ -91,6 +93,8 @@ pub fn run() {
             let sensing = sensing::start(app.handle(), cfg);
             app.manage(sensing);
             cleanup::start(app.handle());
+            // 暖心话：订阅总线，主动关怀与自评回应（C-04）
+            comfort::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。

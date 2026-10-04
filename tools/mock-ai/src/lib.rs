@@ -128,6 +128,25 @@ pub const DEFAULT_MODEL: &str = "gemini-3.7-flash";
 pub const BACKUP_MODEL: &str = "backup-model";
 /// 对话与一次性生成的固定回复。
 pub const REPLY: &str = "我在这儿呢，想说什么都可以慢慢说。";
+/// P-COMFORT 的回复（08 第 4 节的一行 JSON），按调用次数轮换，连续几次也能过 V5 去重。
+pub const COMFORT_REPLIES: [&str; 3] = [
+    r#"{"text":"先停十秒，深呼吸一下？","kind":"rest"}"#,
+    r#"{"text":"今天辛苦啦，喝口水歇一歇。","kind":"comfort"}"#,
+    r#"{"text":"慢慢来，你已经做得很好了。","kind":"cheer"}"#,
+];
+
+/// 请求的是 P-COMFORT（提示词要求输出 `{"text":...,"kind":"comfort|rest|cheer"}`）时回 JSON，否则回固定的一句话。
+fn reply_for(req: &ChatReq, n: usize) -> &'static str {
+    let comfort = req
+        .messages
+        .iter()
+        .any(|m| m.content.contains(r#""kind":"comfort|rest|cheer""#));
+    if comfort {
+        COMFORT_REPLIES[n % COMFORT_REPLIES.len()]
+    } else {
+        REPLY
+    }
+}
 
 pub fn router(handle: Handle) -> Router {
     Router::new()
@@ -284,16 +303,24 @@ struct ChatReq {
     model: Option<String>,
     #[serde(default)]
     stream: bool,
+    #[serde(default)]
+    messages: Vec<ChatMsg>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatMsg {
+    #[serde(default)]
+    content: String,
 }
 
 async fn chat(State(st): State<Handle>, h: HeaderMap, Json(body): Json<Value>) -> Response {
-    st.chat.fetch_add(1, Ordering::SeqCst);
+    let n = st.chat.fetch_add(1, Ordering::SeqCst);
     let req: ChatReq = match st.record(&h, body) {
         Ok(r) => r,
         Err(e) => return invalid(e),
     };
     let s = pick(&st, &h);
-    let model = req.model.unwrap_or_else(|| DEFAULT_MODEL.into());
+    let model = req.model.clone().unwrap_or_else(|| DEFAULT_MODEL.into());
     if s == Scenario::ModelNotFound && model == DEFAULT_MODEL {
         return (
             StatusCode::NOT_FOUND,
@@ -311,7 +338,7 @@ async fn chat(State(st): State<Handle>, h: HeaderMap, Json(body): Json<Value>) -
         "id": "mock-1",
         "object": "chat.completion",
         "model": model,
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": REPLY}, "finish_reason": "stop"}],
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": reply_for(&req, n)}, "finish_reason": "stop"}],
         "usage": {"prompt_tokens": 10, "completion_tokens": 16, "total_tokens": 26}
     }))
     .into_response()

@@ -356,6 +356,9 @@ impl Sense {
         let _ = self.bus.send(HubEvent::Mood(MoodEvent::Sample {
             ts,
             out: fusion.clone(),
+            // Jev 接入后填上（FR-STA-05）；降级运行时没有，暖心话不主动关怀（FR-STA-08 第 2 条）
+            need_comfort: None,
+            valence: None,
         }));
         if fusion.changed {
             // 可能性随 Jev 接入后给出；只有本地规则时界面不显示百分比

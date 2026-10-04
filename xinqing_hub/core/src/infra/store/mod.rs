@@ -15,11 +15,20 @@ use crate::domain::rules::Hints;
 use crate::infra::gateway::NetLogEntry;
 use crate::infra::templates::AppCat;
 
+mod comfort;
+pub use comfort::ComfortRecord;
+
 /// `net_log` 只保留最近这么多条（09 D-20）。
 pub const NET_LOG_KEEP: i64 = 200;
 
 /// 按顺序执行的迁移脚本：`(版本号, SQL)`。已发布的脚本禁止修改。
-const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("../../../migrations/0001_init.sql"))];
+const MIGRATIONS: &[(i64, &str)] = &[
+    (1, include_str!("../../../migrations/0001_init.sql")),
+    (
+        2,
+        include_str!("../../../migrations/0002_comfort_trigger.sql"),
+    ),
+];
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
@@ -462,13 +471,13 @@ mod tests {
     #[test]
     fn migrations_apply_once() {
         let db = Db::open_in_memory().unwrap();
-        assert_eq!(db.schema_version().unwrap(), 1);
+        assert_eq!(db.schema_version().unwrap(), MIGRATIONS.len() as i64);
         db.migrate().unwrap();
         let n: i64 = db
             .conn()
             .query_row("SELECT count(*) FROM schema_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(n, 1);
+        assert_eq!(n, MIGRATIONS.len() as i64);
     }
 
     #[test]
