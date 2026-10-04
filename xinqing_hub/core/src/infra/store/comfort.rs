@@ -62,6 +62,26 @@ impl Db {
             .collect::<Result<_, _>>()?)
     }
 
+    /// 给一句暖心话记反馈（`useful` / `unfit` / `mute`），后点的覆盖先点的。返回这句话是否还在。
+    pub fn comfort_set_feedback(&self, id: i64, verdict: &str) -> Result<bool, StoreError> {
+        let n = self.conn.execute(
+            "UPDATE comfort_log SET feedback = ?2 WHERE id = ?1",
+            params![id, verdict],
+        )?;
+        Ok(n > 0)
+    }
+
+    /// `since` 之后的暖心话里有反馈的：`(暖心话的时间, 反馈)`，按时间先后（自动降档用）。
+    pub fn comfort_feedback_since(&self, since: i64) -> Result<Vec<(i64, String)>, StoreError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT ts, feedback FROM comfort_log
+             WHERE ts >= ?1 AND feedback IS NOT NULL ORDER BY ts, id",
+        )?;
+        Ok(stmt
+            .query_map([since], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<Result<_, _>>()?)
+    }
+
     /// `since` 之后主动关怀的次数和最近一次的时间（FR-CMF-06 每日上限、FR-CMF-01 第 3 条冷却）。
     /// 自评后的回应不计入（ADR 0015）。
     pub fn comfort_auto_since(&self, since: i64) -> Result<(u32, Option<i64>), StoreError> {

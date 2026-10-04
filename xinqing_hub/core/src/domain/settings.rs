@@ -115,6 +115,15 @@ pub const KEYS: &[KeySpec] = &[
     },
 ];
 
+/// 借用 `settings` 表存放的内部状态键：不是用户设置，不在 [`KEYS`] 里，`settings_get` / `settings_set` 命令读写不到；
+/// 导出、导入（FR-DAT-03/07）只处理 [`KEYS`] 里的键，这些键不跨电脑带走。新增内部键都登记在这里。
+pub const INTERNAL_KEYS: &[&str] = &[
+    crate::domain::comfort_feedback::MUTED_UNTIL_KEY,
+    crate::domain::comfort_feedback::REDUCED_TS_KEY,
+    // 上次“重置基线”的时间（Unix 毫秒，B-04，ADR 0014）
+    crate::domain::features::persist::RESET_KEY,
+];
+
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
     #[error("未登记的设置项：{0}")]
@@ -166,6 +175,16 @@ pub fn set(db: &Db, key: &str, value: &SettingValue) -> Result<bool, SettingsErr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn internal_keys_are_not_settings() {
+        let db = Db::open_in_memory().unwrap();
+        for k in INTERNAL_KEYS {
+            assert!(spec(k).is_none(), "{k} 同时是设置键");
+            assert!(k.contains('.'), "{k} 要带命名空间");
+            assert!(matches!(get(&db, k), Err(SettingsError::UnknownKey(_))));
+        }
+    }
 
     fn text(s: &str) -> SettingValue {
         SettingValue::Text(s.into())

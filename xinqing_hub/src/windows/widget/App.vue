@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动吸附、
-// 右键菜单、贴边隐藏、悬停状态行显示解释。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
+// 右键菜单、贴边隐藏、悬停状态行显示解释、“我现在…”自评。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
 // （进度见 docs/xinqing/handover/D-前端与视觉.md）。
 import { computed, nextTick, onMounted, ref, toRef } from 'vue'
 import { LogicalPosition, getCurrentWindow } from '@tauri-apps/api/window'
 import { Menu } from '@tauri-apps/api/menu'
-import { commands, unwrap, type Verdict } from '@/api'
+import { commands, unwrap, type SelfWeather, type Verdict } from '@/api'
 import ExplainPanel from '@/components/ExplainPanel.vue'
 import WeatherSprite from '@/components/WeatherSprite.vue'
 import WeatherStage from '@/components/WeatherStage.vue'
@@ -13,13 +13,16 @@ import { errorText, t } from '@/i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useStatusStore } from '@/stores/status'
 import { menuEntries, type MenuAction } from './menu'
+import SelfReportPanel from './SelfReportPanel.vue'
 import { statusLine } from './statusLine'
 import { useExplain } from './useExplain'
+import { useSelfReport } from './useSelfReport'
 import { useWidgetWindow } from './useWidgetWindow'
 
 const status = useStatusStore()
 const settings = useSettingsStore()
-const line = computed(() => (status.snapshot ? statusLine(status.snapshot) : null))
+const selfReport = useSelfReport()
+const line = computed(() => (status.snapshot ? statusLine(status.snapshot, selfReport.active.value) : null))
 const setting = <T,>(key: string, fallback: T) =>
   computed(() => {
     const v = settings.values[key]
@@ -31,8 +34,37 @@ const topmost = setting('widget.topmost', true)
 const message = ref(t('greeting.idle'))
 const menuOpen = ref(false)
 
-const place = useWidgetWindow({ autohide, topmost, holdOpen: menuOpen })
-const explain = useExplain(toRef(status, 'snapshot'))
+// 菜单或自评面板开着时不贴边收起
+const holdOpen = computed(() => menuOpen.value || selfReport.panelOpen.value)
+const place = useWidgetWindow({ autohide, topmost, holdOpen })
+const explain = useExplain(
+  toRef(status, 'snapshot'),
+  computed(() => selfReport.active.value !== null),
+)
+const penEl = ref<HTMLElement | null>(null)
+
+/** 打开“我现在…”（状态行的 ✎ 或右键菜单，FR-WGT-06） */
+function openSelfReport(): void {
+  explain.close()
+  selfReport.panelOpen.value = true
+}
+
+/** 关面板后把焦点还给 ✎，键盘用户不至于掉到窗口外 */
+async function closeSelfReport(): Promise<void> {
+  selfReport.panelOpen.value = false
+  await nextTick()
+  penEl.value?.focus()
+}
+
+async function onSelfSubmit(weather: SelfWeather, note: string): Promise<void> {
+  try {
+    await selfReport.submit(weather, note)
+    await nextTick()
+    penEl.value?.focus()
+  } catch (e) {
+    message.value = errorText(e)
+  }
+}
 const panel = ref<{ $el: HTMLElement } | null>(null)
 
 const statusEl = ref<HTMLElement | null>(null)
@@ -71,6 +103,8 @@ onMounted(async () => {
   } catch (e) {
     message.value = errorText(e)
   }
+  // 自评覆盖期取不到时只是少显示“你说的”，不打扰用户
+  selfReport.init().catch((e) => console.warn('读取自评失败', e))
 })
 
 async function run(action: () => Promise<unknown>): Promise<void> {
@@ -84,6 +118,7 @@ async function run(action: () => Promise<unknown>): Promise<void> {
 const openChat = () => run(() => unwrap(commands.openWindow('chat')))
 
 const ACTIONS: Record<MenuAction, () => Promise<unknown>> = {
+  self_report: async () => openSelfReport(),
   pause: () => status.setPaused(true),
   resume: () => status.setPaused(false),
   dashboard: () => unwrap(commands.openWindow('dashboard')),
@@ -169,26 +204,48 @@ function onPointerUp(): void {
     >
       <WeatherStage v-if="line" :weather="line.weather" :eyes-closed="line.eyesClosed" />
       <div class="content">
-        <!-- 悬停或键盘聚焦时显示解释（FR-WGT-06、FR-STA-09）；面板盖住整列，标题行接替状态行 -->
-        <p
-          ref="statusEl"
-          class="status"
-          :class="{ 'with-badge': status.snapshot?.offline }"
-          tabindex="0"
-          aria-live="polite"
-          :aria-describedby="explain.lines.value ? 'xq-explain' : undefined"
-          @pointerenter="explain.hover"
-          @pointerleave="explain.leave"
-          @focus="explain.open"
-          @focusout="onFocusOut"
-        >
-          {{ line?.text }}
-        </p>
+        <!-- 状态行：悬停或键盘聚焦时显示解释（FR-WGT-06、FR-STA-09）；右侧依次是离线角标和 ✎“我现在…” -->
+        <div class="status-row">
+          <p
+            ref="statusEl"
+            class="status"
+            :title="line?.text"
+            tabindex="0"
+            aria-live="polite"
+            :aria-describedby="explain.lines.value ? 'xq-explain' : undefined"
+            @pointerenter="explain.hover"
+            @pointerleave="explain.leave"
+            @focus="explain.open"
+            @focusout="onFocusOut"
+          >
+            {{ line?.text }}
+          </p>
+          <span v-if="status.snapshot?.offline" class="badge">{{ t('widget.offline_badge') }}</span>
+          <button
+            ref="penEl"
+            class="pen"
+            :aria-label="t('widget.self_report_prompt')"
+            :title="t('widget.self_report_prompt')"
+            @pointerdown.stop
+            @keydown.enter.stop
+            @click.stop="openSelfReport"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 13l.8-3.2L10.6 3a1.4 1.4 0 0 1 2 2L5.8 11.8z" />
+            </svg>
+          </button>
+        </div>
+        <SelfReportPanel
+          v-if="selfReport.panelOpen.value"
+          class="overlay"
+          @submit="onSelfSubmit"
+          @close="closeSelfReport"
+        />
         <ExplainPanel
           v-if="explain.lines.value"
           id="xq-explain"
           ref="panel"
-          class="explain-panel"
+          class="overlay"
           role="tooltip"
           :lines="explain.lines.value"
           @pointerenter="explain.hover"
@@ -214,9 +271,6 @@ function onPointerUp(): void {
         <p class="message" :title="message">{{ message }}</p>
         <footer class="footer" />
       </div>
-      <span v-if="status.snapshot?.offline && !explain.lines.value" class="badge">{{
-        t('widget.offline_badge')
-      }}</span>
     </main>
   </div>
 </template>
@@ -271,8 +325,17 @@ body {
   height: 100%;
 }
 
-.status {
+.status-row {
+  display: flex;
+  gap: var(--xq-sp-1);
+  align-items: center;
   margin: 0 0 var(--xq-sp-2);
+}
+
+.status {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   color: var(--xq-text-2);
   font-size: var(--xq-fs-sm);
   line-height: var(--xq-lh-sm);
@@ -281,11 +344,28 @@ body {
   text-overflow: ellipsis;
 }
 
+/* ✎ 仍守 32 × 32 的点击目标（DS-A11Y-03），用负边距不撑高 20 px 的状态行 */
+.pen {
+  flex: none;
+  margin: calc(-1 * var(--xq-sp-2)) calc(-1 * var(--xq-sp-2)) calc(-1 * var(--xq-sp-2)) 0;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--xq-text-2);
+}
+
+.pen path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
 /*
- * 解释面板盖住卡片的整个内容区（约 286 × 134 px）：最多 3 条说明、两行附注再加 32 px 高的“准 / 不准”
- * 只有这么宽才放得下（只盖右侧那一列时高度不够）。开着时不显示离线角标。
+ * 解释面板与自评面板都盖住卡片的整个内容区（约 286 × 134 px）：解释最多 3 条说明、两行附注再加 32 px 高的
+ * “准 / 不准”，自评是标题、备注和两行选项，只有这么宽才放得下（只盖右侧那一列时高度不够）。
  */
-.explain-panel {
+.overlay {
   position: absolute;
   inset: var(--xq-sp-4);
   z-index: 1;
@@ -311,11 +391,6 @@ body {
   line-height: var(--xq-lh-xs);
 }
 
-/* 只在有离线角标时给它让出位置，平时状态行用满整行 */
-.status.with-badge {
-  padding-right: calc(var(--xq-sp-6) + var(--xq-sp-3));
-}
-
 .message {
   display: -webkit-box;
   flex: 1;
@@ -336,9 +411,7 @@ body {
 }
 
 .badge {
-  position: absolute;
-  top: var(--xq-sp-3);
-  right: var(--xq-sp-3);
+  flex: none;
   padding: 0 var(--xq-sp-2);
   border-radius: var(--xq-radius-sm);
   background: var(--xq-surface-2);
