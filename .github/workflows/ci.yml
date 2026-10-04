@@ -9,13 +9,17 @@ on:
     paths-ignore: ['**.md', 'docs/**', 'xinqing_hub/**', 'tools/**', 'hub_templates/**', 'eval/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/xinqing*.yml']
   pull_request:
     branches: [main]
-    paths-ignore: ['xinqing_hub/**', 'tools/**', 'hub_templates/**', 'eval/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/xinqing*.yml']
+    # 心晴：只改文档的 PR 也不跑（以前推一个改 AGENTS.md 的提交会取消正在跑的整轮 CI）
+    paths-ignore: ['**.md', 'docs/**', 'xinqing_hub/**', 'tools/**', 'hub_templates/**', 'eval/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/xinqing*.yml']
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # 心晴：原来一个 job 串行跑 fmt → clippy(msvc) → 本机测试，约 15 分钟，几乎全花在两套 target
+  # 各编一遍工作区上（测试本身只跑 20 秒）。拆成 check（fmt、clippy、Android、TSF）与 test
+  # 两个并行 job，墙钟时间约减半；job 名 check 保持不变。
   check:
     runs-on: ubuntu-latest
     # 心晴：私有仓库的 runner 磁盘小，msvc 交叉编译和本机测试两套 target 带完整调试信息会写满磁盘
@@ -23,11 +27,10 @@ jobs:
     env:
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
-      # 心晴：删掉本任务用不到的预装 SDK（.NET、Android、GHC、CodeQL），腾出二十多 GB
+      # 心晴：删掉本任务用不到的预装 SDK（.NET、Android、GHC、CodeQL），腾出二十多 GB。
+      # 放到后台删：前台删要 2 分钟，而前面几步装工具链用不了多少磁盘，编译开始前就删完了
       - name: 释放 runner 磁盘空间
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+        run: sudo nohup rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL >/dev/null 2>&1 &
 
       - uses: actions/checkout@v7
 
@@ -61,9 +64,12 @@ jobs:
         with:
           workspaces: wind_input
 
-      # fmt --check + clippy(msvc target) + test(本机)
-      - name: dev.sh ci
-        run: ./scripts/dev.sh ci
+      # 心晴：原来是 dev.sh ci（fmt + clippy + test），测试移到下面的 test job
+      - name: fmt 检查
+        run: ./scripts/dev.sh fmt-check
+
+      - name: clippy (msvc target, -D warnings)
+        run: ./scripts/dev.sh clippy deny
 
       # headless/Android 防走样三道闸:
       # ① check 对象是 **wind-mobile 全包**(移动端门面,闭包含 coordinator headless):
@@ -105,6 +111,26 @@ jobs:
           V="$(tr -d '[:space:]' < docs/VERSION)"
           make -C wind_tsf VERSION="$V"
           make -C wind_tsf x86 VERSION="$V"
+
+  # 心晴：从 check 拆出来的本机测试（dev.sh ci 的第三步），与 check 并行
+  test:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+    steps:
+      - name: 释放 runner 磁盘空间
+        run: sudo nohup rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL >/dev/null 2>&1 &
+
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: wind_input
+
+      - name: cargo test (本机，全工作区)
+        run: ./scripts/dev.sh test
 
   # 门控: 仅当 macOS 相关路径改动时才触发 macOS 编译校验。
   # GitHub 不支持 per-job paths, 故用一个 ubuntu 廉价 job 输出是否命中, macos-check 据此 if 短路。

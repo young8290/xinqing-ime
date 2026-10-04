@@ -1882,7 +1882,7 @@ dispatch() {
         pdm1)             do_push_module dev tsf ;;
         pdm2)             do_push_module dev core ;;
         k|check)          do_check ;;
-        l|clippy)         do_clippy ;;
+        l|clippy)         do_clippy "${2:-}" ;;   # 心晴：CI 用 `clippy deny`
         t|test)           do_test ;;
         sk|setting-check) do_setting_check ;;
         st|setting-test)  do_setting_test ;;
