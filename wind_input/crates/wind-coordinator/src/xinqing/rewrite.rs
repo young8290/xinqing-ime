@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 
 use wind_bridge::handler::{KeyAction, KeyEventData};
 use wind_config::hotkey;
-use wind_ipc::protocol::{EVENT_KEY_DOWN, MOD_ALT, calc_key_hash, MOD_CTRL, MOD_SHIFT, MOD_WIN};
+use wind_ipc::protocol::{EVENT_KEY_DOWN, MOD_ALT, MOD_CTRL, MOD_SHIFT, MOD_WIN, calc_key_hash};
 use wind_keys::keymap::{VK_1, VK_ESCAPE, VK_SPACE, VK_TAB};
 use wind_ui_types::{CandidateItem, UiCommand};
 use wind_xinqing_tap::{
@@ -201,7 +201,10 @@ impl Coordinator {
             Some(r) => (RewriteSource::Recent, r.text, Some(r.utf16_len)),
             None => {
                 // 剪贴板读取最多阻塞几十毫秒，不在 state 锁里读
-                let clip = self.host_services().clipboard_get_text().unwrap_or_default();
+                let clip = self
+                    .host_services()
+                    .clipboard_get_text()
+                    .unwrap_or_default();
                 let clip = clip.trim();
                 if clip.is_empty() {
                     self.show_xinqing_tip("没有找到要改写的文字", TIP_MS);
@@ -223,7 +226,10 @@ impl Coordinator {
             self.show_xinqing_tip(fail_text(RewriteFailReason::Timeout), TIP_MS);
             return Some(KeyAction::Consumed);
         }
-        tracing::info!("心晴改写：进入，来源 {source:?}，{} 字", text.chars().count());
+        tracing::info!(
+            "心晴改写：进入，来源 {source:?}，{} 字",
+            text.chars().count()
+        );
         {
             let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
             s.xq_rewrite = Some(RewriteMode {
@@ -263,9 +269,7 @@ impl Coordinator {
             let pick = if vk == VK_SPACE && mods == 0 {
                 Some(0)
             } else {
-                (VK_1..VK_1 + 3)
-                    .contains(&vk)
-                    .then(|| (vk - VK_1) as usize)
+                (VK_1..VK_1 + 3).contains(&vk).then(|| (vk - VK_1) as usize)
             };
             match (vk, mods, pick, &rw.phase) {
                 (VK_ESCAPE, 0, _, _) => {
@@ -313,7 +317,11 @@ impl Coordinator {
                     let copy = mods == MOD_CTRL;
                     let (action, outcome, done) = if copy {
                         let _ = self.ui_tx.send(UiCommand::CopyToClipboard(text));
-                        (KeyAction::Consumed, RewriteOutcome::Copied, "已复制改写结果")
+                        (
+                            KeyAction::Consumed,
+                            RewriteOutcome::Copied,
+                            "已复制改写结果",
+                        )
                     } else if let Some(count) = rw.replace_len {
                         (
                             KeyAction::ReplaceBackward { count, text },
@@ -370,7 +378,12 @@ impl Coordinator {
     }
 
     /// Hub 的 `rewrite_result`（XQP 读线程）。不是当前请求的结果直接丢弃。
-    pub(crate) fn xinqing_rewrite_result(&self, req_id: u32, style: RewriteStyle, cands: Vec<String>) {
+    pub(crate) fn xinqing_rewrite_result(
+        &self,
+        req_id: u32,
+        style: RewriteStyle,
+        cands: Vec<String>,
+    ) {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let Some(rw) = s.xq_rewrite.as_mut() else {
             return;
@@ -562,5 +575,4 @@ mod tests {
         assert_eq!(seen, STYLES.to_vec());
         assert_eq!(next_style(RewriteStyle::Structured), RewriteStyle::Gentle);
     }
-
 }

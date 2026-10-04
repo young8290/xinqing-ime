@@ -8,9 +8,9 @@
 use std::io::ErrorKind;
 use std::net::TcpStream;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use wind_bridge::handler::KeyAction;
@@ -655,7 +655,16 @@ fn coordinator_events_reach_hub() {
     ));
     assert_eq!(done(&mut hub), (req, None, RewriteOutcome::Cancelled));
     let (up, _) = hub.until(|u| matches!(u, Up::Comp { .. }));
-    assert!(matches!(up, Up::Comp { op: CompOp::Update, .. }), "字母进了组字");
+    assert!(
+        matches!(
+            up,
+            Up::Comp {
+                op: CompOp::Update,
+                ..
+            }
+        ),
+        "字母进了组字"
+    );
     coord.handle_key_event_policed(&key(VK_ESCAPE));
     // 组字时按改写快捷键：先上屏再改写
     coord.handle_key_event_policed(&key(VK_A));
