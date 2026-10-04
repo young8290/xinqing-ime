@@ -120,6 +120,8 @@ pub const KEYS: &[KeySpec] = &[
 pub const INTERNAL_KEYS: &[&str] = &[
     crate::domain::comfort_feedback::MUTED_UNTIL_KEY,
     crate::domain::comfort_feedback::REDUCED_TS_KEY,
+    // 上次“重置基线”的时间（Unix 毫秒，B-04，ADR 0014）
+    crate::domain::features::persist::RESET_KEY,
 ];
 
 #[derive(Debug, thiserror::Error)]
@@ -176,8 +178,11 @@ mod tests {
 
     #[test]
     fn internal_keys_are_not_settings() {
+        let db = Db::open_in_memory().unwrap();
         for k in INTERNAL_KEYS {
             assert!(spec(k).is_none(), "{k} 同时是设置键");
+            assert!(k.contains('.'), "{k} 要带命名空间");
+            assert!(matches!(get(&db, k), Err(SettingsError::UnknownKey(_))));
         }
     }
 

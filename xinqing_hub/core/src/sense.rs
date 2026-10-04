@@ -18,7 +18,8 @@ use xqp::{Down, MoodState, OpenTarget, RewriteFailReason, Scope, Up};
 
 use crate::bus::{HubEvent, MoodEvent};
 use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
-use crate::domain::features::WindowFeatures;
+use crate::domain::features::baseline::next_recompute_after;
+use crate::domain::features::{BaselineStats, WindowFeatures};
 use crate::domain::fusion::{FusionOut, Source};
 use crate::domain::rules::Hints;
 use crate::domain::self_report::{self, SelfWeather};
@@ -42,6 +43,11 @@ pub trait SensePort: Send + Sync {
     fn note(&self, msg: &str);
     /// 显示状态切换了，附上本次的状态解释（FR-STA-09），外壳缓存到下一次切换，供 `state_explain` 返回。
     fn explained(&self, _e: &Explanation) {}
+    /// 到了每天 04:00：用最近 7 天的窗口重算基线并写库（FR-STA-03 第 4 条），返回结果；失败时返回 `None`，
+    /// 继续用现有基线。
+    fn recompute_baseline(&self, _now_ms: i64) -> Option<BaselineStats> {
+        None
+    }
 }
 
 /// 一个已结束的窗口，时间已换算成 Unix 毫秒。
@@ -54,7 +60,7 @@ pub struct WindowRecord<'a> {
 }
 
 /// 外壳发给感知任务的命令。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SenseCmd {
     /// 用户在 Hub 里暂停 / 恢复感知（FR-WGT-06 右键菜单），同时经 XQP 下发给核心。
     Pause(bool),
@@ -66,6 +72,8 @@ pub enum SenseCmd {
         ts: i64,
         raise: Option<MoodState>,
     },
+    /// 换上新的个人基线（用户“重置基线”后，外壳已写库，FR-STA-03 第 4 条）。
+    Baseline(BaselineStats),
 }
 
 pub struct Sense {
@@ -90,6 +98,8 @@ pub struct Sense {
     explanation: Option<Explanation>,
     /// 自评的显示覆盖：(用户说的状态, 到期 Unix 毫秒)。期间自动判断照常运行，但不改显示。
     self_shown: Option<(MoodState, i64)>,
+    /// 下一次基线重算的时刻（每天 04:00）。
+    next_recompute: chrono::DateTime<chrono::Local>,
 }
 
 impl Sense {
@@ -100,6 +110,7 @@ impl Sense {
         bus: broadcast::Sender<HubEvent>,
         clock: Arc<dyn Clock>,
     ) -> Self {
+        let next_recompute = next_recompute_after(clock.now());
         Self {
             pipeline,
             port,
@@ -114,6 +125,7 @@ impl Sense {
             prev_window: None,
             explanation: None,
             self_shown: None,
+            next_recompute,
         }
     }
 
@@ -191,11 +203,13 @@ impl Sense {
             }
             SenseCmd::Unfit { state, ts } => self.pipeline.fusion_mut().record_unfit(state, ts),
             SenseCmd::SelfReport { weather, ts, raise } => self.on_self_report(weather, ts, raise),
+            SenseCmd::Baseline(stats) => self.apply_baseline(&stats),
         }
     }
 
     pub fn on_tick(&mut self, now: Instant) {
         self.expire_self_report();
+        self.maybe_recompute_baseline();
         if self.user_paused {
             return;
         }
@@ -205,6 +219,29 @@ impl Sense {
         let now_ts = ts + now.saturating_duration_since(at).as_millis() as u64;
         let outs = self.pipeline.tick(now_ts);
         self.handle(outs);
+    }
+
+    fn maybe_recompute_baseline(&mut self) {
+        let now = self.clock.now();
+        if now < self.next_recompute {
+            return;
+        }
+        self.next_recompute = next_recompute_after(now);
+        if let Some(stats) = self.port.recompute_baseline(now.timestamp_millis()) {
+            self.port.note(&format!(
+                "基线已重算：{} 个窗口，{} 项个人统计",
+                stats.windows,
+                stats.rows.len()
+            ));
+            self.apply_baseline(&stats);
+        }
+    }
+
+    fn apply_baseline(&mut self, stats: &BaselineStats) {
+        self.pipeline.baseline_mut().apply(stats);
+        let progress = self.pipeline.baseline().progress_pct();
+        self.port
+            .update_status(&mut |s| StatusSnapshot::set(&mut s.baseline_progress, progress));
     }
 
     /// 自评（FR-STA-10）：之后 60 分钟显示用户说的状态；“说不上来”结束之前的覆盖、回到自动判断。
@@ -441,6 +478,7 @@ mod tests {
         saved: Mutex<Vec<(i64, i64)>>,
         notes: Mutex<Vec<String>>,
         explained: Mutex<Vec<Explanation>>,
+        recompute: Mutex<Option<BaselineStats>>,
     }
 
     impl SensePort for FakePort {
@@ -460,6 +498,9 @@ mod tests {
         }
         fn explained(&self, e: &Explanation) {
             self.explained.lock().unwrap().push(e.clone());
+        }
+        fn recompute_baseline(&self, _now_ms: i64) -> Option<BaselineStats> {
+            self.recompute.lock().unwrap().clone()
         }
     }
 
@@ -711,6 +752,31 @@ mod tests {
             raise: None,
         });
         assert_eq!(r.status().state, MoodState::Fluent);
+    }
+
+    #[test]
+    fn baseline_recomputes_at_four_am_and_on_reset() {
+        let mut r = rig();
+        let stats = BaselineStats {
+            rows: Vec::new(),
+            windows: 150,
+        };
+        *r.port.recompute.lock().unwrap() = Some(stats.clone());
+        // rig 的时钟在 14:00，没到 04:00 不重算
+        r.sense.on_tick(r.t0);
+        assert_eq!(r.status().baseline_progress, 0);
+        r.clock.advance_ms(14 * 3_600_000);
+        r.sense.on_tick(r.t0);
+        assert_eq!(r.status().baseline_progress, 75);
+        assert_eq!(r.sense.pipeline.baseline().windows, 150);
+        // 当天只重算一次
+        *r.port.recompute.lock().unwrap() = Some(BaselineStats::default());
+        r.sense.on_tick(r.t0);
+        assert_eq!(r.sense.pipeline.baseline().windows, 150);
+        // 重置基线：外壳写库后交来空结果，回到冷启动
+        r.sense.on_cmd(SenseCmd::Baseline(BaselineStats::default()));
+        assert_eq!(r.status().baseline_progress, 0);
+        assert!(r.sense.pipeline.baseline().is_cold());
     }
 
     #[test]

@@ -2,10 +2,11 @@
 
 pub mod baseline;
 pub mod calc;
+pub mod persist;
 pub mod typo;
 pub mod window;
 
-pub use baseline::{Baseline, Bucket};
+pub use baseline::{Baseline, BaselineRow, BaselineStats, Bucket};
 pub use calc::{SessionCtx, SessionTracker, WindowFeatures, compute};
 pub use typo::TypoDetector;
 pub use window::{CutReason, WindowBuf, WindowCutter};

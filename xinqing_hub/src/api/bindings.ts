@@ -37,6 +37,11 @@ export const commands = {
 	selfReportSet: (weather: SelfWeather, note: string | null) => typedError<null, UiError>(__TAURI_INVOKE("self_report_set", { weather, note })),
 	/**  某天（本地日期 `YYYY-MM-DD`）的自评，按时间先后；看板时间线用实心标记显示。 */
 	selfReportList: (date: string) => typedError<SelfReportItem[], UiError>(__TAURI_INVOKE("self_report_list", { date })),
+	/**
+	 *  重置基线（设置页“感知”分类，FR-SET-04、FR-STA-03 第 4 条）：清空个人统计值，
+	 *  之后只用重置以后的窗口，重新进入冷启动（“正在熟悉你的打字习惯”从 0% 开始）。
+	 */
+	baselineReset: () => typedError<null, UiError>(__TAURI_INVOKE("baseline_reset")),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
