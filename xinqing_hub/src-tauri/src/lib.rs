@@ -40,6 +40,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::submit_feedback,
             commands::self_report_set,
             commands::self_report_list,
+            commands::baseline_reset,
             commands::pause_set,
             commands::settings_get,
             commands::settings_set,

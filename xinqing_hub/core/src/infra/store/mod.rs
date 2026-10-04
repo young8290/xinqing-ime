@@ -9,7 +9,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use xqp::MoodState;
 
 use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
-use crate::domain::features::{Baseline, WindowFeatures};
+use crate::domain::features::{Baseline, BaselineRow, Bucket, WindowFeatures};
 use crate::domain::fusion::Source;
 use crate::domain::rules::Hints;
 use crate::infra::gateway::NetLogEntry;
@@ -133,7 +133,7 @@ impl Db {
     /// 看板时间线上某个状态点的解释（`state_explain(mood_state_id)`，FR-STA-09）。
     ///
     /// 不另存解释：从 `mood_state.window_id` 找回那个窗口和它的上一个窗口，重新生成一次。
-    /// 冷启动按“截至该窗口已存的窗口数”判断；`{p}` 用传入的（当前）基线中位数。
+    /// 冷启动按“该窗口之前 7 天内（重置基线之后）的窗口数”判断，与实时路径一致；`{p}` 用传入的（当前）基线中位数。
     /// 记录不存在或没有关联窗口（窗口已被清理）时返回 `None`。
     pub fn explain_mood_state(
         &self,
@@ -166,9 +166,20 @@ impl Db {
             Some(id) => self.window_evidence(id)?,
             None => None,
         };
+        // 与实时路径同一口径：该窗口之前 7 天内（且在上次重置基线之后）的窗口数
+        let reset: i64 = self
+            .settings_get(crate::domain::features::persist::RESET_KEY)?
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(i64::MIN);
         let windows: i64 = self.conn.query_row(
-            "SELECT count(*) FROM window_features WHERE id <= ?1",
-            [window_id],
+            "SELECT count(*) FROM window_features w, window_features cur
+             WHERE cur.id = ?1 AND w.id <= cur.id
+               AND w.end_ts >= max(cur.end_ts - ?2, ?3)",
+            params![
+                window_id,
+                crate::domain::features::persist::WINDOW_MS,
+                reset
+            ],
             |r| r.get(0),
         )?;
         let mut baseline = baseline.clone();
@@ -307,6 +318,75 @@ impl Db {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
         })?;
         Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// `end_ts >= since` 的窗口特征（基线重算用），按时间先后。
+    pub fn window_features_since(&self, since: i64) -> Result<Vec<WindowFeatures>, StoreError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT features_json FROM window_features WHERE end_ts >= ?1 ORDER BY end_ts, id",
+        )?;
+        let rows = stmt.query_map([since], |r| r.get::<_, String>(0))?;
+        let mut out = Vec::new();
+        for json in rows {
+            out.push(serde_json::from_str(&json?)?);
+        }
+        Ok(out)
+    }
+
+    /// 用一次重算的结果整体替换 `baseline` 表（D-09）。
+    pub fn baseline_replace(
+        &self,
+        rows: &[BaselineRow],
+        updated_ts: i64,
+    ) -> Result<(), StoreError> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM baseline", [])?;
+        for r in rows {
+            tx.execute(
+                "INSERT INTO baseline (feature, bucket, med, mad, n, updated_ts) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![r.feature, r.bucket.as_str(), r.value.med, r.value.mad, r.n, updated_ts],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// 读出 `baseline` 表；不认识的特征或时段跳过。
+    pub fn baseline_load(&self) -> Result<Vec<BaselineRow>, StoreError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT feature, bucket, med, mad, n FROM baseline ORDER BY bucket, feature",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, f64>(2)?,
+                r.get::<_, f64>(3)?,
+                r.get::<_, u32>(4)?,
+            ))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (feature, bucket, med, mad, n) = row?;
+            let Some(feature) = crate::domain::features::baseline::BASE_FEATURES
+                .into_iter()
+                .find(|f| *f == feature)
+            else {
+                continue;
+            };
+            let bucket = match bucket.as_str() {
+                "day" => Bucket::Day,
+                "night" => Bucket::Night,
+                _ => continue,
+            };
+            out.push(BaselineRow {
+                bucket,
+                feature,
+                value: crate::infra::templates::MedMad { med, mad },
+                n,
+            });
+        }
+        Ok(out)
     }
 
     pub fn settings_get(&self, key: &str) -> Result<Option<String>, StoreError> {

@@ -4,13 +4,14 @@
 //! 否则 Windows 上连命名管道 `xinqing_tap`（调试构建为 `xinqing_tap_dev`），其他平台不连接。
 
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use tauri::{AppHandle, Manager};
 use tokio::sync::{broadcast, mpsc};
 use xinqing_hub_core::bus::{self, HubEvent};
 use xinqing_hub_core::domain::explain::Explanation;
-use xinqing_hub_core::domain::features::Baseline;
+use xinqing_hub_core::domain::features::persist;
+use xinqing_hub_core::domain::features::{Baseline, BaselineStats};
 use xinqing_hub_core::domain::feedback;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::clock::SystemClock;
@@ -32,8 +33,8 @@ pub struct Sensing {
     pub xqp: XqpHandle,
     pub cmds: mpsc::Sender<SenseCmd>,
     pub bus: broadcast::Sender<HubEvent>,
-    /// 与感知任务同一份基线（B-04 持久化前是出厂默认值），重建历史状态的解释时用；模板加载失败时为 `None`。
-    pub baseline: Option<Baseline>,
+    /// 与感知任务同一份基线（启动和每次重算、重置后更新），重建历史状态的解释时用；模板加载失败时为 `None`。
+    baseline: RwLock<Option<Baseline>>,
 }
 
 impl Sensing {
@@ -49,6 +50,25 @@ impl Sensing {
             emit_status(app, snap);
         }
         self.xqp.send(Down::Pause { on });
+    }
+
+    pub fn baseline(&self) -> Option<Baseline> {
+        self.baseline
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    /// 基线重算或重置后，同步外壳这份拷贝。
+    pub fn apply_baseline(&self, stats: &BaselineStats) {
+        if let Some(b) = self
+            .baseline
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_mut()
+        {
+            b.apply(stats);
+        }
     }
 }
 
@@ -73,6 +93,7 @@ pub fn start(app: &AppHandle, cfg: Down) -> Sensing {
     match load_pipeline() {
         Ok(mut p) => {
             restore_unfit(app, &mut p);
+            recompute_baseline(app, &mut p);
             baseline = Some(p.baseline().clone());
             let port = Arc::new(ShellPort { app: app.clone() });
             let sense = Sense::new(p, port, xqp.clone(), bus.clone(), Arc::new(SystemClock));
@@ -84,7 +105,7 @@ pub fn start(app: &AppHandle, cfg: Down) -> Sensing {
         xqp,
         cmds,
         bus,
-        baseline,
+        baseline: RwLock::new(baseline),
     }
 }
 
@@ -120,13 +141,22 @@ fn load_pipeline() -> anyhow::Result<StatePipeline> {
         anyhow::anyhow!("找不到 hub_templates（可设置 {}）", paths::TEMPLATES_ENV)
     })?;
     let dirs = TemplateDirs::factory_only(dir);
-    // 个人基线由每天 04:00 的重算任务写入（B-04）；接入前先用出厂默认值
+    // 先用出厂默认值，随后 `recompute_baseline` 用库里最近 7 天的窗口换上个人值
     let baseline = Baseline::from_defaults(&BaselineDefault::load(&dirs)?);
     Ok(StatePipeline::new(
         baseline,
         AppCategories::load(&dirs)?,
         chrono::Local::now(),
     ))
+}
+
+/// 启动时重算一次基线（FR-STA-03 第 4 条）：关机期间错过的 04:00 也能补上，冷启动进度也从库里接上。
+fn recompute_baseline(app: &AppHandle, p: &mut StatePipeline) {
+    let now = chrono::Utc::now().timestamp_millis();
+    match persist::recompute(&app.state::<AppState>().db(), now) {
+        Ok(stats) => p.baseline_mut().apply(&stats),
+        Err(e) => eprintln!("重算基线失败，先用出厂默认值：{e}"),
+    }
 }
 
 /// 重放最近 7 天的“不准”，恢复个人阈值上调（FR-STA-07，上调状态只在内存里）。
@@ -194,5 +224,21 @@ impl SensePort for ShellPort {
 
     fn explained(&self, e: &Explanation) {
         self.app.state::<AppState>().set_explanation(e.clone());
+    }
+
+    fn recompute_baseline(&self, now_ms: i64) -> Option<BaselineStats> {
+        let state = self.app.state::<AppState>();
+        match persist::recompute(&state.db(), now_ms) {
+            Ok(stats) => {
+                if let Some(sensing) = self.app.try_state::<Sensing>() {
+                    sensing.apply_baseline(&stats);
+                }
+                Some(stats)
+            }
+            Err(e) => {
+                eprintln!("重算基线失败，继续用现有基线：{e}");
+                None
+            }
+        }
     }
 }

@@ -8,6 +8,7 @@ use tauri_specta::Event;
 use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::explain::Explanation;
+use xinqing_hub_core::domain::features::persist;
 use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
 use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
@@ -45,10 +46,10 @@ pub fn state_explain(
     let Some(id) = mood_state_id else {
         return Ok(state.explanation());
     };
-    let Some(baseline) = &sensing.baseline else {
+    let Some(baseline) = sensing.baseline() else {
         return Ok(None);
     };
-    Ok(state.db().explain_mood_state(i64::from(id), baseline)?)
+    Ok(state.db().explain_mood_state(i64::from(id), &baseline)?)
 }
 
 /// 状态“准 / 不准”（FR-STA-07）。不带 `target_id` 时评价的是当前显示状态。
@@ -132,6 +133,23 @@ pub fn self_report_list(
     let date = chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d")
         .map_err(|_| UiError::new("self_report.bad_date", "error.generic"))?;
     Ok(self_report::list_day(&state.db(), date)?)
+}
+
+/// 重置基线（设置页“感知”分类，FR-SET-04、FR-STA-03 第 4 条）：清空个人统计值，
+/// 之后只用重置以后的窗口，重新进入冷启动（“正在熟悉你的打字习惯”从 0% 开始）。
+#[tauri::command]
+#[specta::specta]
+pub fn baseline_reset(
+    state: State<'_, AppState>,
+    sensing: State<'_, Sensing>,
+) -> Result<(), UiError> {
+    let now = chrono::Utc::now().timestamp_millis();
+    let stats = persist::reset(&state.db(), now)?;
+    sensing.apply_baseline(&stats);
+    if sensing.cmds.try_send(SenseCmd::Baseline(stats)).is_err() {
+        eprintln!("重置基线未能交给感知任务，下次启动时生效");
+    }
+    Ok(())
 }
 
 /// 暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。
