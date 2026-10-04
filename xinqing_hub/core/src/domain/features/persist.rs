@@ -10,7 +10,7 @@ use crate::infra::store::{Db, StoreError};
 pub const WINDOW_MS: i64 = 7 * 24 * 3_600_000;
 
 /// 记录上次“重置基线”时间的内部键（Unix 毫秒）。它不是用户设置，不在设置键注册表里，
-/// 只借用 `settings` 表存放（ADR 0012）。
+/// 只借用 `settings` 表存放，登记在 `settings::INTERNAL_KEYS`，导出导入不带它（ADR 0014）。
 pub const RESET_KEY: &str = "baseline.reset_ts";
 
 fn reset_ts(db: &Db) -> Result<i64, StoreError> {
