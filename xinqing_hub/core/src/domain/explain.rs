@@ -141,13 +141,27 @@ impl ExplainSource {
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Explanation {
     pub state: MoodState,
-    /// 可能性百分比；只有本地规则或冷启动时为 `None`，界面不显示百分比。
-    pub prob: Option<u8>,
+    /// 可能性百分比 0–100（快照里的 `prob` 是 0–1 小数，这里用整数百分比，名字上区分）；
+    /// 只有本地规则或冷启动时为 `None`，界面不显示百分比。
+    pub prob_pct: Option<u8>,
     /// 最多 [`MAX_SIGNALS`] 条；为空时界面显示 `note.no_signal`。
     pub signals: Vec<Signal>,
     pub source: ExplainSource,
     /// 冷启动期间追加“还在熟悉你的习惯，判断可能不准”。
     pub cold_start: bool,
+}
+
+impl Explanation {
+    /// 自评期间的解释（FR-STA-10）：状态是用户说的，没有可能性和信号，来源注明“你说的”。
+    pub fn self_report(state: MoodState) -> Self {
+        Self {
+            state,
+            prob_pct: None,
+            signals: Vec::new(),
+            source: ExplainSource::SelfReport,
+            cold_start: false,
+        }
+    }
 }
 
 /// 一个窗口的证据：特征和规则提示。
@@ -282,7 +296,7 @@ pub fn build(
 
     Explanation {
         state,
-        prob: prob.map(|p| (p.clamp(0.0, 1.0) * 100.0).round() as u8),
+        prob_pct: prob.map(|p| (p.clamp(0.0, 1.0) * 100.0).round() as u8),
         signals,
         source,
         cold_start: baseline.is_cold(),
@@ -350,12 +364,15 @@ impl ExplainCopy {
         let source = self.source.get(e.source.key()).cloned().unwrap_or_default();
 
         let mut format = self.note.format.clone();
-        if e.prob.is_none() {
+        if e.prob_pct.is_none() {
             format = strip_prob(&format);
         }
         let mut out = format
             .replace("{hedge}", &hedge)
-            .replace("{prob}", &e.prob.map(|p| p.to_string()).unwrap_or_default())
+            .replace(
+                "{prob}",
+                &e.prob_pct.map(|p| p.to_string()).unwrap_or_default(),
+            )
             .replace("{signals}", &signals.join(&self.note.separator))
             .replace("{source}", &source);
         if e.cold_start {
@@ -486,7 +503,7 @@ mod tests {
                 },
             ]
         );
-        assert_eq!(e.prob, Some(80));
+        assert_eq!(e.prob_pct, Some(80));
         assert!(!e.cold_start);
         let copy = ExplainCopy::load(&dirs()).unwrap();
         assert_eq!(
@@ -520,7 +537,7 @@ mod tests {
         );
         assert_eq!(e.signals[0].value, Some(4));
         assert_eq!(e.signals[1].value, Some(45)); // |290/200 − 1| = 45%
-        assert_eq!(e.prob, Some(91));
+        assert_eq!(e.prob_pct, Some(91));
 
         let mut g = feat();
         g.session_min = 52.7;
@@ -743,7 +760,7 @@ mod tests {
                 for chunk in all.chunks(MAX_SIGNALS) {
                     let e = Explanation {
                         state,
-                        prob: Some(77),
+                        prob_pct: Some(77),
                         signals: chunk
                             .iter()
                             .map(|k| Signal {
@@ -777,7 +794,7 @@ mod tests {
     fn serializes_with_template_keys() {
         let e = Explanation {
             state: MoodState::Tired,
-            prob: None,
+            prob_pct: None,
             signals: vec![Signal {
                 kind: SignalKind::DeleteCommitted,
                 value: Some(5),

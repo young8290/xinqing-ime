@@ -9,12 +9,13 @@ use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
+use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::sense::SenseCmd;
 
 use crate::error::UiError;
-use crate::events::{SettingsChanged, StatusChanged};
+use crate::events::{SelfReportChanged, SettingsChanged, StatusChanged};
 use crate::sensing::Sensing;
 use crate::state::AppState;
 use crate::windows::{self, WindowTarget};
@@ -78,6 +79,59 @@ pub fn submit_feedback(
         }
     }
     Ok(())
+}
+
+/// 主动报告心情（FR-STA-10）。写入 `self_report` 表后交给感知任务：之后 60 分钟显示用户说的状态
+/// （“说不上来”不覆盖），并推送 `self_report:changed`。备注只存本地，用完即清零（NFR-PRI-09）。
+#[tauri::command]
+#[specta::specta]
+pub fn self_report_set(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    sensing: State<'_, Sensing>,
+    weather: SelfWeather,
+    note: Option<String>,
+) -> Result<(), UiError> {
+    let note = note.map(zeroize::Zeroizing::new);
+    let ts = chrono::Utc::now().timestamp_millis();
+    let rec = self_report::record(
+        &state.db(),
+        weather,
+        note.as_deref().map(String::as_str),
+        state.auto_state(),
+        ts,
+    )?;
+    if sensing
+        .cmds
+        .try_send(SenseCmd::SelfReport {
+            weather,
+            ts,
+            raise: rec.raise,
+        })
+        .is_err()
+    {
+        eprintln!("自评未能交给感知任务，本次不覆盖显示");
+    }
+    let ev = SelfReportChanged {
+        weather,
+        until_ts: rec.until_ms as f64,
+    };
+    if let Err(e) = ev.emit(&app) {
+        eprintln!("推送 self_report:changed 失败：{e}");
+    }
+    Ok(())
+}
+
+/// 某天（本地日期 `YYYY-MM-DD`）的自评，按时间先后；看板时间线用实心标记显示。
+#[tauri::command]
+#[specta::specta]
+pub fn self_report_list(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<Vec<SelfReportItem>, UiError> {
+    let date = chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d")
+        .map_err(|_| UiError::new("self_report.bad_date", "error.generic"))?;
+    Ok(self_report::list_day(&state.db(), date)?)
 }
 
 /// 暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。

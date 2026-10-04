@@ -35,10 +35,10 @@ serde_json.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+zeroize = "1"
 tokio.workspace = true
 async-trait = "0.1"
 futures = "0.3"
-zeroize = "1"
 dirs = "6"
 
 [target.'cfg(windows)'.dependencies]

@@ -10,6 +10,7 @@ use xqp::{MoodState, Up};
 use crate::domain::features::WindowFeatures;
 use crate::domain::fusion::FusionOut;
 use crate::domain::rules::Hints;
+use crate::domain::self_report::SelfWeather;
 
 pub const BUS_CAPACITY: usize = 1024;
 
@@ -34,6 +35,12 @@ pub enum HubEvent {
     },
     ConsentChanged,
     Pause(bool),
+    /// 用户自评（FR-STA-10）。`until` 为显示覆盖到期的 Unix 毫秒；负面自评由暖心话服务立即回应。
+    /// 备注不进总线（NFR-PRI-09）。
+    SelfReport {
+        weather: SelfWeather,
+        until: i64,
+    },
 }
 
 pub fn channel() -> (broadcast::Sender<HubEvent>, broadcast::Receiver<HubEvent>) {
