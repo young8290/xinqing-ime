@@ -28,6 +28,8 @@ members = [
     "crates/wind-coordinator",
     "crates/wind-webdata",
     "crates/wind-rpc",
+    # 心晴：核心侧 XQP 服务端（产品书 17 第 1 节）
+    "crates/wind-xinqing-tap",
     "apps/service",
     "apps/rpc",
     "apps/repl",
