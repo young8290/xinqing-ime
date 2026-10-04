@@ -1170,10 +1170,19 @@ function Set-AutoStart ([string]$dir, [string]$suffix) {
 # 背景: Stop-WindService 只杀核心服务 wind_input; 独立打开的设置程序 wind_setting[_dev].exe /
 #       便携版 wind_portable.exe 不随之退出, 覆盖前需先按名杀掉 (对齐 ../wind-setting Do-Copy 的处理)。
 # DLL 由宿主进程加载, 没有独立进程可杀 → 跳过, 仍靠 Copy-Replace 的改名让路兜底。
-function Stop-ProcessForFile ([string]$fileName) {
+# 心晴: 与官方清风同镜像名 (wind_input.exe 等), 按名杀会连官方清风一起停掉 (TC-OPS-04),
+#       故只杀可执行文件位于 $dir 下的进程 (Get-InDirProcesses)。
+function Get-InDirProcesses ([string]$procName, [string]$dir) {
+    $prefix = $dir.TrimEnd('\') + "\"
+    @(Get-Process -Name $procName -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -and $_.Path.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)
+    })
+}
+
+function Stop-ProcessForFile ([string]$fileName, [string]$dir) {
     if ($fileName -notmatch '\.exe$') { return }
     $procName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
-    $procs = @(Get-Process -Name $procName -ErrorAction SilentlyContinue)
+    $procs = Get-InDirProcesses $procName $dir
     if ($procs.Count -gt 0) {
         Gray "  - 终止运行中的 $fileName ($($procs.Count) 个进程)..."
         $procs | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -1187,7 +1196,7 @@ function Stop-ProcessForFile ([string]$fileName) {
 function Copy-Replace ([string]$targetDir, [string]$fileName, [string]$srcPath) {
     $dst = Join-Path $targetDir $fileName
     if (-not (Test-Path $dst)) { Copy-Item $srcPath $dst -Force; Gray "  - $fileName"; return }
-    Stop-ProcessForFile $fileName   # 先判断并杀进程等待, 再尝试覆盖; 覆盖失败才改名让路
+    Stop-ProcessForFile $fileName $targetDir   # 先判断并杀进程等待, 再尝试覆盖; 覆盖失败才改名让路
     try { Copy-Item $srcPath $dst -Force -ErrorAction Stop; Gray "  - $fileName"; return } catch { }
     # 让路后缀必须每次唯一: NTFS 允许改名在用文件, 但不允许改名去【覆盖】一个在用文件。
     # 曾用固定 .old 槽复用, 结果上轮 .old 仍被宿主进程 map 着时 Move -Force 直接失败, 部署中断
@@ -1201,8 +1210,8 @@ function Copy-Replace ([string]$targetDir, [string]$fileName, [string]$srcPath) 
     } catch { ErrMsg "  [错误] 无法替换 ${fileName}: 旧文件被锁定且改名让路失败, 请重启后重试" }
 }
 
-function Stop-WindService ([string]$suffix) {
-    Get-Process -Name "wind_input$suffix" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+function Stop-WindService ([string]$suffix, [string]$dir) {
+    Get-InDirProcesses "wind_input$suffix" $dir | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 600
 }
 
@@ -1297,7 +1306,7 @@ function Deploy-Full ([string]$profile = "release") {
     # 闸门必须在停服务【之前】拉起 —— 服务一死, 宿主里的 DLL 立刻就有拉起它的动机。
     Set-InstallerRunning $true $profile
     try {
-        Say "[1/7] 停止旧进程..."; Stop-WindService $suffix
+        Say "[1/7] 停止旧进程..."; Stop-WindService $suffix $targetDir
         Say "[2/7] 反注册旧 TSF COM..."; Unregister-Tsf $targetDir $suffix
         Say "[3/7] 准备目录..."; New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
         Say "[4/7] 复制文件..."
@@ -1371,7 +1380,7 @@ function Deploy-Module ([string]$profile, [string]$mod) {
     # 拉起的是新旧混搭的一代 (如新 DLL 配旧 exe), 故一并上闸门。
     if ($touchesService) { Set-InstallerRunning $true $profile }
     try {
-        if ($touchesService) { Say "[1/4] 停止旧进程..."; Stop-WindService $suffix }
+        if ($touchesService) { Say "[1/4] 停止旧进程..."; Stop-WindService $suffix $targetDir }
         else                 { Say "[1/4] (跳过停服务: $mod 不参与输入法运行时)" }
         if ($mod -eq "tsf") { Say "[2/4] 反注册旧 TSF COM..."; Unregister-Tsf $targetDir $suffix }
         else                { Say "[2/4] ($mod 无需反注册 COM)" }
@@ -1637,7 +1646,7 @@ function Uninstall-Full ([string]$profile = "release") {
     $suffix = if ($profile -eq "dev") { "_dev" } else { "" }
     if (-not (Require-Admin)) { return $false }
     Say "`n========== 系统卸载 ($profile) → $targetDir =========="
-    Say "[1/5] 停止进程..."; Stop-WindService $suffix
+    Say "[1/5] 停止进程..."; Stop-WindService $suffix $targetDir
     Say "[2/5] 移出用户输入法列表..."; Disable-TsfForUser $profile
     Say "[3/5] 反注册 TSF COM..."
     # ⚠️ 不能因「安装目录不存在」跳过: 系统副本在 <System32|SysWOW64>\IME\ 下【独立存在】,
