@@ -69,7 +69,7 @@ jobs:
         run: ./scripts/dev.sh fmt-check
 
       - name: clippy (msvc target, -D warnings)
-        run: ./scripts/dev.sh clippy deny
+        run: ./scripts/dev.sh clippy-deny
 
       # headless/Android 防走样三道闸:
       # ① check 对象是 **wind-mobile 全包**(移动端门面,闭包含 coordinator headless):
