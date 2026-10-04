@@ -46,3 +46,28 @@ fn banned_words_scenes() {
     assert!(bw.find_in_copy("safety.card", "心理援助热线").is_none());
     assert!(bw.find_in_copy("tip.x", "你必须休息").is_some());
 }
+
+/// E-08 评审补充的条目（banned_words.toml v2）：Rust 校验器与 check_templates.py 判定一致。
+#[test]
+fn banned_words_e08_additions() {
+    let bw = BannedWords::load(&dirs()).unwrap();
+    for t in [
+        "我注意到你今天打字慢了很多",
+        "你可能有点焦虑了",
+        "想开一点就好啦",
+        "多大点事，别难过",
+        "听起来像是PTSD",
+        "你可能有 adhd",
+    ] {
+        assert!(bw.find(t, Scene::Other).is_some(), "应拦下：{t}");
+    }
+    // 没有“你”开头的泛指说法不算下判断
+    assert!(
+        bw.find("有点焦虑的时候，深呼吸会好一点", Scene::Other)
+            .is_none()
+    );
+    // 用户自己说失眠时，对话回应可以复述；作息统计等其他场景仍然禁止（DS-COPY-09）
+    let echo = "听起来你最近睡不太好，失眠的时候很难受吧";
+    assert!(bw.find(echo, Scene::Chat).is_none());
+    assert!(bw.find(echo, Scene::Other).is_some());
+}
