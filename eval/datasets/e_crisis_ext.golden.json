@@ -1,0 +1,362 @@
+{
+ "X001": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X002": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X003": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X004": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X005": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X006": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X007": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X008": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X009": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X010": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X011": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X012": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X013": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X014": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X015": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X016": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X017": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X018": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X019": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X020": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X021": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X022": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X023": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X024": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X025": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X026": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X027": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X028": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X029": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X030": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X031": {
+  "score": 0,
+  "hit": false
+ },
+ "X032": {
+  "score": 0,
+  "hit": false
+ },
+ "X033": {
+  "score": 0,
+  "hit": false
+ },
+ "X034": {
+  "score": 0,
+  "hit": false
+ },
+ "X035": {
+  "score": 0,
+  "hit": false
+ },
+ "X036": {
+  "score": 0,
+  "hit": false
+ },
+ "X037": {
+  "score": 0,
+  "hit": false
+ },
+ "X038": {
+  "score": 0,
+  "hit": false
+ },
+ "X039": {
+  "score": 0,
+  "hit": false
+ },
+ "X040": {
+  "score": 0,
+  "hit": false
+ },
+ "X041": {
+  "score": 0,
+  "hit": false
+ },
+ "X042": {
+  "score": 0,
+  "hit": false
+ },
+ "X043": {
+  "score": 0,
+  "hit": false
+ },
+ "X044": {
+  "score": 0,
+  "hit": false
+ },
+ "X045": {
+  "score": 0,
+  "hit": false
+ },
+ "X046": {
+  "score": 0,
+  "hit": false
+ },
+ "X047": {
+  "score": 0,
+  "hit": false
+ },
+ "X048": {
+  "score": 0.84,
+  "hit": false
+ },
+ "X049": {
+  "score": 0.84,
+  "hit": false
+ },
+ "X050": {
+  "score": 0,
+  "hit": false
+ },
+ "X051": {
+  "score": 0,
+  "hit": false
+ },
+ "X052": {
+  "score": 0,
+  "hit": false
+ },
+ "X053": {
+  "score": 0,
+  "hit": false
+ },
+ "X054": {
+  "score": 0,
+  "hit": false
+ },
+ "X055": {
+  "score": 0,
+  "hit": false
+ },
+ "X056": {
+  "score": 0,
+  "hit": false
+ },
+ "X057": {
+  "score": 0,
+  "hit": false
+ },
+ "X058": {
+  "score": 0,
+  "hit": false
+ },
+ "X059": {
+  "score": 0,
+  "hit": false
+ },
+ "X060": {
+  "score": 0,
+  "hit": false
+ },
+ "X061": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X062": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X063": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X064": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X065": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X066": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X067": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X068": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X069": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X070": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X071": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X072": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X073": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X074": {
+  "score": 1.2,
+  "hit": true
+ },
+ "X075": {
+  "score": 1.0,
+  "hit": true
+ },
+ "X076": {
+  "score": 0,
+  "hit": false
+ },
+ "X077": {
+  "score": 0,
+  "hit": false
+ },
+ "X078": {
+  "score": 0,
+  "hit": false
+ },
+ "X079": {
+  "score": 0,
+  "hit": false
+ },
+ "X080": {
+  "score": 0,
+  "hit": false
+ },
+ "X081": {
+  "score": 0,
+  "hit": false
+ },
+ "X082": {
+  "score": 0,
+  "hit": false
+ },
+ "X083": {
+  "score": 0,
+  "hit": false
+ },
+ "X084": {
+  "score": 0,
+  "hit": false
+ },
+ "X085": {
+  "score": 0.7,
+  "hit": false
+ },
+ "X086": {
+  "score": 0,
+  "hit": false
+ },
+ "X087": {
+  "score": 0,
+  "hit": false
+ },
+ "X088": {
+  "score": 0,
+  "hit": false
+ },
+ "X089": {
+  "score": 0,
+  "hit": false
+ },
+ "X090": {
+  "score": 0,
+  "hit": false
+ }
+}
