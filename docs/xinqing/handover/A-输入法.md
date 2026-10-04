@@ -4,7 +4,7 @@
 > 输入法里的心晴入口（菜单、工具栏、气泡）、温柔改写的核心一侧、DLL 全量按键时序、安装包、上游同步；
 > 另是 XQP 协议（`protocol/xqp.schema.json`、`crates/xqp`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.1 节。本文件随 A 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（安全桌面闸门；A-08 已合并）
+> 最后更新：2026-10-04（A-10 第一部分：安装包带上 Hub）
 
 ## 1. 任务状态
 
@@ -14,12 +14,12 @@
 | A-02 | XQP v1 schema 与 Rust 类型 | 完成 | `protocol/xqp.schema.json`、`crates/xqp/`（Hub、xq-sim、核心三方共用） | 改协议要走契约 PR（A 负责） |
 | A-03 | `wind-xinqing-tap`：队列、XQP 服务端、心跳、背压 | 代码完成 | [#4](https://github.com/young8290/xinqing-ime/pull/4)，`wind_input/crates/wind-xinqing-tap/`，ADR 0009 第 1–9 条 | 命名管道与 ACL 没在真 Windows 上跑过；ADR 0009 待评审 |
 | A-04 | 核心钩子：按键、上屏、焦点、组字、候选 | 完成 | [#5](https://github.com/young8290/xinqing-ime/pull/5)，`wind-coordinator/src/xinqing.rs` | 组字长度只看 `input_buffer`，临时拼音等独占模式的缓冲不计 |
-| A-05 | 隐私闸门、无痕模式（菜单、`Ctrl+Alt+P`） | 完成 | [#8](https://github.com/young8290/xinqing-ime/pull/8)，配置段 `[xinqing]`、state.toml `xinqing_paused` | 安全桌面闸门见第 3 节（本 PR） |
+| A-05 | 隐私闸门、无痕模式（菜单、`Ctrl+Alt+P`） | 完成 | [#8](https://github.com/young8290/xinqing-ime/pull/8)，配置段 `[xinqing]`、state.toml `xinqing_paused` | 安全桌面闸门见第 3 节（[#24](https://github.com/young8290/xinqing-ime/pull/24)） |
 | A-06 | Hub 守护、总开关、下行处理 | 完成 | [#9](https://github.com/young8290/xinqing-ime/pull/9)，`wind-xinqing-tap/src/guard.rs`，ADR 0009 第 10 条 | Hub 收到 `bye{disabled}` 后自己退出，是 Hub 侧的事，没做 |
 | A-07 | 主菜单“心晴”分组、工具栏天气按钮、光标旁气泡 | 完成 | [#10](https://github.com/young8290/xinqing-ime/pull/10)、[#13](https://github.com/young8290/xinqing-ime/pull/13)；`docs/design/toolbar-customization.md` 第十三节 | 图标大小、小圆点位置、菜单与气泡要在真机上看一眼 |
 | A-08 | 温柔改写（核心一侧） | 大部分完成 | [#18](https://github.com/young8290/xinqing-ime/pull/18)（已合并），`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 4 节 |
 | A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 暂不做 | — | 按 16 推荐的方案甲，FR-SEN-08 在 13 第 2.1 节降级清单第 1 项，提前降为 P2；团队改选别的方案再做。要改 C++（`wind_tsf/`） |
-| A-10 | 安装包、卸载 | 未开始 | — | 计划 W10；需要 Hub 能打包 |
+| A-10 | 安装包、卸载 | **进行中** | 第一部分：`config/app.toml`、`scripts/dev.ps1` 的 `Build-Hub`、`.github/workflows/xinqing-package.yml` | 见第 4 节 |
 | A-11 | typer 打字脚本、兼容矩阵测试支援 | 未开始 | — | 计划 W6/W9；TC-RWR-09（改写替换在各宿主里的表现）要真机 |
 | A-12 | 每 2 周上游同步 | 未开始 | 基线 `xinqing/base` = `df6f966`，`upstream` 远端已设 | 步骤见 [identity.md](../identity.md) |
 
@@ -56,7 +56,27 @@ C-PLT-05：登录、锁屏、UAC 提权框处于安全桌面，输入法不采�
 回到普通桌面的第一个焦点事件打开闸门并补发焦点。测试只覆盖进程名这条路，`OpenInputDesktop` 这条要在真机上锁屏验证。
 本仓现在可以在 Linux 上做 Windows 编译检查：`cargo check -p wind-coordinator --target x86_64-pc-windows-gnu`（`rustup` 里已有该目标）。
 
-## 4. A-08 剩余事项
+## 4. 进行中：A-10 安装包
+
+`scripts/dev.ps1 8` 出包，清单是 `config/app.toml`，安装器是上游的通用生成器 [wind-installer](https://github.com/huanfeng/wind-installer)
+（清单驱动，本仓不改它的代码）。Actions 里手动跑 “XinQing Package” 就能拿到 `XinQing-Setup-<版本>-dev.<提交号>.exe` 去真机试装。
+
+| 部分 | 需求 | 状态 |
+|---|---|---|
+| Hub 进安装包：`Build-Hub` 用 pnpm 构建 `xinqing_hub.exe`，连同 `hub_templates/` 放进 `build/` | FR-OPS-01 | 完成（没装 pnpm 时跳过；`XQ_REQUIRE_HUB=1` 时报错） |
+| 开始菜单“心晴”快捷方式（打开 Hub） | FR-OPS-01 | 完成，但没有应用标识（AppUserModelID），Windows 通知会显示不对，见下 |
+| 升级、卸载前结束 Hub（`process_names` 加 `xinqing_hub`） | FR-OPS-02 | 完成 |
+| 卸载时可选删除心晴数据（`%LOCALAPPDATA%\XinQing\hub`） | FR-OPS-02 | 完成：并进“删除心晴数据、用户词库和配置数据”这一个勾选，默认不选；产品书写的是两个选项 |
+| 不自动设为默认输入法 | FR-OPS-01 | 安装器本来就不设 |
+| 安装包名 | FR-OPS-01 | `XinQing-Setup-<版本>.exe`（打包器固定“名称-版本”的顺序），产品书写的是 `XinQing-<版本>-Setup.exe` |
+| 检测 WebView2、缺失时下载微软引导程序 | FR-OPS-01 | **未做**：wind-installer 没有这项能力 |
+| 快捷方式写应用标识（通知要用） | FR-OPS-01、FR-NTF-01 | **未做**：wind-installer 的快捷方式段不支持；也可以由 Hub 启动时自己在注册表登记应用标识（C 的 `notify.rs`） |
+| 完成页提示“按 Win + Space 切换到心晴输入法”、许可页放 MIT 全文与“基于清风输入法”声明 | FR-OPS-01、FR-OPS-06 | **未做**：安装器的文案段没有这两处 |
+| 卸载时删掉 Hub 的“登录时后台启动”启动项 | FR-OPS-02 | **未做**：Hub 侧这项设置也还没做；安装器只撤销自己写过的东西 |
+
+标“未做”的前三项都要给 wind-installer 加通用能力（它的 AGENTS.md 有“新增一种能力的标准套路”），需要先 fork 到 young8290 名下，或者向上游提 PR。
+
+## 5. A-08 剩余事项
 
 | 部分 | 需求 | 状态 |
 |---|---|---|
@@ -73,29 +93,30 @@ C-PLT-05：登录、锁屏、UAC 提权框处于安全桌面，输入法不采�
 
 Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrite_log`）是 C 的 C-09，不在这里。
 
-## 5. 关键决定与待评审
+## 6. 关键决定与待评审
 
 - ADR 0009（核心侧 XQP 服务端的实现约定，11 条）：状态“提议”，等 A 自己以外的人评审（建议 C 看第 6、7、10 条，E 看第 11 条）。
   接受后要改产品书 17 第 1.1–1.6 节、10 第 2.1 节、06 FR-RWR-03、04 FR-SEN-01，并写 00 第 5 节修订记录。
 - 范围按产品书 16 推荐的方案甲在做，团队还没正式确认。
 
-## 6. 已知问题
+## 7. 已知问题
 
 - 本仓的开发会话没有 Windows：命名管道、TSF 吃键与重放、`ReplaceBackward`、工具栏图标都只在 Linux 无头测试和 CI 的 Windows 编译里验证过。
 - “最近上屏”按 10 第 2.4 节最多留 300 字；06 FR-RWR-01 写的是 200 字，两处要统一。
 - 改写模式里的 `1`–`3`、`Tab`、`Esc` 仍照常报 `key`，Hub 的感知会看到这些键。
 - 改写快捷键在中英文两种状态下都能用；英文状态下单按 Shift 切中英的逻辑仍会生效（与快捷加词一样）。
 
-## 7. 下一步（按优先级）
+## 8. 下一步（按优先级）
 
-1. A-10 安装包：把 Hub、WebView2 检测、开始菜单快捷方式、卸载时结束 Hub 和询问删除数据加进 `config/app.toml` 的清单；
+1. A-10 剩余：WebView2、应用标识、完成页与许可页文案（要先定 wind-installer 怎么改）；在真机上试装一次 Actions 产出的安装包；
 2. A-08 收尾：首次使用说明的归属定下来后实现；与 C 联调真实的 `rewrite_result`；
 3. 真机验证清单（需要有 Windows 的组员）：并装、命名管道、改写替换（含 emoji 和扩展区汉字）、锁屏与 UAC、工具栏；
 4. A-11 typer 打字脚本与兼容测试支援、A-12 上游同步。
 
-## 8. 修订记录
+## 9. 修订记录
 
 | 日期 | 改动 |
 |---|---|
 | 2026-10-04 | 初版：盘点 A-01～A-12 现状；A-08 温柔改写核心一侧与 ADR 0009 第 11 条 |
 | 2026-10-04 | A-08 已合并；安全桌面闸门；A-09 按方案甲暂不做 |
+| 2026-10-04 | A-10 第一部分：Hub 进安装包、开始菜单快捷方式、卸载结束 Hub 与删除心晴数据、试装用的打包流水线 |
