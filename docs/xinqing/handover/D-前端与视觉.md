@@ -3,14 +3,14 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（D-02 第三部分：全屏自动隐藏、首帧位置）
+> 最后更新：2026-10-04（D-02 第四部分：解释面板里的“准 / 不准”）
 
 ## 1. 任务状态
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
 | D-01 | 前端骨架：Vite + Vue 3、设计令牌、类型生成封装、多窗口 | 完成 | `xinqing_hub/src/`：`styles/tokens.css`、`api/`、`i18n/`、`windows/shared/mount.ts`、`vite.config.ts` | DS-ICON 要求的 Lucide 图标库还没引入（第一个用到图标的界面再加，记得在“关于”页列许可） |
-| D-02 | 小组件（布局、小精灵、一句话区、底栏、交互、贴边） | **进行中** | 第一部分（窗口行为、右键菜单）：[xinqing-ime#14](https://github.com/young8290/xinqing-ime/pull/14)（已合并）；第二部分（悬停解释）：[xinqing-ime#16](https://github.com/young8290/xinqing-ime/pull/16)；第三部分（全屏自动隐藏、首帧位置）：本 PR | 见第 3 节 |
+| D-02 | 小组件（布局、小精灵、一句话区、底栏、交互、贴边） | **进行中** | 第一部分（窗口行为、右键菜单）：[xinqing-ime#14](https://github.com/young8290/xinqing-ime/pull/14)（已合并）；第二部分（悬停解释）：[xinqing-ime#16](https://github.com/young8290/xinqing-ime/pull/16)；第三部分（全屏自动隐藏、首帧位置）、第四部分（“准 / 不准”）：随后的 PR | 见第 3 节 |
 | D-03 | 小精灵插画与 lottie 动画（6 天气 + 3 一次性动作）、logo | 占位 | `components/WeatherSprite.vue`（静态 SVG，每种天气不同配饰形状）、`components/WeatherStage.vue`（天气切换交叉淡化）；应用图标是几何占位（`tools/gen_hub_icons.py`） | 正式插画、循环动画、“晃一下 / 靠近 / 闭眼”三个一次性动画、logo（DS-BRAND-02：圆润的云后露出半个太阳，16 px 可辨认）都没做；lottie 依赖未引入。16 第 3 节允许 W6 前先用静态 SVG |
 | D-04 | 卡片层（日程 / 待办 / 提醒 / 自评 / 小结 / 周信等 8 类） | 未开始 | — | 07 第 2 节的“卡片层”窗口还没在 `tauri.conf.json` 登记；卡片的数据来自 B、C 的事件，事件形状要先定（改 `bindings.ts` 走契约 PR） |
 | D-05 | 首次引导与同意 | 大部分完成 | `windows/onboarding/`（FR-ONB-01～04，有测试） | FR-ONB-05（AI 地址与密钥、“测试连接”、小组件位置、关怀频率、晴晴打招呼）未做，“测试连接”依赖 C 的网关（xinqing-ime#7） |
@@ -28,7 +28,7 @@ xinqing_hub/
 ├─ src/api/                     bindings.ts（生成，D 是契约负责人）+ unwrap / CommandError
 ├─ src/i18n/                    zh-CN.ts（由 hub_templates/ui_copy.toml 生成）+ t / errorText
 ├─ src/stores/                  status（状态快照 + status:changed）、settings（设置缓存 + settings:changed）
-├─ src/components/              WeatherSprite（静态小精灵）、WeatherStage（交叉淡化）、ExplainPanel（状态解释）
+├─ src/components/              WeatherSprite（静态小精灵）、WeatherStage（交叉淡化）、ExplainPanel（状态解释，`actions` 插槽放“准 / 不准”）
 ├─ src/weather.ts               天气图标、名称、不确定说法
 ├─ src/explain.ts               状态解释的拼句（state_explain 的结构 → 标题 / 说明 / 来源），看板时间线也用它
 ├─ src/windows/<label>/         每个窗口一个入口：widget / chat / dashboard / settings / onboarding
@@ -63,7 +63,7 @@ xinqing_hub/
 | 一句话区悬停显示全文 | FR-WGT-04 | 完成（本 PR） |
 | 一句话区的消息优先级队列（求助 > 自评回应 > 卡片 > 休息提醒 > 暖心话 > 小结 > 今日一句 > 空闲问候） | FR-WGT-04 | 未做：消息来源的事件还没有（C-04 暖心话等），事件形状定了再写，避免先猜契约 |
 | 悬停状态行显示解释 | FR-WGT-06、FR-STA-09 | 完成（第二部分）：鼠标停留 300 ms 或键盘聚焦状态行时，面板盖住右侧整列，标题（不确定说法 + 可能性）、每条说明一行、来源与冷启动附注弱化；`Esc`、失焦、移开、状态变化都会收起。每次打开都重新取 `state_explain(null)`；它和当前快照不是同一个状态时不用，退回只显示标题。可能性百分比从状态行的悬停提示挪进了面板 |
-| 解释面板里的“准 / 不准” | FR-STA-07 | 未做：等 B 的 `submit_feedback`。面板最坏情况（3 条说明 + 两行附注）已经用满 134 px 高，加按钮时要把附注压成一行或给面板加滚动 |
+| 解释面板里的“准 / 不准” | FR-STA-07 | 完成（第四部分）：两个按钮放在来源那一行右侧，点了调 `submit_feedback('mood_state', null, …)`（记到最近一条状态记录，即当前显示的状态），换成“谢谢，我记下了”，状态变了再重新问。为了放下按钮，面板从只盖右侧一列改为盖住整个内容区（约 286 × 134 px），小精灵会被暂时盖住；按钮仍守 32 × 32 点击目标。文案在 `ui_copy.toml` 的 `[widget.feedback]` |
 | 状态行 ✎ 与自评面板、自评后 60 分钟显示“你说的：…” | FR-WGT-02/03、FR-STA-10 | 未做：等 B-07 自评后端；文案 `widget.self_report_prompt`、`widget.self_reported`、`self_report.options.*` 已在 `ui_copy.toml` |
 | 底栏：今日输入时长、下一个日程 / 待办数、专注倒计时 | FR-WGT-05 | 未做：等 B-08（使用时长）、C-05（日程待办） |
 | 前台全屏应用时自动隐藏，退出后恢复 | FR-WGT-01 | 完成（第三部分）：外壳每秒调一次 `SHQueryUserNotificationState`（全屏应用、全屏 D3D 游戏、演示模式都算），进全屏时把可见的小组件藏起来，退出时只恢复自己藏的；用户自己隐藏的不会被叫回来，全屏期间用户叫出来的也不再藏回去 |
@@ -106,3 +106,4 @@ xinqing_hub/
 | 2026-10-04 | 初版：盘点 D-01～D-09 现状；D-02 第一部分（小组件窗口行为、右键菜单、交叉淡化） |
 | 2026-10-04 | D-02 第二部分：悬停状态行显示解释（接 B 的 `state_explain`） |
 | 2026-10-04 | D-02 第三部分：前台全屏时自动隐藏小组件、首帧不闪 |
+| 2026-10-04 | D-02 第四部分：解释面板里的“准 / 不准”（接 B 的 `submit_feedback`） |
