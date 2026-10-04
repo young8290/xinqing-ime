@@ -149,8 +149,7 @@ impl Db {
         let Some((Some(window_id), shown, source, probs)) = row else {
             return Ok(None);
         };
-        let Ok(shown) = serde_json::from_value::<MoodState>(serde_json::Value::String(shown))
-        else {
+        let Some(shown) = parse_state(&shown) else {
             return Ok(None);
         };
         let Some(cur) = self.window_evidence(window_id)? else {
@@ -194,6 +193,66 @@ impl Db {
                 .map(|(features, hints)| Evidence { features, hints }),
             &baseline,
         )))
+    }
+
+    /// 最近一条状态记录的 id（小组件对“当前状态”的反馈记到这条上，FR-STA-07）。
+    pub fn latest_mood_state_id(&self) -> Result<Option<i64>, StoreError> {
+        Ok(self
+            .conn
+            .query_row("SELECT max(id) FROM mood_state", [], |r| r.get(0))?)
+    }
+
+    /// 一条状态记录当时显示的状态。
+    pub fn mood_shown_state(&self, id: i64) -> Result<Option<MoodState>, StoreError> {
+        let shown: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT shown_state FROM mood_state WHERE id = ?1",
+                [id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        Ok(shown.as_deref().and_then(parse_state))
+    }
+
+    /// 写一条反馈（D-17）。
+    pub fn insert_feedback(
+        &self,
+        ts: i64,
+        target: &str,
+        target_id: Option<i64>,
+        verdict: &str,
+    ) -> Result<i64, StoreError> {
+        self.conn.execute(
+            "INSERT INTO feedback (ts, target, target_id, verdict) VALUES (?1, ?2, ?3, ?4)",
+            params![ts, target, target_id, verdict],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    /// `since` 之后对状态记录的某种反馈，连同被评价的显示状态，按时间先后。
+    /// 关联的状态记录已被清理的反馈跳过。
+    pub fn unfit_since(
+        &self,
+        target: &str,
+        verdict: &str,
+        since: i64,
+    ) -> Result<Vec<(MoodState, i64)>, StoreError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT m.shown_state, f.ts FROM feedback f JOIN mood_state m ON m.id = f.target_id
+             WHERE f.target = ?1 AND f.verdict = ?2 AND f.ts >= ?3 ORDER BY f.ts, f.id",
+        )?;
+        let rows = stmt.query_map(params![target, verdict, since], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (state, ts) = row?;
+            if let Some(s) = parse_state(&state) {
+                out.push((s, ts));
+            }
+        }
+        Ok(out)
     }
 
     pub fn settings_get(&self, key: &str) -> Result<Option<String>, StoreError> {
@@ -302,6 +361,11 @@ impl Db {
         })
         .collect()
     }
+}
+
+/// 库里的状态名（`mood_state.state` / `shown_state`）转回枚举，不认识的为 `None`。
+fn parse_state(s: &str) -> Option<MoodState> {
+    serde_json::from_value(serde_json::Value::String(s.to_string())).ok()
 }
 
 fn numeric_only(v: &serde_json::Value) -> bool {

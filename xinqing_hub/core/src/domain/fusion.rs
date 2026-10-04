@@ -108,7 +108,8 @@ impl Fusion {
         self.shown
     }
 
-    fn bump(&self, s: MoodState, now_ms: i64) -> f64 {
+    /// 某状态当前的个人阈值上调量（FR-STA-06 第 8 条），已过期为 0。
+    pub fn bump(&self, s: MoodState, now_ms: i64) -> f64 {
         match self.bumps.get(&s) {
             Some((b, until)) if *until > now_ms => *b,
             _ => 0.0,

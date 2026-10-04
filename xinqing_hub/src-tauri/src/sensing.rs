@@ -11,6 +11,7 @@ use tokio::sync::{broadcast, mpsc};
 use xinqing_hub_core::bus::{self, HubEvent};
 use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::features::Baseline;
+use xinqing_hub_core::domain::feedback;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::infra::templates::{AppCategories, BaselineDefault, TemplateDirs};
@@ -70,7 +71,8 @@ pub fn start(app: &AppHandle, cfg: Down) -> Sensing {
     };
     let mut baseline = None;
     match load_pipeline() {
-        Ok(p) => {
+        Ok(mut p) => {
+            restore_unfit(app, &mut p);
             baseline = Some(p.baseline().clone());
             let port = Arc::new(ShellPort { app: app.clone() });
             let sense = Sense::new(p, port, xqp.clone(), bus.clone(), Arc::new(SystemClock));
@@ -125,6 +127,19 @@ fn load_pipeline() -> anyhow::Result<StatePipeline> {
         AppCategories::load(&dirs)?,
         chrono::Local::now(),
     ))
+}
+
+/// 重放最近 7 天的“不准”，恢复个人阈值上调（FR-STA-07，上调状态只在内存里）。
+fn restore_unfit(app: &AppHandle, p: &mut StatePipeline) {
+    let now = chrono::Utc::now().timestamp_millis();
+    match feedback::recent_unfit(&app.state::<AppState>().db(), now) {
+        Ok(rows) => {
+            for (state, ts) in rows {
+                p.fusion_mut().record_unfit(state, ts);
+            }
+        }
+        Err(e) => eprintln!("读取状态反馈失败：{e}"),
+    }
 }
 
 struct ShellPort {
