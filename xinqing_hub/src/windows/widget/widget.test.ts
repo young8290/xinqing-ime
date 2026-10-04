@@ -134,7 +134,7 @@ describe('小组件', () => {
 describe('悬停状态行显示解释（FR-WGT-06、FR-STA-09）', () => {
   const explanation: Explanation = {
     state: 'hesitant',
-    prob: 85,
+    prob_pct: 85,
     signals: [
       { kind: 'pause', value: 2 },
       { kind: 'abandon', value: null },
