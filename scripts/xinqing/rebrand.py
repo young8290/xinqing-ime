@@ -70,6 +70,18 @@ APP_NAME_EXCLUDE = [
     "wind_input/apps/service/src/cli_util.rs",
 ]
 
+ARTIFACT_FILES = [
+    "scripts/dev.ps1",
+    "scripts/dev.sh",
+    "scripts/remote-build.ps1",
+    "scripts/lib/remote-build.sh",
+    "scripts/pack-installer.sh",
+    "scripts/sign.ps1",
+    "scripts/build.local.example",
+    "scripts/build.local.ps1.example",
+    "config/app.toml",
+]
+
 RULES: list[Rule] = [
     # GUID 字符串形式（Rust、PowerShell、TOML、注册表路径）
     Rule(
@@ -134,6 +146,36 @@ RULES: list[Rule] = [
     Rule("ps-dir", r"(?<=Program Files\\)WindInput", "XinQing", ["scripts/dev.ps1"]),
     Rule("ps-display", r'(?<=["\'= ])清风输入法|(?<=切换到)清风输入法', "心晴输入法", ["scripts/dev.ps1"]),
     Rule("ps-proto", r'"windinput(dev)?"', r'"xinqing\1"', ["scripts/dev.ps1", "config/app.toml"]),
+    # 产物名（03 第 5.1 节）：wind_tsf[_x86][_dev].dll → xinqing_tsf…，wind_input[_dev].exe → xinqing_core…。
+    # cargo 的 bin 名与 crate 名不动，构建脚本把 target 里的 wind_input.exe 复制成 xinqing_core.exe，
+    # 所以 “$prof\wind_input.exe” 这类指向 cargo 产物的路径要排除。
+    Rule(
+        "artifact-dll",
+        r"\bwind_tsf(?=\$|_x86|_dev|\*\.dll|\.dll|\[)",
+        "xinqing_tsf",
+        ARTIFACT_FILES + ["wind_tsf/Makefile"],
+    ),
+    Rule("artifact-dll-cmake", r'TSF_TARGET_NAME "wind_tsf', 'TSF_TARGET_NAME "xinqing_tsf', ["wind_tsf/CMakeLists.txt"]),
+    Rule(
+        "artifact-dll-meta",
+        r'"wind_tsf(\.dll)?"',
+        r'"xinqing_tsf\1"',
+        ["wind_tsf/res/version.rc.in", "wind_tsf/wind_tsf.def"],
+    ),
+    Rule(
+        "artifact-exe",
+        r'(?<!\$prof\\)(?<!\$prof/)(?<![A-Za-z_])wind_input(?=\$suffix|\$\{suffix\}|\$sfx|\$\{sfx\}|_dev\.exe|_dev"|\.exe|\[_dev\]|\*\.exe|"\])',
+        "xinqing_core",
+        ARTIFACT_FILES + ["wind_input/scripts/wind_cli.bat", "wind_tsf/include/Globals.h", "wind_input/apps/service/build.rs"],
+    ),
+    Rule("artifact-exe-meta", r'"InternalName", "wind_input"', '"InternalName", "xinqing_core"', ["wind_input/apps/service/build.rs"]),
+    # 托盘菜单“设置”按 exe 名推导设置程序；心晴的设置页在 Hub 里
+    Rule(
+        "settings-app",
+        r'stem\.replacen\("wind_input", "wind_setting", 1\)',
+        'stem.replacen("xinqing_core", "xinqing_hub", 1)',
+        ["wind_input/crates/wind-coordinator/src/coordinator.rs"],
+    ),
     Rule(
         "app-toml",
         r'(?<=["/])WindInput(?=")',
@@ -156,6 +198,12 @@ LEFTOVERS = [
         NON_WINDOWS + APP_NAME_EXCLUDE,
     ),
     (r'L"清风输入法|"清风输入法', ["wind_tsf/**/*.h", "wind_tsf/**/*.cpp"], []),
+    (r"\bwind_tsf(?=\$|_x86|_dev|\.dll)", ARTIFACT_FILES + ["wind_tsf/Makefile"], []),
+    (
+        r'(?<!\$prof\\)(?<!\$prof/)(?<![A-Za-z_])wind_input(?=\$suffix|\$\{suffix\}|\$sfx|\$\{sfx\}|_dev\.exe|\.exe)',
+        ARTIFACT_FILES + ["wind_tsf/include/Globals.h"],
+        [],
+    ),
 ]
 
 

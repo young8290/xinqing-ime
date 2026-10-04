@@ -13,7 +13,7 @@ python3 scripts/xinqing/rebrand.py          # 把上游新代码里的标识改�
 python3 scripts/xinqing/rebrand.py --check  # CI 同样会跑这一步，有残留即失败
 ```
 
-脚本是幂等的，可以反复运行。上游若新增了脚本规则覆盖不到的标识（例如新的内核对象名、新的 GUID），
+脚本是幂等的，可以反复运行。合并时若规则覆盖的文件冲突，最省事的解法是该文件整份取上游版本（`git checkout --theirs <文件>`），再重跑脚本；唯一的手工改动是 `dev.ps1` 里的 `Get-InDirProcesses` 及其两处调用，取上游后要补回。上游若新增了脚本规则覆盖不到的标识（例如新的内核对象名、新的 GUID），
 `--check` 不一定能发现，合并时请顺手看一眼上游提交里新增的 `Local\`、`\\.\pipe\`、`CLSID`、`Software\`。
 
 ## 对照表
@@ -31,6 +31,9 @@ python3 scripts/xinqing/rebrand.py --check  # CI 同样会跑这一步，有残�
 | 窗口类名 / 窗口消息 | `WindInputCandidate`、`WindInputHotkeyWnd`、`WindInputHotkeyRetry_v1` 等 | `XinQing…` | `wind-ui`、`wind_tsf/src` |
 | 显示名 | 清风输入法（开发版） | 心晴输入法（开发版） | `Globals.h`、`LangBarItemButton.cpp`、`version.rc.in`、`build.rs`、协调器文案 |
 | 安装目录 | `C:\Program Files\WindInput[Dev]` | `C:\Program Files\XinQing[Dev]` | `dev.ps1`、`config/app.toml` |
+| 核心服务 exe | `wind_input[_dev].exe` | `xinqing_core[_dev].exe` | `dev.ps1`、`dev.sh`、`remote-build.*`、`pack-installer.sh`、`wind_cli.bat`、`Globals.h`（`WIND_SERVICE_EXE`）、`build.rs`、`config/app.toml` |
+| TSF DLL | `wind_tsf[_x86][_dev].dll` | `xinqing_tsf[_x86][_dev].dll` | `CMakeLists.txt`、`Makefile`、`version.rc.in`、`wind_tsf.def`、上述脚本 |
+| 托盘“设置”打开的程序 | `wind_setting[_dev].exe` | `xinqing_hub[_dev].exe` | `coordinator.rs` 的 `settings_app_path` |
 | 系统目录副本 | `System32\IME\WindInput` | `System32\IME\XinQing` | `config/app.toml` |
 | 图标 | 清风图标 | 占位图标（暖色底白色“晴”字） | `wind_tsf/res/wind_input.ico`、`assets/installer.ico`、`assets/logo.png` |
 
@@ -39,10 +42,13 @@ python3 scripts/xinqing/rebrand.py --check  # CI 同样会跑这一步，有残�
 
 ## 刻意没改的
 
-- **可执行文件名**（`wind_input.exe`、`wind_tsf.dll`、`wind_setting.exe`）与 crate 名、代码标识符：
-  改名牵动构建脚本、CI 和上游合并，收益只是“名字好看”。两边装在不同目录、用不同的 CLSID 和管道，
-  同名不影响共存。代价是按镜像名杀进程会误伤对方，所以 `dev.ps1` 的
-  `Stop-WindService` / `Stop-ProcessForFile` 改成只停可执行文件位于本次部署目录下的进程（`Get-InDirProcesses`）。
+- **cargo 的 bin 名、crate 名与代码标识符**（`wind_input` bin、`wind-*` crate、`wind_tsf/` 目录）：
+  改名牵动全部 Cargo.toml、测试与上游合并。产物名按 03 第 5.1 节改为 `xinqing_core.exe` / `xinqing_tsf.dll`，
+  做法是构建脚本把 cargo 产出的 `wind_input.exe` 复制成 `xinqing_core.exe`，所以脚本里指向 cargo 产物的
+  `$prof\wind_input.exe` 保持原样。`dev.ps1` 的 `Stop-WindService` / `Stop-ProcessForFile` 另外改成只停
+  可执行文件位于本次部署目录下的进程（`Get-InDirProcesses`），避免误伤同名进程。
+- **日志文件名前缀**（`wind_input.N.log`、`wind_tsf.*.log`）：日志已在 `XinQing\logs\` 下，与清风不冲突；
+  前缀是核心与 DLL 之间的跨语言约定（`log_rotate.rs` 按前缀清理 DLL 日志），单改一侧会断。
 - **macOS / Linux 端**（`wind_macos/`、`wind_linux/`、`wind-bridge/src/endpoint.rs`、`mac_panel.rs` 等）：
   心晴只做 Windows（C-PLT-01），这些文件与 Swift 侧逐字对齐，单改一侧反而会断。
   注意 `variant.rs` 的数据目录名在 macOS 上也会变成 `XinQing`，与 `scripts/mac/` 不再一致，不影响 Windows。
@@ -54,7 +60,7 @@ python3 scripts/xinqing/rebrand.py --check  # CI 同样会跑这一步，有残�
 ## 已知限制
 
 - 安装包由独立仓库 `wind-installer` 生成，本仓没有它，`dev.ps1` 的打包命令（`8` / `d8`）暂时不可用。
-  `config/app.toml` 的 `process_names` 仍是按镜像名，接入安装器时要改成按路径停进程，否则安装心晴会停掉官方清风。
+  `config/app.toml` 的 `process_names` 里 `wind_setting`、`wind_portable` 与官方清风同名，接入安装器时要去掉或改成按路径停进程。
 - 图标是占位图，正式图标出稿后覆盖上面三个文件即可（或改 `scripts/xinqing/gen_icons.py` 重新生成）。
 - 本仓私有、不公开发布（C-PRJ-04），`BRANDING.md` 对公开分支的三条请求暂不适用；
   若将来公开，需在 README 注明“本项目是清风输入法 (WindInput) 的非官方分支，与原项目及其作者无关”。
