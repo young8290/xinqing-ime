@@ -255,6 +255,58 @@ impl Db {
         Ok(out)
     }
 
+    /// 写一条自评（D-24）。备注只存本地。
+    pub fn insert_self_report(
+        &self,
+        ts: i64,
+        weather: &str,
+        note: Option<&str>,
+        auto_state: Option<&str>,
+        source: &str,
+    ) -> Result<i64, StoreError> {
+        self.conn.execute(
+            "INSERT INTO self_report (ts, weather, note, auto_state, source) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![ts, weather, note, auto_state, source],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    /// 最近的 `limit` 条自评，新的在前。
+    pub fn self_reports_recent(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<crate::domain::self_report::SelfReportRow>, StoreError> {
+        self.self_reports_query(
+            "SELECT id, ts, weather, note, auto_state FROM self_report ORDER BY ts DESC, id DESC LIMIT ?1",
+            params![limit as i64],
+        )
+    }
+
+    /// `[start, end)` 内的自评，按时间先后。
+    pub fn self_reports_between(
+        &self,
+        start: i64,
+        end: i64,
+    ) -> Result<Vec<crate::domain::self_report::SelfReportRow>, StoreError> {
+        self.self_reports_query(
+            "SELECT id, ts, weather, note, auto_state FROM self_report
+             WHERE ts >= ?1 AND ts < ?2 ORDER BY ts, id",
+            params![start, end],
+        )
+    }
+
+    fn self_reports_query(
+        &self,
+        sql: &str,
+        p: impl rusqlite::Params,
+    ) -> Result<Vec<crate::domain::self_report::SelfReportRow>, StoreError> {
+        let mut stmt = self.conn.prepare(sql)?;
+        let rows = stmt.query_map(p, |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
     pub fn settings_get(&self, key: &str) -> Result<Option<String>, StoreError> {
         Ok(self
             .conn
@@ -515,7 +567,7 @@ mod tests {
         let e = db.explain_mood_state(id, &base).unwrap().unwrap();
         assert_eq!(e.state, MoodState::Hesitant);
         assert_eq!(e.source, ExplainSource::Rule);
-        assert_eq!(e.prob, None);
+        assert_eq!(e.prob_pct, None);
         assert!(e.cold_start);
         let kinds: Vec<_> = e.signals.iter().map(|s| (s.kind, s.value)).collect();
         assert_eq!(
@@ -532,7 +584,7 @@ mod tests {
             )
             .unwrap();
         let e = db.explain_mood_state(id, &base).unwrap().unwrap();
-        assert_eq!((e.source, e.prob), (ExplainSource::Jev, Some(83)));
+        assert_eq!((e.source, e.prob_pct), (ExplainSource::Jev, Some(83)));
 
         // 不存在、没有关联窗口时为 None
         assert_eq!(db.explain_mood_state(999, &base).unwrap(), None);

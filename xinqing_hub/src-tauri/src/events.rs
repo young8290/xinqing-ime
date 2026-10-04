@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri_specta::Event;
+use xinqing_hub_core::domain::self_report::SelfWeather;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 
 /// `status:changed`：载荷同 `get_status`。
@@ -15,4 +16,14 @@ pub struct StatusChanged(pub StatusSnapshot);
 #[tauri_specta(event_name = "settings:changed")]
 pub struct SettingsChanged {
     pub key: String,
+}
+
+/// `self_report:changed`：用户刚自评（FR-STA-10）。到 `until_ts` 之前小组件显示“你说的：…”；
+/// “说不上来”时 `until_ts` 就是自评时刻，即不覆盖显示。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "self_report:changed")]
+pub struct SelfReportChanged {
+    pub weather: SelfWeather,
+    /// Unix 毫秒（前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的）
+    pub until_ts: f64,
 }

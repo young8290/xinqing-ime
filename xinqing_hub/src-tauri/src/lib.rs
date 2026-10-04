@@ -34,6 +34,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::get_status,
             commands::state_explain,
             commands::submit_feedback,
+            commands::self_report_set,
+            commands::self_report_list,
             commands::pause_set,
             commands::settings_get,
             commands::settings_set,
@@ -43,7 +45,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         ])
         .events(collect_events![
             events::StatusChanged,
-            events::SettingsChanged
+            events::SettingsChanged,
+            events::SelfReportChanged
         ])
 }
 

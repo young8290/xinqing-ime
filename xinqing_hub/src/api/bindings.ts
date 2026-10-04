@@ -13,8 +13,11 @@ export const commands = {
 	 */
 	stateExplain: (moodStateId: number | null) => typedError<{
 	state: MoodState,
-	/**  可能性百分比；只有本地规则或冷启动时为 `None`，界面不显示百分比。 */
-	prob: number | null,
+	/**
+	 *  可能性百分比 0–100（快照里的 `prob` 是 0–1 小数，这里用整数百分比，名字上区分）；
+	 *  只有本地规则或冷启动时为 `None`，界面不显示百分比。
+	 */
+	prob_pct: number | null,
 	/**  最多 [`MAX_SIGNALS`] 条；为空时界面显示 `note.no_signal`。 */
 	signals: Signal[],
 	source: ExplainSource,
@@ -27,6 +30,13 @@ export const commands = {
 	 *  也不报错，下次启动会从库里重放。还没有任何状态记录时什么也不做。
 	 */
 	submitFeedback: (target: FeedbackTarget, targetId: number | null, verdict: Verdict) => typedError<null, UiError>(__TAURI_INVOKE("submit_feedback", { target, targetId, verdict })),
+	/**
+	 *  主动报告心情（FR-STA-10）。写入 `self_report` 表后交给感知任务：之后 60 分钟显示用户说的状态
+	 *  （“说不上来”不覆盖），并推送 `self_report:changed`。备注只存本地，用完即清零（NFR-PRI-09）。
+	 */
+	selfReportSet: (weather: SelfWeather, note: string | null) => typedError<null, UiError>(__TAURI_INVOKE("self_report_set", { weather, note })),
+	/**  某天（本地日期 `YYYY-MM-DD`）的自评，按时间先后；看板时间线用实心标记显示。 */
+	selfReportList: (date: string) => typedError<SelfReportItem[], UiError>(__TAURI_INVOKE("self_report_list", { date })),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
@@ -40,6 +50,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
 	statusChanged: makeEvent<StatusChanged>("status:changed"),
 };
@@ -78,8 +89,11 @@ export type ExplainSource = "jev" | "rule" |
 /**  一次状态解释（`state_explain` 的返回值，10 第 5.1 节）。 */
 export type Explanation = {
 	state: MoodState,
-	/**  可能性百分比；只有本地规则或冷启动时为 `None`，界面不显示百分比。 */
-	prob: number | null,
+	/**
+	 *  可能性百分比 0–100（快照里的 `prob` 是 0–1 小数，这里用整数百分比，名字上区分）；
+	 *  只有本地规则或冷启动时为 `None`，界面不显示百分比。
+	 */
+	prob_pct: number | null,
 	/**  最多 [`MAX_SIGNALS`] 条；为空时界面显示 `note.no_signal`。 */
 	signals: Signal[],
 	source: ExplainSource,
@@ -94,6 +108,43 @@ export type FeedbackTarget =
 
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
+
+/**
+ *  `self_report:changed`：用户刚自评（FR-STA-10）。到 `until_ts` 之前小组件显示“你说的：…”；
+ *  “说不上来”时 `until_ts` 就是自评时刻，即不覆盖显示。
+ */
+export type SelfReportChanged = {
+	weather: SelfWeather,
+	/**  Unix 毫秒（前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的） */
+	until_ts: number | null,
+};
+
+/**  `self_report_list` 的一行（10 第 5.1 节）。 */
+export type SelfReportItem = {
+	id: number,
+	/**  Unix 毫秒。用 f64 是因为前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的。 */
+	ts: number | null,
+	weather: SelfWeather,
+	/**  只存本地（NFR-PRI-09） */
+	note: string | null,
+	/**  同一时刻的自动判断 */
+	auto_state: MoodState | null,
+};
+
+/**  自评选项（`self_report.weather`）。 */
+export type SelfWeather = 
+/**  ☀️ 挺好 */
+"sunny" | 
+/**  ⛅ 有点犹豫 */
+"cloudy" | 
+/**  🌧 有点低落 */
+"rain" | 
+/**  ⛈ 有点烦 */
+"storm" | 
+/**  🌙 有点累 */
+"night" | 
+/**  🤷 说不上来 */
+"unsure";
 
 /**  设置项的值。只有这三种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"`）。 */
 export type SettingValue = boolean | number | null | string;
