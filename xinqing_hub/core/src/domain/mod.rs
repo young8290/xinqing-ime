@@ -3,6 +3,7 @@
 pub mod consent;
 pub mod explain;
 pub mod features;
+pub mod feedback;
 pub mod fusion;
 pub mod rules;
 pub mod safety;
