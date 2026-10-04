@@ -1,37 +1,89 @@
 <script setup lang="ts">
-// 桌面小组件（07 FR-WGT-01～06）。骨架阶段：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动。
-// 右键菜单、卡片层、底栏数据、贴边隐藏随 D-02 / D-04 补上。
+// 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动吸附、
+// 右键菜单、贴边隐藏。卡片层、底栏数据、悬停解释、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
+// （进度见 docs/xinqing/handover/D-前端与视觉.md）。
 import { computed, onMounted, ref } from 'vue'
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { LogicalPosition, getCurrentWindow } from '@tauri-apps/api/window'
+import { Menu } from '@tauri-apps/api/menu'
 import { commands, unwrap } from '@/api'
 import WeatherSprite from '@/components/WeatherSprite.vue'
+import WeatherStage from '@/components/WeatherStage.vue'
 import { errorText, t } from '@/i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useStatusStore } from '@/stores/status'
+import { menuEntries, type MenuAction } from './menu'
 import { statusLine } from './statusLine'
+import { useWidgetWindow } from './useWidgetWindow'
 
 const status = useStatusStore()
 const settings = useSettingsStore()
 const line = computed(() => (status.snapshot ? statusLine(status.snapshot) : null))
-const opacity = computed(() => {
-  const v = settings.values['widget.opacity']
-  return typeof v === 'number' ? v : 1
-})
+const setting = <T,>(key: string, fallback: T) =>
+  computed(() => {
+    const v = settings.values[key]
+    return typeof v === typeof fallback ? (v as T) : fallback
+  })
+const opacity = setting('widget.opacity', 1)
+const autohide = setting('widget.autohide', false)
+const topmost = setting('widget.topmost', true)
 const message = ref(t('greeting.idle'))
+const menuOpen = ref(false)
+
+const place = useWidgetWindow({ autohide, topmost, holdOpen: menuOpen })
 
 onMounted(async () => {
+  void place.start()
   try {
-    await Promise.all([status.init(), settings.init(['widget.opacity'])])
+    await Promise.all([status.init(), settings.init(['widget.opacity', 'widget.autohide', 'widget.topmost'])])
   } catch (e) {
     message.value = errorText(e)
   }
 })
 
-async function openChat(): Promise<void> {
+async function run(action: () => Promise<unknown>): Promise<void> {
   try {
-    await unwrap(commands.openWindow('chat'))
+    await action()
   } catch (e) {
     message.value = errorText(e)
+  }
+}
+
+const openChat = () => run(() => unwrap(commands.openWindow('chat')))
+
+const ACTIONS: Record<MenuAction, () => Promise<unknown>> = {
+  pause: () => status.setPaused(true),
+  resume: () => status.setPaused(false),
+  dashboard: () => unwrap(commands.openWindow('dashboard')),
+  settings: () => unwrap(commands.openWindow('settings')),
+  hide: () => getCurrentWindow().hide(),
+}
+
+/** 系统原生菜单：能伸出小组件窗口之外，读屏和高对比度也由系统负责。`at` 省略时在鼠标处弹出。 */
+async function openMenu(at?: LogicalPosition): Promise<void> {
+  if (menuOpen.value) return
+  menuOpen.value = true
+  try {
+    const items = menuEntries(status.snapshot).map(({ id, text }) => ({
+      id,
+      text,
+      action: () => void run(ACTIONS[id]),
+    }))
+    const menu = await Menu.new({ items })
+    await menu.popup(at)
+  } catch (e) {
+    message.value = errorText(e)
+  } finally {
+    menuOpen.value = false
+  }
+}
+
+function onKeydown(e: KeyboardEvent): void {
+  // FR-WGT-06：Shift+F10（以及键盘上的菜单键）在小组件左上角打开右键菜单
+  if ((e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu') {
+    e.preventDefault()
+    void openMenu(new LogicalPosition(16, 16))
+  } else if (e.key === 'Enter') {
+    void openChat()
   }
 }
 
@@ -58,23 +110,45 @@ function onPointerUp(): void {
 </script>
 
 <template>
-  <main
-    class="widget"
-    :style="{ opacity }"
-    tabindex="0"
-    @pointerdown="onPointerDown"
-    @pointermove="onPointerMove"
-    @pointerup="onPointerUp"
-    @keydown.enter="openChat"
-  >
-    <WeatherSprite v-if="line" :weather="line.weather" :eyes-closed="line.eyesClosed" />
-    <div class="content">
-      <p class="status" aria-live="polite" :title="line?.hint ?? undefined">{{ line?.text }}</p>
-      <p class="message">{{ message }}</p>
-      <footer class="footer" />
-    </div>
-    <span v-if="status.snapshot?.offline" class="badge">{{ t('widget.offline_badge') }}</span>
-  </main>
+  <div class="root" @pointerenter="place.pointerEnter" @pointerleave="place.pointerLeave">
+    <button
+      v-if="place.collapsed.value"
+      class="tab"
+      :style="{ opacity }"
+      :aria-label="t('widget.expand')"
+      @click="place.expand"
+      @focus="place.expand"
+    >
+      <WeatherSprite v-if="line" :weather="line.weather" :eyes-closed="line.eyesClosed" :size="20" />
+    </button>
+    <main
+      v-else
+      class="widget"
+      :style="{ opacity }"
+      tabindex="0"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @contextmenu.prevent="openMenu()"
+      @keydown="onKeydown"
+    >
+      <WeatherStage v-if="line" :weather="line.weather" :eyes-closed="line.eyesClosed" />
+      <div class="content">
+        <p
+          class="status"
+          :class="{ 'with-badge': status.snapshot?.offline }"
+          aria-live="polite"
+          :title="line?.hint ?? undefined"
+        >
+          {{ line?.text }}
+        </p>
+        <!-- FR-WGT-04：最多 2 行，悬停显示全文 -->
+        <p class="message" :title="message">{{ message }}</p>
+        <footer class="footer" />
+      </div>
+      <span v-if="status.snapshot?.offline" class="badge">{{ t('widget.offline_badge') }}</span>
+    </main>
+  </div>
 </template>
 
 <style>
@@ -87,6 +161,10 @@ body {
 </style>
 
 <style scoped>
+.root {
+  height: 100%;
+}
+
 .widget {
   position: relative;
   display: flex;
@@ -102,6 +180,19 @@ body {
   cursor: default;
 }
 
+/* 贴边隐藏后的小标签：24 px 宽，只露出小精灵（FR-WGT-01）。窗口本身就是标签大小 */
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border-radius: var(--xq-radius-sm);
+  background: var(--xq-surface);
+}
+
 .content {
   display: flex;
   flex: 1;
@@ -112,13 +203,17 @@ body {
 
 .status {
   margin: 0 0 var(--xq-sp-2);
-  padding-right: var(--xq-sp-6);
   color: var(--xq-text-2);
   font-size: var(--xq-fs-sm);
   line-height: var(--xq-lh-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 只在有离线角标时给它让出位置，平时状态行用满整行 */
+.status.with-badge {
+  padding-right: calc(var(--xq-sp-6) + var(--xq-sp-3));
 }
 
 .message {

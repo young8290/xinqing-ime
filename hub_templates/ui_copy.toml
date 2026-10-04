@@ -35,6 +35,14 @@ self_report_prompt = "我现在…"
 care_reduced = "我会少打扰你一些"
 prob_hint = "{hedge}（可能性 {pct}%）"     # 悬停状态行时才显示概率（DS-COPY-02）
 sprite_label = "心晴：{weather}"           # 读屏播报（DS-A11Y-02）
+expand = "展开小组件"                      # 贴边隐藏后小标签的读屏名称
+
+[widget.menu]                # 右键菜单（07 FR-WGT-06），顺序按规格；其余菜单项随对应功能补上
+pause = "暂停感知"
+resume = "恢复感知"
+dashboard = "打开看板"
+settings = "设置"
+hide = "隐藏小组件"
 
 [self_report.options]
 sunny = "☀️ 挺好"
