@@ -2,7 +2,7 @@
 
 - 职责：Hub 的界面与接口层（17 第 2、3 节）。`src-tauri/` 是 Tauri 外壳：单实例、启动参数、窗口管理、命令与事件；领域逻辑全部在 [`core/`](core/README.md)（ADR 0007）。`src/` 是 Vue 3 前端，每个窗口一个入口。
 - 窗口：`widget`（小组件）、`chat`（对话）、`dashboard`（看板）、`settings`（设置）、`onboarding`（首次引导），尺寸与样式见 `src-tauri/tauri.conf.json`，与 07 第 2 节窗口清单一致；全部按需创建。
-- 命令与事件：已实现 `get_status`、`state_explain`、`submit_feedback`、`self_report_set`、`self_report_list`、`pause_set`、`settings_get`、`settings_set`、`consent_get`、`consent_set`、`open_window`、`ai_config_get`、`secrets_set`、`ai_test_connection`、`ai_usage_today`，事件 `status:changed`、`settings:changed`、`self_report:changed`、`gateway:health`、`comfort:new`（10 第 5 节）。其余命令随各功能任务补上；以 `src-tauri/src/lib.rs` 的 `specta_builder` 为准。
+- 命令与事件：已实现 `get_status`、`state_explain`、`submit_feedback`、`self_report_set`、`self_report_list`、`pause_set`、`settings_get`、`settings_set`、`consent_get`、`consent_set`、`open_window`、`ai_config_get`、`secrets_set`、`ai_test_connection`、`ai_usage_today`、`comfort_feedback`，事件 `status:changed`、`settings:changed`、`self_report:changed`、`gateway:health`、`comfort:new`、`care:reduced`（10 第 5 节）。其余命令随各功能任务补上；以 `src-tauri/src/lib.rs` 的 `specta_builder` 为准。
 - 生成的文件（不要手改，CI 会核对）：
   - `src/api/bindings.ts`：命令与事件的 TypeScript 封装，`pnpm gen:bindings`（即 `cargo run -p xinqing-hub --bin export-bindings`）；
   - `src/i18n/zh-CN.ts`：界面文案表，`pnpm gen:i18n`，来源是 `hub_templates/ui_copy.toml` 和 `explain.toml`。窗口标题也要和 `ui_copy.toml` 的 `window.*` 一致。
