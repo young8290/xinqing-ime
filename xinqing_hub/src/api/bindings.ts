@@ -52,10 +52,18 @@ export const commands = {
 	/**  逐个模型发一条最小请求，返回可用性和延迟（FR-AIG-04 第 4 条）。没配置大模型时为空列表。 */
 	aiTestConnection: () => typedError<ModelProbeView[], UiError>(__TAURI_INVOKE("ai_test_connection")),
 	aiUsageToday: () => typedError<UsageRow[], UiError>(__TAURI_INVOKE("ai_usage_today")),
+	/**
+	 *  一句暖心话上的 👍 有用 / 👎 不合适 / 🔕 今天先别说了。`id` 是 `comfort:new` 带的行号。
+	 *  👎 的模板句以后不再出现；🔕 让今天剩余时间不再主动关怀（休息提醒不受影响）；
+	 *  连续 3 天都是 👎 / 🔕 时自动降一档，推送 `care:reduced` 和 `settings:changed`。
+	 *  这句话已被清理时什么也不做。
+	 */
+	comfortFeedback: (id: number, verdict: ComfortVerdict) => typedError<null, UiError>(__TAURI_INVOKE("comfort_feedback", { id, verdict })),
 };
 
 /** Events */
 export const events = {
+	careReduced: makeEvent<CareReduced>("care:reduced"),
 	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
@@ -101,6 +109,14 @@ export type BudgetKind =
 "rewrite";
 
 /**
+ *  `care:reduced`：连续 3 天的反馈都是 👎 / 🔕，主动关怀频率自动降了一档（FR-CMF-06 第 2 条）。
+ *  小组件一句话区显示 `widget.care_reduced`（“我会少打扰你一些”）。`level` 是降档后的 `care.level`。
+ */
+export type CareReduced = {
+	level: string,
+};
+
+/**
  *  `comfort:new`：晴晴说了一句暖心话（FR-CMF-04）。小组件一句话区显示；`ai_generated` 时句尾加 `AI 生成` 标签，
  *  模板句不加。
  */
@@ -114,6 +130,15 @@ export type ComfortNew = {
 
 /**  暖心话从哪里来：大模型生成的要标 `AI 生成`，模板句不标（FR-CMF-04 第 2 条、FR-CMF-03 第 3 条）。 */
 export type ComfortSource = "llm" | "template";
+
+/**  一句暖心话上的反馈（`comfort_log.feedback`）。 */
+export type ComfortVerdict = 
+/**  👍 有用 */
+"useful" | 
+/**  👎 不合适 */
+"unfit" | 
+/**  🔕 今天先别说了 */
+"mute";
 
 export type ConsentEntry = {
 	item: ConsentItem,

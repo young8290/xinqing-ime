@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use tauri_specta::Event;
 use xinqing_hub_core::care::{Comfort, ComfortPort, ComfortService, ComfortSource};
 use xinqing_hub_core::domain::comfort::{CareLevel, ComfortPrompt, ComfortTemplates, Style};
+use xinqing_hub_core::domain::comfort_feedback;
 use xinqing_hub_core::domain::consent::{ConsentItem, ConsentState};
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::validate::BannedWords;
@@ -92,6 +93,11 @@ impl ComfortPort for ShellPort {
 
     fn dnd(&self) -> bool {
         crate::fullscreen::foreground_fullscreen()
+    }
+
+    fn muted_until(&self) -> Option<i64> {
+        let now = chrono::Utc::now().timestamp_millis();
+        comfort_feedback::muted_until(&self.app.state::<AppState>().db(), now)
     }
 
     fn recent_texts(&self) -> Vec<String> {
