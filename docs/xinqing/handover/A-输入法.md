@@ -4,7 +4,7 @@
 > 输入法里的心晴入口（菜单、工具栏、气泡）、温柔改写的核心一侧、DLL 全量按键时序、安装包、上游同步；
 > 另是 XQP 协议（`protocol/xqp.schema.json`、`crates/xqp`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.1 节。本文件随 A 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（A-11 第一部分：typer 打字脚本）
+> 最后更新：2026-10-04（A-11：typer 打字脚本与核心耗时埋点）
 
 ## 1. 任务状态
 
@@ -20,7 +20,7 @@
 | A-08 | 温柔改写（核心一侧） | 大部分完成 | [#18](https://github.com/young8290/xinqing-ime/pull/18)（已合并），`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 4 节 |
 | A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 暂不做 | — | 按 16 推荐的方案甲，FR-SEN-08 在 13 第 2.1 节降级清单第 1 项，提前降为 P2；团队改选别的方案再做。要改 C++（`wind_tsf/`） |
 | A-10 | 安装包、卸载 | **进行中** | 第一部分 [#24](https://github.com/young8290/xinqing-ime/pull/24)（已合并）：`config/app.toml`、`scripts/dev.ps1` 的 `Build-Hub`、`.github/workflows/xinqing-package.yml` | 见第 4 节 |
-| A-11 | typer 打字脚本、兼容矩阵测试支援 | **进行中** | 第一部分：`tools/typer`（[README](../../../tools/typer/README.md)） | 核心侧还没有每键处理耗时的埋点，TC-PERF-01 出不了数；`typer run` 没在真机上跑过；兼容矩阵与 TC-RWR-09 要真机 |
+| A-11 | typer 打字脚本、兼容矩阵测试支援 | **进行中** | `tools/typer`（[README](../../../tools/typer/README.md)）；核心耗时埋点 `wind-coordinator/src/xinqing/perf.rs` | `typer run` 与埋点都没在真机上跑过，TC-PERF-01、TC-STA-04 还没出数；兼容矩阵与 TC-RWR-09 要真机 |
 | A-12 | 每 2 周上游同步 | 未开始 | 基线 `xinqing/base` = `df6f966`，`upstream` 远端已设 | 步骤见 [identity.md](../identity.md)；2026-10-04 查过，上游 main 仍是 `df6f966`，没有要合的 |
 
 ## 2. 代码地图（A 负责的部分）
@@ -37,6 +37,7 @@ wind_input/crates/wind-xinqing-tap/ 核心侧 XQP 服务端（进程级单例 Ta
 wind_input/crates/wind-coordinator/
 ├─ src/xinqing.rs                   钩子接线、菜单、工具栏格、气泡、下行分派
 ├─ src/xinqing/rewrite.rs           温柔改写模式
+├─ src/xinqing/perf.rs              dev 构建的按键与钩子耗时埋点（NFR-PERF-01）
 └─ tests/xinqing_tap.rs             端到端测试（测试扮演 Hub，A-04～A-08 全在这一个测试里）
 wind_input/crates/wind-config/      [xinqing] 配置段、热键动作 xinqing_pause / xinqing_rewrite
 wind_input/crates/wind-ui(-types)/  工具栏天气格与 weather_*.svg
@@ -112,7 +113,7 @@ Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrit
 1. A-10 剩余：WebView2、应用标识、完成页与许可页文案（要先定 wind-installer 怎么改）；在真机上试装一次 Actions 产出的安装包；
 2. A-08 收尾：首次使用说明的归属定下来后实现；与 C 联调真实的 `rewrite_result`；
 3. 真机验证清单（需要有 Windows 的组员）：并装、命名管道、改写替换（含 emoji 和扩展区汉字）、锁屏与 UAC、工具栏；
-4. A-11 剩余：核心侧按键处理耗时埋点（TC-PERF-01）、真机跑 `typer run`、兼容矩阵；A-12 每两周查一次上游。
+4. A-11 剩余：真机上用 typer 跑 TC-PERF-01、TC-STA-04 出数，兼容矩阵；A-12 每两周查一次上游。
 
 ## 9. 修订记录
 
@@ -122,3 +123,4 @@ Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrit
 | 2026-10-04 | A-08 已合并；安全桌面闸门；A-09 按方案甲暂不做 |
 | 2026-10-04 | A-10 第一部分：Hub 进安装包、开始菜单快捷方式、卸载结束 Hub 与删除心晴数据、试装用的打包流水线 |
 | 2026-10-04 | A-10 第一部分已合并，安装器缺项定为 fork wind-installer；A-11 第一部分：`tools/typer`；A-12 查过上游无更新 |
+| 2026-10-04 | A-11：核心耗时埋点（dev 构建，每 2,000 键记一行汇总） |
