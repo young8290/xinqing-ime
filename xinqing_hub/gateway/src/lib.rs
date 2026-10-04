@@ -13,6 +13,7 @@ mod http;
 mod jev;
 mod llm;
 mod metrics;
+mod secrets;
 mod sse;
 
 use std::sync::{Arc, Mutex};
@@ -32,6 +33,7 @@ pub use config::{
 pub use error::BuildError;
 pub use llm::{ModelProbe, ModelStatus};
 pub use metrics::ApiMetrics;
+pub use secrets::{AiSecrets, JevSecret, LlmSecret, MaskedSecrets, MaskedSide, SecretsError};
 
 use jev::JevClient;
 use llm::LlmClient;
@@ -78,6 +80,13 @@ impl HttpGateway {
         };
         gw.publish_health();
         Ok(gw)
+    }
+
+    /// 换配置（设置页保存地址与密钥）时接过旧网关的今日用量和上限，重新保存不会把预算清零（FR-AIG-07）。
+    pub fn inherit_budget(self, old: &HttpGateway) -> Self {
+        let b = old.budget.lock().unwrap().clone();
+        *self.budget.lock().unwrap() = b;
+        self
     }
 
     /// 出网日志交给 Hub 写入 `net_log`（09 D-20）。只能设置一次。
@@ -143,6 +152,19 @@ impl HttpGateway {
     pub fn budget_used(&self, kind: BudgetKind) -> u32 {
         let today = self.shared.clock.now().date_naive();
         self.budget.lock().unwrap().used(kind, today)
+    }
+
+    /// 今日上限（FR-SET-08），未覆盖时为产品书默认值。
+    pub fn budget_cap(&self, kind: BudgetKind) -> u32 {
+        self.budget.lock().unwrap().cap(kind)
+    }
+
+    /// 两侧各自是否配置了（不论现在是否可用）。没配置的一侧不刷新模型列表、不测试连接。
+    pub fn configured(&self) -> GatewayHealth {
+        GatewayHealth {
+            jev: self.jev.is_some(),
+            llm: self.llm.is_some(),
+        }
     }
 
     /// 设置 `ai.daily_caps` 改动后调用。
@@ -215,6 +237,30 @@ mod tests {
         assert_eq!(gw.judge(req).await.unwrap_err(), AiError::ModelUnavailable);
         assert_eq!(gw.budget_used(BudgetKind::Jev), 0, "没发请求不占预算");
         assert!(gw.test_connection().await.is_empty());
+        assert_eq!(gw.configured(), GatewayHealth::default());
+        assert_eq!(gw.budget_cap(BudgetKind::Jev), 3000);
+    }
+
+    #[tokio::test]
+    async fn reconfigured_gateway_keeps_todays_usage() {
+        let cfg = GatewayConfig {
+            jev: Some(JevConfig::new("http://127.0.0.1:9")),
+            ..Default::default()
+        };
+        let old = HttpGateway::new(cfg.clone(), Arc::new(SystemClock)).unwrap();
+        old.set_cap(BudgetKind::Jev, 1);
+        let req = || JudgeRequest {
+            questions: vec![xinqing_hub_core::infra::gateway::Question::State],
+            ..Default::default()
+        };
+        // 端口 9 没有服务，请求失败，但额度已经占用
+        let _ = old.judge(req()).await;
+        let new = HttpGateway::new(cfg, Arc::new(SystemClock))
+            .unwrap()
+            .inherit_budget(&old);
+        assert_eq!(new.budget_used(BudgetKind::Jev), 1);
+        assert_eq!(new.budget_cap(BudgetKind::Jev), 1);
+        assert_eq!(new.judge(req()).await.unwrap_err(), AiError::BudgetExceeded);
     }
 
     #[test]

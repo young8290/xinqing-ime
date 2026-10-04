@@ -1,6 +1,8 @@
 //! 前端 → 后端命令（10 第 5.1 节）。所有命令返回 `Result<T, UiError>`；
 //! 这里只做取参 → 调领域服务 → 推送事件，不写业务规则。
 
+pub mod ai;
+
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
 use xinqing_hub_core::bus::HubEvent;

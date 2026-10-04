@@ -36,15 +36,58 @@ export const commands = {
 	consentSet: (item: ConsentItem, granted: boolean) => typedError<ConsentState, UiError>(__TAURI_INVOKE("consent_set", { item, granted })),
 	/**  必须是 async：同步命令跑在主线程，在 Windows 上同步命令里建窗口会死锁（wry#583）。 */
 	openWindow: (target: WindowTarget) => typedError<null, UiError>(__TAURI_INVOKE("open_window", { target })),
+	aiConfigGet: () => typedError<AiConfigView, UiError>(__TAURI_INVOKE("ai_config_get")),
+	/**  保存 AI 服务地址与密钥（FR-AIG-06）并立即换用新配置，返回保存后的样子。 */
+	secretsSet: (config: AiConfigInput) => typedError<AiConfigView, UiError>(__TAURI_INVOKE("secrets_set", { config })),
+	/**  逐个模型发一条最小请求，返回可用性和延迟（FR-AIG-04 第 4 条）。没配置大模型时为空列表。 */
+	aiTestConnection: () => typedError<ModelProbeView[], UiError>(__TAURI_INVOKE("ai_test_connection")),
+	aiUsageToday: () => typedError<UsageRow[], UiError>(__TAURI_INVOKE("ai_usage_today")),
 };
 
 /** Events */
 export const events = {
+	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
 	statusChanged: makeEvent<StatusChanged>("status:changed"),
 };
 
 /* Types */
+/**  设置页保存的内容。某一侧为 `null` 表示清除这一侧；`api_key` 为 `null` 或空字符串表示沿用已保存的密钥。 */
+export type AiConfigInput = {
+	jev: JevInput | null,
+	llm: LlmInput | null,
+};
+
+/**  当前 AI 配置从哪里来。 */
+export type AiConfigSource = 
+/**  设置页保存的 */
+"saved" | 
+/**  开发版读到了仓库根目录的 secrets.toml */
+"dev_file" | 
+/**  开发版连本机 mock-ai */
+"dev_mock" | 
+/**  没有配置，离线模式 */
+"none";
+
+/**  设置页“AI 服务”展示的内容：地址、模型和密钥末 4 位，不含密钥本身。 */
+export type AiConfigView = {
+	source: AiConfigSource,
+	jev: JevView | null,
+	llm: LlmView | null,
+};
+
+export type BudgetKind = 
+/**  Jev 调用 */
+"jev" | 
+/**  大模型调用（不含对话） */
+"llm" | 
+/**  对话轮数 */
+"chat_turn" | 
+/**  日程初筛命中的句子 */
+"schedule_prefilter" | 
+/**  温柔改写 */
+"rewrite";
+
 export type ConsentEntry = {
 	item: ConsentItem,
 	granted: boolean,
@@ -91,6 +134,52 @@ export type Explanation = {
 export type FeedbackTarget = 
 /**  一条状态记录（`mood_state`） */
 "mood_state";
+
+/**  两侧是否可用；也是 `gateway:health` 事件的载荷（10 第 5.2 节）。 */
+export type GatewayHealth = {
+	jev: boolean,
+	llm: boolean,
+};
+
+/**  `gateway:health`：Jev 与大模型两侧是否可用（`{jev, llm}`），任一侧不可用时小组件显示“离线”角标。 */
+export type GatewayHealthChanged = GatewayHealth;
+
+export type JevInput = {
+	base_url: string,
+	api_key: string | null,
+	/**  为 `null` 时用 `jev-latest` */
+	model: string | null,
+};
+
+export type JevView = {
+	base_url: string,
+	/**  例如 `••••a1b2`；没有密钥时为 `null` */
+	key_tail: string | null,
+	model: string,
+};
+
+export type LlmInput = {
+	base_url: string,
+	api_key: string | null,
+	/**  按优先级排列；为空时用默认模型 */
+	models: string[],
+};
+
+export type LlmView = {
+	base_url: string,
+	key_tail: string | null,
+	/**  按优先级排列 */
+	models: string[],
+};
+
+/**  “测试连接”里一个模型的结果（FR-AIG-04 第 4 条）。 */
+export type ModelProbeView = {
+	model: string,
+	ok: boolean,
+	latency_ms: number,
+	/**  `ok`、HTTP 状态码或 `timeout` / `network` 等错误类别 */
+	status: string,
+};
 
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
@@ -160,6 +249,13 @@ export type UiError = {
 	code: string,
 	/**  `hub_templates/ui_copy.toml` 里的文案键，前端据此显示提示 */
 	message_key: string,
+};
+
+/**  今日用量的一行（FR-AIG-07、FR-SET-08）。 */
+export type UsageRow = {
+	kind: BudgetKind,
+	used: number,
+	cap: number,
 };
 
 /**  “准 / 不准”（`feedback.verdict`）。 */

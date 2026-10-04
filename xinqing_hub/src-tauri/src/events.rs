@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri_specta::Event;
 use xinqing_hub_core::domain::status::StatusSnapshot;
+use xinqing_hub_core::infra::gateway::GatewayHealth;
 
 /// `status:changed`：载荷同 `get_status`。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -16,3 +17,8 @@ pub struct StatusChanged(pub StatusSnapshot);
 pub struct SettingsChanged {
     pub key: String,
 }
+
+/// `gateway:health`：Jev 与大模型两侧是否可用（`{jev, llm}`），任一侧不可用时小组件显示“离线”角标。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "gateway:health")]
+pub struct GatewayHealthChanged(pub GatewayHealth);

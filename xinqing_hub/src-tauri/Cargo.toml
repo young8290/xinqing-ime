@@ -37,4 +37,10 @@ anyhow.workspace = true
 chrono.workspace = true
 tokio.workspace = true
 async-trait = "0.1"
+futures = "0.3"
+zeroize = "1"
 dirs = "6"
+
+[target.'cfg(windows)'.dependencies]
+# DPAPI 加密保存 AI 密钥（FR-AIG-06）
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
