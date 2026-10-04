@@ -20,7 +20,7 @@
 | E-05 | 用户研究（招募、知情同意、7 天试用、分析） | 未开始（需要人） | 知情同意书：21 第 2 节 | 计划 W8 招募（R-11） |
 | E-06 | 隐私说明、用户手册、运维手册定稿 | 未开始 | 初稿：21、19、20 | 计划 W10，功能冻结后按实现核对 |
 | E-07 | 测试报告、验收演示材料与演练 | 未开始 | 模板：18 第 4 节 | 计划 W12，`docs/test/report.md` |
-| E-08 | 内容资产评审：危机词表、禁用词表、文案 | **E 已评审，待第二评审人** | 评审记录 `docs/xinqing/reviews/2026-10-04-E-08-内容资产评审.md`；词表 v2、禁用词表 v2、扩充集 `eval/datasets/e_crisis_ext.jsonl`：本 PR | 第二评审人确认前两份文件仍不得用于试用；真正的留出集要由没看过词表的人写；`ui_copy.toml` 只评了 `[safety]`（通过），其余待 D 与 E 共同评审 |
+| E-08 | 内容资产评审：危机词表、禁用词表、文案 | **E 已评审，待第二评审人** | 评审记录 `docs/xinqing/reviews/2026-10-04-E-08-内容资产评审.md`；词表 v2、禁用词表 v2、扩充集 `eval/datasets/e_crisis_ext.jsonl`：[xinqing-ime#28](https://github.com/young8290/xinqing-ime/pull/28)，产品书 [xinqing#8](https://github.com/young8290/xinqing/pull/8) | 第二评审人确认前两份文件仍不得用于试用；真正的留出集要由没看过词表的人写；`ui_copy.toml` 只评了 `[safety]`（通过），其余待 D 与 E 共同评审 |
 | （C-02） | mock-ai | 已由 C 完成 | `tools/mock-ai/` | 16 第 3 节建议移给 E，已经做完，不再移；后续加故障场景由测试驱动，E 提需求 |
 
 ## 2. 代码地图（E 负责的部分）
