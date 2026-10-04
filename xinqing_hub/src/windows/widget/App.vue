@@ -2,10 +2,10 @@
 // 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动吸附、
 // 右键菜单、贴边隐藏、悬停状态行显示解释。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
 // （进度见 docs/xinqing/handover/D-前端与视觉.md）。
-import { computed, onMounted, ref, toRef } from 'vue'
+import { computed, nextTick, onMounted, ref, toRef } from 'vue'
 import { LogicalPosition, getCurrentWindow } from '@tauri-apps/api/window'
 import { Menu } from '@tauri-apps/api/menu'
-import { commands, unwrap } from '@/api'
+import { commands, unwrap, type Verdict } from '@/api'
 import ExplainPanel from '@/components/ExplainPanel.vue'
 import WeatherSprite from '@/components/WeatherSprite.vue'
 import WeatherStage from '@/components/WeatherStage.vue'
@@ -33,6 +33,36 @@ const menuOpen = ref(false)
 
 const place = useWidgetWindow({ autohide, topmost, holdOpen: menuOpen })
 const explain = useExplain(toRef(status, 'snapshot'))
+const panel = ref<{ $el: HTMLElement } | null>(null)
+
+const statusEl = ref<HTMLElement | null>(null)
+const thanksEl = ref<HTMLElement | null>(null)
+// 投票后按钮换成致谢：被删掉的按钮如果有焦点，会发一个 relatedTarget 为空的 focusout，这期间不算离开
+let swapping = false
+
+/** 焦点在状态行与面板里的按钮之间移动不算离开；移出这两处才收起 */
+function onFocusOut(e: FocusEvent): void {
+  if (swapping) return
+  const to = e.relatedTarget
+  if (to instanceof Node && (statusEl.value?.contains(to) || panel.value?.$el.contains(to))) return
+  explain.close()
+}
+
+/** “准 / 不准”（FR-STA-07）：记到最近一条状态记录（即当前显示的状态），“不准”会让后端上调个人阈值 */
+async function vote(verdict: Verdict): Promise<void> {
+  try {
+    await unwrap(commands.submitFeedback('mood_state', null, verdict))
+    const hadFocus = panel.value?.$el.contains(document.activeElement) ?? false
+    swapping = true
+    explain.voted.value = true
+    await nextTick()
+    swapping = false
+    // 焦点原来在按钮上（键盘用户）：交给致谢那句，Esc 照样能收起面板
+    if (hadFocus) thanksEl.value?.focus()
+  } catch (e) {
+    message.value = errorText(e)
+  }
+}
 
 onMounted(async () => {
   void place.start()
@@ -141,6 +171,7 @@ function onPointerUp(): void {
       <div class="content">
         <!-- 悬停或键盘聚焦时显示解释（FR-WGT-06、FR-STA-09）；面板盖住整列，标题行接替状态行 -->
         <p
+          ref="statusEl"
           class="status"
           :class="{ 'with-badge': status.snapshot?.offline }"
           tabindex="0"
@@ -149,19 +180,36 @@ function onPointerUp(): void {
           @pointerenter="explain.hover"
           @pointerleave="explain.leave"
           @focus="explain.open"
-          @blur="explain.close"
+          @focusout="onFocusOut"
         >
           {{ line?.text }}
         </p>
         <ExplainPanel
           v-if="explain.lines.value"
           id="xq-explain"
+          ref="panel"
           class="explain-panel"
           role="tooltip"
           :lines="explain.lines.value"
           @pointerenter="explain.hover"
           @pointerleave="explain.leave"
-        />
+          @focusout="onFocusOut"
+        >
+          <template #actions>
+            <span v-if="explain.voted.value" ref="thanksEl" class="voted" role="status" tabindex="-1">{{
+              t('widget.feedback.thanks')
+            }}</span>
+            <!-- 按钮上按下不算“单击小组件打开对话”，也不开始拖动 -->
+            <div v-else class="vote" role="group" :aria-label="t('widget.feedback.label')" @pointerdown.stop>
+              <button class="compact" @click.stop="vote('fit')" @keydown.enter.stop>
+                {{ t('widget.feedback.fit') }}
+              </button>
+              <button class="compact" @click.stop="vote('unfit')" @keydown.enter.stop>
+                {{ t('widget.feedback.unfit') }}
+              </button>
+            </div>
+          </template>
+        </ExplainPanel>
         <!-- FR-WGT-04：最多 2 行，悬停显示全文 -->
         <p class="message" :title="message">{{ message }}</p>
         <footer class="footer" />
@@ -216,7 +264,6 @@ body {
 }
 
 .content {
-  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -234,12 +281,34 @@ body {
   text-overflow: ellipsis;
 }
 
-/* 解释面板盖住右侧整列（宽约 180 px、高 134 px，最多 3 条说明加两行附注刚好放下）；开着时不显示离线角标 */
+/*
+ * 解释面板盖住卡片的整个内容区（约 286 × 134 px）：最多 3 条说明、两行附注再加 32 px 高的“准 / 不准”
+ * 只有这么宽才放得下（只盖右侧那一列时高度不够）。开着时不显示离线角标。
+ */
 .explain-panel {
   position: absolute;
-  inset: 0;
+  inset: var(--xq-sp-4);
   z-index: 1;
   background: var(--xq-surface);
+}
+
+.vote {
+  display: flex;
+  flex: none;
+  gap: var(--xq-sp-1);
+}
+
+/* 仍守 32 × 32 的点击目标（DS-A11Y-03），只收窄左右留白 */
+.compact {
+  padding: 0 var(--xq-sp-2);
+  font-size: var(--xq-fs-xs);
+}
+
+.voted {
+  flex: none;
+  color: var(--xq-text-2);
+  font-size: var(--xq-fs-xs);
+  line-height: var(--xq-lh-xs);
 }
 
 /* 只在有离线角标时给它让出位置，平时状态行用满整行 */

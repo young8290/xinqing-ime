@@ -44,6 +44,12 @@ dashboard = "打开看板"
 settings = "设置"
 hide = "隐藏小组件"
 
+[widget.feedback]            # 解释面板里的“准 / 不准”（04 FR-STA-07）
+label = "这个判断准吗"
+fit = "准"
+unfit = "不准"
+thanks = "谢谢，我记下了"
+
 [self_report.options]
 sunny = "☀️ 挺好"
 cloudy = "⛅ 有点犹豫"
