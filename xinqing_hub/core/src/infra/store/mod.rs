@@ -6,7 +6,10 @@ use std::path::Path;
 
 use rusqlite::{Connection, OptionalExtension, params};
 
+use xqp::MoodState;
+
 use crate::domain::features::WindowFeatures;
+use crate::domain::fusion::Source;
 use crate::domain::rules::Hints;
 use crate::infra::gateway::NetLogEntry;
 use crate::infra::templates::AppCat;
@@ -87,6 +90,27 @@ impl Db {
     ) -> Result<i64, StoreError> {
         let v = serde_json::to_value(f)?;
         insert_window_json(&self.conn, start_ts, end_ts, app_cat, &v, &hints.joined())
+    }
+
+    /// 写一条状态记录（D-07）。`state` 是本窗口的候选状态，`shown` 是融合后实际显示的状态；
+    /// 只有本地规则时 `source = rule`，Jev 的概率、效价等列留空。
+    pub fn insert_mood_state(
+        &self,
+        ts: i64,
+        window_id: Option<i64>,
+        state: MoodState,
+        shown: MoodState,
+        source: Source,
+    ) -> Result<i64, StoreError> {
+        let source = match source {
+            Source::Jev => "jev",
+            Source::Rule => "rule",
+        };
+        self.conn.execute(
+            "INSERT INTO mood_state (ts, window_id, state, shown_state, source) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![ts, window_id, state.as_str(), shown.as_str(), source],
+        )?;
+        Ok(self.conn.last_insert_rowid())
     }
 
     pub fn settings_get(&self, key: &str) -> Result<Option<String>, StoreError> {
@@ -266,6 +290,37 @@ mod tests {
             )
             .unwrap();
         assert!(id > 0);
+    }
+
+    #[test]
+    fn mood_state_links_to_window() {
+        let db = Db::open_in_memory().unwrap();
+        let w = db
+            .insert_window(
+                0,
+                1,
+                AppCat::Chat,
+                &WindowFeatures::default(),
+                &Hints::default(),
+            )
+            .unwrap();
+        db.insert_mood_state(
+            1,
+            Some(w),
+            MoodState::Hesitant,
+            MoodState::Fluent,
+            Source::Rule,
+        )
+        .unwrap();
+        let row: (i64, String, String, String) = db
+            .conn()
+            .query_row(
+                "SELECT window_id, state, shown_state, source FROM mood_state",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(row, (w, "hesitant".into(), "fluent".into(), "rule".into()));
     }
 
     #[test]

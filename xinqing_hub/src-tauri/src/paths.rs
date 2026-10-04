@@ -21,3 +21,22 @@ pub fn hub_data_dir() -> anyhow::Result<PathBuf> {
     let base = dirs::data_local_dir().ok_or_else(|| anyhow::anyhow!("找不到本地应用数据目录"))?;
     Ok(base.join(app_dir_name()).join("hub"))
 }
+
+/// 可用环境变量指定出厂模板目录（演示、测试时用）。
+pub const TEMPLATES_ENV: &str = "XQ_HUB_TEMPLATES";
+
+/// 出厂模板目录：环境变量 → 可执行文件旁的 `hub_templates/`（安装包放在这里，A-10）
+/// → 调试构建时仓库里的 `hub_templates/`。
+pub fn templates_dir() -> Option<PathBuf> {
+    if let Some(dir) = std::env::var_os(TEMPLATES_ENV) {
+        return Some(PathBuf::from(dir));
+    }
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|d| d.join("hub_templates")));
+    if let Some(d) = beside.filter(|d| d.is_dir()) {
+        return Some(d);
+    }
+    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates");
+    (cfg!(debug_assertions) && repo.is_dir()).then_some(repo)
+}

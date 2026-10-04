@@ -6,6 +6,7 @@
 - 生成的文件（不要手改，CI 会核对）：
   - `src/api/bindings.ts`：命令与事件的 TypeScript 封装，`pnpm gen:bindings`（即 `cargo run -p xinqing-hub --bin export-bindings`）；
   - `src/i18n/zh-CN.ts`：界面文案表，`pnpm gen:i18n`，来源是 `hub_templates/ui_copy.toml` 和 `explain.toml`。窗口标题也要和 `ui_copy.toml` 的 `window.*` 一致。
+- 连接输入法：启动后作为 XQP 客户端连接核心（10 第 2 节），Windows 上是命名管道 `xinqing_tap`（调试构建 `xinqing_tap_dev`）；设置环境变量 `XQ_XQP_TCP=127.0.0.1:18765` 时改连 `xq-sim --tcp`，任何平台都能这样联调。出厂模板默认从可执行文件旁的 `hub_templates/` 读取，调试构建回退到仓库根目录，也可用 `XQ_HUB_TEMPLATES` 指定。
 - 数据目录：`%LOCALAPPDATA%\XinQing\hub\`（调试构建为 `XinQingDev`）；设置环境变量 `XQ_HUB_DATA_DIR` 可指到别处，演示和测试时不碰真实数据。
 - 图标：`src-tauri/icons/` 是几何占位（`python3 tools/gen_hub_icons.py` 生成），正式设计稿到位后直接覆盖。
 
@@ -19,6 +20,13 @@ pnpm tauri dev            # 热重载开发；首次运行会打开引导窗口
 pnpm lint                 # ESLint + Prettier + vue-tsc
 pnpm test                 # Vitest（单次运行；边改边测用 pnpm vitest）
 pnpm tauri build --no-bundle   # 只出 xinqing_hub.exe，不打安装包（03 第 7 节）
+```
+
+不装输入法也能看到状态变化：先启动模拟器，再带环境变量启动 Hub（Windows 上去掉 `--tcp` 和环境变量即走命名管道）：
+
+```bash
+cargo run -p xq-sim -- --script tools/xq-sim/scripts/hesitant.jsonl --speed 5 --tcp 127.0.0.1:18765
+XQ_XQP_TCP=127.0.0.1:18765 pnpm tauri dev
 ```
 
 只看界面不需要后端时，`pnpm dev` 后在浏览器打开 `http://localhost:1420/widget/index.html` 等页面（命令调用会失败，界面按默认值显示）。

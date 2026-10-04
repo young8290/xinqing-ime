@@ -3,16 +3,18 @@
 
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
+use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
 
 use crate::error::UiError;
 use crate::events::{SettingsChanged, StatusChanged};
+use crate::sensing::Sensing;
 use crate::state::AppState;
 use crate::windows::{self, WindowTarget};
 
-fn emit_status(app: &AppHandle, snap: StatusSnapshot) {
+pub(crate) fn emit_status(app: &AppHandle, snap: StatusSnapshot) {
     if let Err(e) = StatusChanged(snap).emit(app) {
         eprintln!("推送 status:changed 失败：{e}");
     }
@@ -24,14 +26,11 @@ pub fn get_status(state: State<'_, AppState>) -> Result<StatusSnapshot, UiError>
     Ok(state.status())
 }
 
-/// 暂停 / 恢复感知（FR-WGT-06 右键菜单）。连上输入法后还要经 XQP 下发，见 C-02。
+/// 暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。
 #[tauri::command]
 #[specta::specta]
-pub fn pause_set(app: AppHandle, state: State<'_, AppState>, on: bool) -> Result<(), UiError> {
-    let (snap, changed) = state.update_status(|s| StatusSnapshot::set(&mut s.paused, on));
-    if changed {
-        emit_status(&app, snap);
-    }
+pub fn pause_set(app: AppHandle, sensing: State<'_, Sensing>, on: bool) -> Result<(), UiError> {
+    sensing.pause(&app, on);
     Ok(())
 }
 
@@ -67,12 +66,17 @@ pub fn consent_get(state: State<'_, AppState>) -> Result<ConsentState, UiError> 
 #[specta::specta]
 pub fn consent_set(
     state: State<'_, AppState>,
+    sensing: State<'_, Sensing>,
     item: ConsentItem,
     granted: bool,
 ) -> Result<ConsentState, UiError> {
     let db = state.db();
     consent::set(&db, item, granted, chrono::Utc::now().timestamp_millis())?;
-    Ok(ConsentState::load(&db)?)
+    let now = ConsentState::load(&db)?;
+    // Hub 是同意状态的唯一真相源：每次变化都重新下发 cfg（10 第 2.5 节）
+    sensing.xqp.send(consent::xqp_cfg(&now));
+    let _ = sensing.bus.send(HubEvent::ConsentChanged);
+    Ok(now)
 }
 
 /// 必须是 async：同步命令跑在主线程，在 Windows 上同步命令里建窗口会死锁（wry#583）。

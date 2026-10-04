@@ -5489,6 +5489,7 @@ name = "xinqing-hub"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "dirs 6.0.0",
  "serde",
@@ -5500,6 +5501,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-specta",
  "thiserror 2.0.21",
+ "tokio",
  "xinqing-hub-core",
  "xqp",
 ]
