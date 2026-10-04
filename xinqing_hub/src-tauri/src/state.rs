@@ -9,6 +9,7 @@ use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::store::{Db, StoreError};
+use xqp::MoodState;
 
 use crate::error::UiError;
 
@@ -19,6 +20,8 @@ pub struct AppState {
     pub status: RwLock<StatusSnapshot>,
     /// 最近一次状态切换的解释（FR-STA-09），由感知任务写入，缓存到下一次切换。
     explanation: RwLock<Option<Explanation>>,
+    /// 自动判断最近一个窗口的显示状态（自评期间也照常更新），自评时记入 `self_report.auto_state`。
+    auto_state: RwLock<Option<MoodState>>,
     /// 本次启动时数据库损坏并已重建（FR-DAT-01）。界面提示 `error.db_rebuilt` 随小组件一句话区（D-02）接入
     #[allow(dead_code)]
     pub db_rebuilt: bool,
@@ -32,6 +35,7 @@ impl AppState {
             db: Mutex::new(db),
             status: RwLock::new(StatusSnapshot::default()),
             explanation: RwLock::new(None),
+            auto_state: RwLock::new(None),
             db_rebuilt,
         })
     }
@@ -67,6 +71,14 @@ impl AppState {
 
     pub fn set_explanation(&self, e: Explanation) {
         *self.explanation.write().unwrap_or_else(|e| e.into_inner()) = Some(e);
+    }
+
+    pub fn auto_state(&self) -> Option<MoodState> {
+        *self.auto_state.read().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_auto_state(&self, s: MoodState) {
+        *self.auto_state.write().unwrap_or_else(|e| e.into_inner()) = Some(s);
     }
 
     pub fn needs_onboarding(&self) -> Result<bool, UiError> {

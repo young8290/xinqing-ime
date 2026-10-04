@@ -5504,6 +5504,7 @@ dependencies = [
  "tokio",
  "xinqing-hub-core",
  "xqp",
+ "zeroize",
 ]
 
 [[package]]

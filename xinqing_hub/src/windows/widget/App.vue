@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动吸附、
-// 右键菜单、贴边隐藏。卡片层、底栏数据、悬停解释、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
+// 右键菜单、贴边隐藏、悬停状态行显示解释。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
 // （进度见 docs/xinqing/handover/D-前端与视觉.md）。
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, toRef } from 'vue'
 import { LogicalPosition, getCurrentWindow } from '@tauri-apps/api/window'
 import { Menu } from '@tauri-apps/api/menu'
 import { commands, unwrap } from '@/api'
+import ExplainPanel from '@/components/ExplainPanel.vue'
 import WeatherSprite from '@/components/WeatherSprite.vue'
 import WeatherStage from '@/components/WeatherStage.vue'
 import { errorText, t } from '@/i18n'
@@ -13,6 +14,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useStatusStore } from '@/stores/status'
 import { menuEntries, type MenuAction } from './menu'
 import { statusLine } from './statusLine'
+import { useExplain } from './useExplain'
 import { useWidgetWindow } from './useWidgetWindow'
 
 const status = useStatusStore()
@@ -30,6 +32,7 @@ const message = ref(t('greeting.idle'))
 const menuOpen = ref(false)
 
 const place = useWidgetWindow({ autohide, topmost, holdOpen: menuOpen })
+const explain = useExplain(toRef(status, 'snapshot'))
 
 onMounted(async () => {
   void place.start()
@@ -84,6 +87,8 @@ function onKeydown(e: KeyboardEvent): void {
     void openMenu(new LogicalPosition(16, 16))
   } else if (e.key === 'Enter') {
     void openChat()
+  } else if (e.key === 'Escape') {
+    explain.close()
   }
 }
 
@@ -134,19 +139,36 @@ function onPointerUp(): void {
     >
       <WeatherStage v-if="line" :weather="line.weather" :eyes-closed="line.eyesClosed" />
       <div class="content">
+        <!-- 悬停或键盘聚焦时显示解释（FR-WGT-06、FR-STA-09）；面板盖住整列，标题行接替状态行 -->
         <p
           class="status"
           :class="{ 'with-badge': status.snapshot?.offline }"
+          tabindex="0"
           aria-live="polite"
-          :title="line?.hint ?? undefined"
+          :aria-describedby="explain.lines.value ? 'xq-explain' : undefined"
+          @pointerenter="explain.hover"
+          @pointerleave="explain.leave"
+          @focus="explain.open"
+          @blur="explain.close"
         >
           {{ line?.text }}
         </p>
+        <ExplainPanel
+          v-if="explain.lines.value"
+          id="xq-explain"
+          class="explain-panel"
+          role="tooltip"
+          :lines="explain.lines.value"
+          @pointerenter="explain.hover"
+          @pointerleave="explain.leave"
+        />
         <!-- FR-WGT-04：最多 2 行，悬停显示全文 -->
         <p class="message" :title="message">{{ message }}</p>
         <footer class="footer" />
       </div>
-      <span v-if="status.snapshot?.offline" class="badge">{{ t('widget.offline_badge') }}</span>
+      <span v-if="status.snapshot?.offline && !explain.lines.value" class="badge">{{
+        t('widget.offline_badge')
+      }}</span>
     </main>
   </div>
 </template>
@@ -194,6 +216,7 @@ body {
 }
 
 .content {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -209,6 +232,14 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 解释面板盖住右侧整列（宽约 180 px、高 134 px，最多 3 条说明加两行附注刚好放下）；开着时不显示离线角标 */
+.explain-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--xq-surface);
 }
 
 /* 只在有离线角标时给它让出位置，平时状态行用满整行 */

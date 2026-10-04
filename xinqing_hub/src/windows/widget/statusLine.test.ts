@@ -13,16 +13,11 @@ const ready: StatusSnapshot = {
 }
 
 describe('statusLine', () => {
-  it('普通状态：天气图标 + 名称 + 不确定说法，概率只放在悬停提示里', () => {
+  it('普通状态：天气图标 + 名称 + 不确定说法，不显示概率（悬停才显示，DS-COPY-02）', () => {
     const l = statusLine(ready)
     expect(l.text).toBe('⛅ 多云 · 看起来有点犹豫')
     expect(l.text).not.toContain('80')
-    expect(l.hint).toBe('看起来有点犹豫（可能性 80%）')
     expect(l.eyesClosed).toBe(false)
-  })
-
-  it('没有概率时不显示百分比', () => {
-    expect(statusLine({ ...ready, prob: null }).hint).toBeNull()
   })
 
   it('特殊情形按优先级：暂停 > 未连接 > 冷启动', () => {
@@ -33,9 +28,8 @@ describe('statusLine', () => {
     expect(statusLine({ ...ready, baseline_progress: 38 }).text).toBe('正在熟悉你的打字习惯（38%）')
   })
 
-  it('特殊情形下不给概率提示，天气保持不变', () => {
+  it('特殊情形下天气保持不变', () => {
     const l = statusLine({ ...ready, paused: true })
-    expect(l.hint).toBeNull()
     expect(l.weather).toBe('cloudy')
   })
 })
