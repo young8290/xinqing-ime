@@ -1,0 +1,55 @@
+# 心晴 · 状态解释文案（FR-STA-09、DS-COPY-11）
+# 全部本地生成，不调用 AI。只描述打字节奏的客观变化，不推测原因、不评价用户；
+# 禁止出现任何文字内容、应用名和诊断性词语（banned_words.toml）。
+# 变量：{p} 百分比（round(|x/med − 1| × 100)），{n} 次数，{m} 分钟。
+# 版本：v1（初稿，2026-10-04），状态：待评审
+
+version = 1
+
+# 一、信号说明（按 FR-STA-09 表格；条件由代码判断，这里只放文案）
+[signal.kpm_slow]
+text = "打字速度比平时慢 {p}%"
+[signal.kpm_fast]
+text = "打字速度比平时快 {p}%"
+[signal.iki_long]
+text = "按键之间的间隔比平时长"
+[signal.iki_messy]
+text = "打字节奏比平时乱"
+[signal.pause]
+text = "句子中间停顿了 {n} 次"
+[signal.abandon]
+text = "有一段话打了又删"
+[signal.delete_committed]
+text = "删掉了已经打出来的 {n} 个字"
+[signal.bs_more]
+text = "删改比平时多"
+[signal.typo]
+text = "手误了 {n} 次"
+[signal.page_flips]
+text = "选词时翻了 {n} 页"
+[signal.session]
+text = "已经连续打了 {m} 分钟"
+[signal.late]
+text = "现在已经很晚了"
+
+# 二、不确定说法（DS-COPY-02，状态 → 前缀）
+[hedge]
+fluent = "看起来挺顺的"
+hesitant = "看起来有点犹豫"
+low = "看起来有点低落"
+agitated = "看起来有点急"
+tired = "可能有点累了"
+
+# 三、来源与附注
+[source]
+jev = "AI 根据打字节奏判断，可能不准"
+rule = "本地规则判断（离线）"
+self = "你说的"
+[note]
+cold_start = "还在熟悉你的习惯，判断可能不准"
+no_signal = "节奏和平时差不多"     # 回到 fluent 且没有显著信号时使用，保证 KPI-10“至少一条说明”
+
+# 四、格式：{hedge}（可能性 {prob}%）· {说明1} · {说明2} · {说明3}｜{source}
+format = "{hedge}（可能性 {prob}%）· {signals}｜{source}"
+separator = " · "
+max_signals = 3

@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xinqing.local/protocol/xqp.schema.json",
+  "title": "XQP v1（核心 ↔ Hub）",
+  "description": "心晴 XQP 协议 v1 契约，对应产品书 10 第 2 节。帧格式：u32 大端长度 + UTF-8 JSON，单帧 ≤ 64 KiB。接口变更规则：只允许新增可选字段或新增消息类型；删除或改语义必须升级主版本。核心、Hub、xq-sim 三方以本文件为准。",
+  "anyOf": [{ "$ref": "#/$defs/up" }, { "$ref": "#/$defs/down" }],
+  "$defs": {
+    "ts": { "type": "integer", "minimum": 0, "description": "毫秒，相对本次会话开始的单调时间（上行必填）" },
+    "seq": { "type": "integer", "minimum": 1, "maximum": 4294967295, "description": "上行序号，从 1 递增；跳号表示有丢弃" },
+    "req_id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "style": { "type": "string", "enum": ["gentle", "polite", "concise", "structured"], "description": "FR-RWR-02：更温和 / 更礼貌得体 / 更简洁 / 更有条理" },
+
+    "up": {
+      "description": "上行消息（核心 → Hub）。回放脚本 tools/xq-sim/scripts/*.jsonl 每行一条上行消息，seq 可省略（由 xq-sim 补齐）。",
+      "oneOf": [
+        { "$ref": "#/$defs/up_hello" },
+        { "$ref": "#/$defs/up_key" },
+        { "$ref": "#/$defs/up_key_up" },
+        { "$ref": "#/$defs/up_comp" },
+        { "$ref": "#/$defs/up_cand" },
+        { "$ref": "#/$defs/up_commit" },
+        { "$ref": "#/$defs/up_focus" },
+        { "$ref": "#/$defs/up_ime" },
+        { "$ref": "#/$defs/up_pause_changed" },
+        { "$ref": "#/$defs/up_open" },
+        { "$ref": "#/$defs/up_hb" },
+        { "$ref": "#/$defs/up_rewrite_req" },
+        { "$ref": "#/$defs/up_rewrite_done" },
+        { "$ref": "#/$defs/bye" }
+      ]
+    },
+    "down": {
+      "description": "下行消息（Hub → 核心）",
+      "oneOf": [
+        { "$ref": "#/$defs/down_hello" },
+        { "$ref": "#/$defs/down_cfg" },
+        { "$ref": "#/$defs/down_pause" },
+        { "$ref": "#/$defs/down_mood" },
+        { "$ref": "#/$defs/down_badge" },
+        { "$ref": "#/$defs/down_tip" },
+        { "$ref": "#/$defs/down_pending" },
+        { "$ref": "#/$defs/down_rewrite_result" },
+        { "$ref": "#/$defs/down_rewrite_fail" },
+        { "$ref": "#/$defs/bye" }
+      ]
+    },
+
+    "up_hello": {
+      "type": "object",
+      "required": ["t", "v", "ime_ver", "session", "caps"],
+      "properties": {
+        "t": { "const": "hello" },
+        "v": { "type": "integer", "minimum": 1 },
+        "ime_ver": { "type": "string" },
+        "session": { "type": "string" },
+        "caps": { "type": "array", "items": { "type": "string", "enum": ["core_keys", "tsf_trace"] } }
+      }
+    },
+    "up_key": {
+      "description": "FR-SEN-01/08。vk 仅 letter/backspace 时出现；带修饰键的组合只记 kind=other。",
+      "type": "object",
+      "required": ["t", "ts", "kind", "in_comp", "src"],
+      "properties": {
+        "t": { "const": "key" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "type": "string", "enum": ["letter", "digit", "space", "enter", "backspace", "delete", "punct", "nav", "esc", "other"] },
+        "vk": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "in_comp": { "type": "boolean" },
+        "src": { "type": "string", "enum": ["core", "tsf"] },
+        "eaten": { "type": "boolean", "description": "仅 tsf 来源" },
+        "del_committed": { "type": "boolean", "description": "仅 tsf 来源：无组字时的退格（删除已上屏文字）" }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "not": { "enum": ["letter", "backspace"] } } } }, "then": { "not": { "required": ["vk"] } } }
+      ]
+    },
+    "up_key_up": {
+      "type": "object",
+      "required": ["t", "ts", "kind"],
+      "properties": {
+        "t": { "const": "key_up" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "type": "string", "enum": ["letter", "digit", "space", "enter", "backspace", "delete", "punct", "nav", "esc", "other"] },
+        "vk": { "type": "integer", "minimum": 0, "maximum": 255 }
+      }
+    },
+    "up_comp": {
+      "type": "object",
+      "required": ["t", "ts", "op"],
+      "properties": {
+        "t": { "const": "comp" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "op": { "type": "string", "enum": ["update", "cancel", "clear", "terminated"] },
+        "len": { "type": "integer", "minimum": 0, "maximum": 65535, "description": "编码长度，不含编码内容" }
+      }
+    },
+    "up_cand": {
+      "type": "object",
+      "required": ["t", "ts", "op"],
+      "properties": {
+        "t": { "const": "cand" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "op": { "type": "string", "enum": ["page", "select"] },
+        "pos": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "up_commit": {
+      "description": "FR-SEN-02。text 仅当 cfg.send_text = true；超过 500 字符截断并置 truncated。",
+      "type": "object",
+      "required": ["t", "ts", "chars", "keystrokes", "cand_pos", "src"],
+      "properties": {
+        "t": { "const": "commit" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "chars": { "type": "integer", "minimum": 0 },
+        "keystrokes": { "type": "integer", "minimum": 0 },
+        "cand_pos": { "type": "integer", "minimum": -1, "description": "-1 表示未知" },
+        "src": { "type": "string", "description": "沿用清风 CommitSource，如 candidate / punctuation / mode_switch" },
+        "text": { "type": "string", "maxLength": 500 },
+        "truncated": { "type": "boolean" }
+      }
+    },
+    "up_focus": {
+      "description": "FR-SEN-03/05。blocked = true 时不带 app。进程名只在 Hub 内存中用于分类，不落库不出网。",
+      "type": "object",
+      "required": ["t", "ts", "scope", "blocked"],
+      "properties": {
+        "t": { "const": "focus" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "app": { "type": "string" },
+        "scope": { "type": "string", "enum": ["normal", "password", "disabled"] },
+        "blocked": { "type": "boolean" }
+      },
+      "allOf": [
+        { "if": { "properties": { "blocked": { "const": true } } }, "then": { "not": { "required": ["app"] } } }
+      ]
+    },
+    "up_ime": {
+      "type": "object",
+      "required": ["t", "ts", "active", "chinese"],
+      "properties": {
+        "t": { "const": "ime" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "active": { "type": "boolean" },
+        "chinese": { "type": "boolean" }
+      }
+    },
+    "up_pause_changed": {
+      "type": "object",
+      "required": ["t", "ts", "on", "by"],
+      "properties": {
+        "t": { "const": "pause_changed" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "on": { "type": "boolean" },
+        "by": { "type": "string", "enum": ["menu", "hotkey"] }
+      }
+    },
+    "up_open": {
+      "type": "object",
+      "required": ["t", "ts", "target"],
+      "properties": {
+        "t": { "const": "open" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "target": { "type": "string", "enum": ["chat", "dashboard", "schedule", "settings", "onboarding"] }
+      }
+    },
+    "up_hb": {
+      "type": "object",
+      "required": ["t", "ts", "dropped", "queue"],
+      "properties": {
+        "t": { "const": "hb" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "dropped": { "type": "integer", "minimum": 0 },
+        "queue": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "up_rewrite_req": {
+      "description": "FR-RWR-01/02。replace_len 仅 recent 来源，单位 UTF-16 代码单元（14 第 10 节）。",
+      "type": "object",
+      "required": ["t", "ts", "req_id", "source", "text", "style"],
+      "properties": {
+        "t": { "const": "rewrite_req" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "req_id": { "$ref": "#/$defs/req_id" },
+        "source": { "type": "string", "enum": ["recent", "clipboard", "selection"] },
+        "text": { "type": "string", "maxLength": 300 },
+        "style": { "$ref": "#/$defs/style" },
+        "replace_len": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "up_rewrite_done": {
+      "description": "FR-RWR-04。不含文字。",
+      "type": "object",
+      "required": ["t", "ts", "req_id", "outcome"],
+      "properties": {
+        "t": { "const": "rewrite_done" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "req_id": { "$ref": "#/$defs/req_id" },
+        "chosen": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "outcome": { "type": "string", "enum": ["replaced", "inserted", "copied", "cancelled", "failed"] }
+      }
+    },
+    "bye": {
+      "type": "object",
+      "required": ["t", "reason"],
+      "properties": {
+        "t": { "const": "bye" },
+        "ts": { "$ref": "#/$defs/ts" },
+        "seq": { "$ref": "#/$defs/seq" },
+        "reason": { "type": "string", "enum": ["version", "disabled", "shutdown"] }
+      }
+    },
+
+    "down_hello": {
+      "type": "object",
+      "required": ["t", "v", "hub_ver"],
+      "properties": {
+        "t": { "const": "hello" },
+        "v": { "type": "integer", "minimum": 1 },
+        "hub_ver": { "type": "string" }
+      }
+    },
+    "down_cfg": {
+      "description": "Hub 是同意状态的唯一真相源。收到 collect=true 之前核心不发任何采集事件。",
+      "type": "object",
+      "required": ["t", "collect", "send_text", "rewrite"],
+      "properties": {
+        "t": { "const": "cfg" },
+        "collect": { "type": "boolean" },
+        "send_text": { "type": "boolean" },
+        "rewrite": { "type": "boolean" },
+        "app_blocklist": { "type": "array", "items": { "type": "string" } },
+        "app_allowlist": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "down_pause": {
+      "type": "object",
+      "required": ["t", "on"],
+      "properties": { "t": { "const": "pause" }, "on": { "type": "boolean" } }
+    },
+    "down_mood": {
+      "type": "object",
+      "required": ["t", "state", "offline"],
+      "properties": {
+        "t": { "const": "mood" },
+        "state": { "type": "string", "enum": ["fluent", "hesitant", "low", "agitated", "tired", "unknown"] },
+        "offline": { "type": "boolean" }
+      }
+    },
+    "down_badge": {
+      "type": "object",
+      "required": ["t", "on"],
+      "properties": { "t": { "const": "badge" }, "on": { "type": "boolean" } }
+    },
+    "down_tip": {
+      "type": "object",
+      "required": ["t", "text", "ms"],
+      "properties": {
+        "t": { "const": "tip" },
+        "text": { "type": "string", "maxLength": 16 },
+        "ms": { "type": "integer", "minimum": 1500, "maximum": 2500 }
+      }
+    },
+    "down_pending": {
+      "type": "object",
+      "required": ["t", "count"],
+      "properties": { "t": { "const": "pending" }, "count": { "type": "integer", "minimum": 0 } }
+    },
+    "down_rewrite_result": {
+      "type": "object",
+      "required": ["t", "req_id", "style", "cands"],
+      "properties": {
+        "t": { "const": "rewrite_result" },
+        "req_id": { "$ref": "#/$defs/req_id" },
+        "style": { "$ref": "#/$defs/style" },
+        "cands": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "type": "string" } }
+      }
+    },
+    "down_rewrite_fail": {
+      "type": "object",
+      "required": ["t", "req_id", "reason"],
+      "properties": {
+        "t": { "const": "rewrite_fail" },
+        "req_id": { "$ref": "#/$defs/req_id" },
+        "reason": { "type": "string", "enum": ["timeout", "invalid", "budget", "crisis", "no_consent", "offline"] }
+      }
+    }
+  }
+}

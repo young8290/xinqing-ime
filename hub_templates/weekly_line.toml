@@ -1,0 +1,26 @@
+# 心晴 · 周报一句话总结（FR-DSH-04）
+# 本地模板生成，不调用 AI。选取规则（按顺序，命中第一条即用）：
+#   late_tired：周内“低落/疲劳”最高频时段在 22:00 之后 → late_tired
+#   rest_high：休息完成率 ≥ 70% → rest_high
+#   rest_low：休息完成率 < 30% → rest_low
+#   sunny：流畅占比 ≥ 60% → sunny
+#   默认 → plain
+# 变量：{slot} 时段（如“周三晚上”），{rate} 百分比，{hour} 小时
+# 版本：v1（初稿，2026-10-04），状态：待评审
+
+version = 1
+
+[[late_tired]]
+text = "这周晚上 {hour} 点后更容易累，早点休息吧。"
+[[late_tired]]
+text = "{slot}好像特别累，那天可以早点收工。"
+[[rest_high]]
+text = "这周休息完成了 {rate}，照顾自己做得很好。"
+[[rest_low]]
+text = "这周休息提醒常常被跳过，下周试着多起来走走？"
+[[sunny]]
+text = "这周大多是晴天，继续保持自己的节奏。"
+[[plain]]
+text = "又过完了一周，辛苦了。"
+[[plain]]
+text = "这一周有起有落，都值得被记住。"

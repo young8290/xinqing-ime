@@ -1,0 +1,17 @@
+[package]
+name = "mock-ai"
+description = "模拟 Jev 与 OpenAI 兼容大模型接口，含各种故障场景（产品书 12 第 1.2 节、14 第 5 节）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+axum = "0.7"
+futures = "0.3"
+async-stream = "0.3"

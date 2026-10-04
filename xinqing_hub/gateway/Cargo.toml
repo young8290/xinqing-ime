@@ -1,0 +1,25 @@
+[package]
+name = "xinqing-hub-gateway"
+description = "心晴 AI 网关的 HTTP 实现：Jev 与 OpenAI 兼容大模型客户端（08 第 2 节）。领域层只依赖 core 里的 AiGateway trait"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+xinqing-hub-core = { path = "../core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+async-trait = "0.1"
+futures = "0.3"
+zeroize = "1"
+bytes = "1"
+# rustls 用 ring 作加密后端：reqwest 默认的 aws-lc-rs 在 Windows 上编译要 CMake 和 NASM
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "charset", "http2", "system-proxy", "json", "stream"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+
+[dev-dependencies]
+chrono.workspace = true
+mock-ai = { path = "../../tools/mock-ai" }

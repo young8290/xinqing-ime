@@ -1,0 +1,6 @@
+dist
+src-tauri
+core
+pnpm-lock.yaml
+src/api/bindings.ts
+src/i18n/zh-CN.ts

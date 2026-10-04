@@ -1,0 +1,10 @@
+# 心晴 · 应用分类（FR-STA-02 app_cat）
+# 进程名只在本机内存中使用，Hub 只保留类别（09 D-05）。匹配忽略大小写，支持 * 通配。
+# 版本：v1（初稿，2026-10-04）
+
+version = 1
+chat = ["WeChat.exe", "Weixin.exe", "QQ.exe", "QQNT.exe", "TIM.exe", "WXWork.exe", "DingTalk.exe", "Feishu.exe", "Lark.exe", "Telegram.exe", "Discord.exe", "Slack.exe", "ms-teams.exe"]
+doc = ["WINWORD.EXE", "wps.exe", "wpp.exe", "et.exe", "EXCEL.EXE", "POWERPNT.EXE", "ONENOTE.EXE", "Notion.exe", "Obsidian.exe", "Typora.exe", "notepad.exe", "Notepad++.exe"]
+code = ["Code.exe", "Cursor.exe", "idea64.exe", "pycharm64.exe", "clion64.exe", "goland64.exe", "webstorm64.exe", "rider64.exe", "devenv.exe", "sublime_text.exe", "WindowsTerminal.exe"]
+browser = ["chrome.exe", "msedge.exe", "firefox.exe", "360se.exe", "QQBrowser.exe", "SogouExplorer.exe", "brave.exe", "opera.exe"]
+# 未列出的一律为 other

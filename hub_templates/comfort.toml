@@ -1,0 +1,566 @@
+# 心晴 · 本地暖心话模板（FR-CMF-03、FR-CHT-10、FR-STA-10）
+# 结构：[[<风格>.<组>]]，风格 gentle（温柔，默认）/ lively（元气）；“简洁”风格从 gentle 中选取 ≤ 15 字的句子。
+# 组：hesitant 犹豫 / low 低落 / agitated 烦躁 / tired 疲劳 / late_night 深夜 / cheer 平常的鼓励
+# 要求：每组 ≥ 15 句；6–30 个汉字；通过 banned_words.toml 校验；不提“打字”“观察”“检测”；
+#       每句最多一个 emoji、最多一个感叹号（DS-COPY-01）。
+# 人工撰写、两人以上审核后才能使用；模板句不加“AI 生成”标识（FR-CMF-03 第 3 条）。
+# 自评回应（FR-STA-10）复用本文件：有点犹豫→hesitant，有点低落→low，有点烦→agitated，有点累→tired。
+# 版本：v1（初稿，2026-10-04），状态：待两人评审
+
+version = 1
+
+# ======================= gentle 温柔 =======================
+
+[[gentle.hesitant]]
+id = "gh01"
+text = "想说的话不急着说完，慢慢来。"
+[[gentle.hesitant]]
+id = "gh02"
+text = "有些话难开口，很正常。"
+[[gentle.hesitant]]
+id = "gh03"
+text = "先想清楚自己想要什么，再说也不迟。"
+[[gentle.hesitant]]
+id = "gh04"
+text = "说不出口的时候，可以先写给自己看。"
+[[gentle.hesitant]]
+id = "gh05"
+text = "不用一次说得完美，真诚就够了。"
+[[gentle.hesitant]]
+id = "gh06"
+text = "删掉也没关系，你在认真对待这件事。"
+[[gentle.hesitant]]
+id = "gh07"
+text = "拿不准的时候，先停一停也是一种选择。"
+[[gentle.hesitant]]
+id = "gh08"
+text = "犹豫说明你在乎，这不是坏事。"
+[[gentle.hesitant]]
+id = "gh09"
+text = "可以先喝口水，等想好了再回。"
+[[gentle.hesitant]]
+id = "gh10"
+text = "不是每条消息都要马上回复。"
+[[gentle.hesitant]]
+id = "gh11"
+text = "把最想说的那一句先写下来试试？"
+[[gentle.hesitant]]
+id = "gh12"
+text = "你的感受值得被好好说出来。"
+[[gentle.hesitant]]
+id = "gh13"
+text = "慢一点没关系，我在这儿。"
+[[gentle.hesitant]]
+id = "gh14"
+text = "想不好怎么说，就先说“我需要想一想”。"
+[[gentle.hesitant]]
+id = "gh15"
+text = "给自己一点时间，答案会慢慢清楚。"
+
+[[gentle.low]]
+id = "gl01"
+text = "今天辛苦了，先对自己好一点。"
+[[gentle.low]]
+id = "gl02"
+text = "累了就歇一下，我在这儿。"
+[[gentle.low]]
+id = "gl03"
+text = "不开心的时候，不用假装没事。"
+[[gentle.low]]
+id = "gl04"
+text = "做不完也没关系，你已经很努力了。"
+[[gentle.low]]
+id = "gl05"
+text = "要不要起来伸个懒腰，晒晒太阳？"
+[[gentle.low]]
+id = "gl06"
+text = "今天不太顺的话，明天可以重新来。"
+[[gentle.low]]
+id = "gl07"
+text = "给自己泡杯热的吧，暖一暖。"
+[[gentle.low]]
+id = "gl08"
+text = "如果想找人说说，我一直都在。"
+[[gentle.low]]
+id = "gl09"
+text = "你不需要一个人扛着所有事。"
+[[gentle.low]]
+id = "gl10"
+text = "低落的日子也会过去的。"
+[[gentle.low]]
+id = "gl11"
+text = "可以给想念的人发条消息。"
+[[gentle.low]]
+id = "gl12"
+text = "先完成一件小事，就很棒了。"
+[[gentle.low]]
+id = "gl13"
+text = "允许自己今天慢一点。"
+[[gentle.low]]
+id = "gl14"
+text = "听首喜欢的歌，休息一小会儿吧。"
+[[gentle.low]]
+id = "gl15"
+text = "你已经走了很远的路了。"
+
+[[gentle.agitated]]
+id = "ga01"
+text = "先停十秒，深呼吸一下？"
+[[gentle.agitated]]
+id = "ga02"
+text = "手速很快，心也别太急。"
+[[gentle.agitated]]
+id = "ga03"
+text = "急的时候，喝口水再继续。"
+[[gentle.agitated]]
+id = "ga04"
+text = "要不要先把窗口放一放，走两步？"
+[[gentle.agitated]]
+id = "ga05"
+text = "生气很正常，别让它替你做决定。"
+[[gentle.agitated]]
+id = "ga06"
+text = "慢慢来，事情会一件一件理顺的。"
+[[gentle.agitated]]
+id = "ga07"
+text = "吸气四秒，呼气六秒，试一次？"
+[[gentle.agitated]]
+id = "ga08"
+text = "重要的话，等心情平一点再发。"
+[[gentle.agitated]]
+id = "ga09"
+text = "先放松一下肩膀吧。"
+[[gentle.agitated]]
+id = "ga10"
+text = "有火气可以先写下来，不一定要发出去。"
+[[gentle.agitated]]
+id = "ga11"
+text = "一步一步来，你能处理好的。"
+[[gentle.agitated]]
+id = "ga12"
+text = "看看窗外，给自己一分钟。"
+[[gentle.agitated]]
+id = "ga13"
+text = "烦的时候，换件小事做做也好。"
+[[gentle.agitated]]
+id = "ga14"
+text = "不着急，先把最要紧的那件做了。"
+[[gentle.agitated]]
+id = "ga15"
+text = "需要的话，按一下改写键，帮你把话说软一点。"
+
+[[gentle.tired]]
+id = "gt01"
+text = "已经忙了很久了，起来走两步吧。"
+[[gentle.tired]]
+id = "gt02"
+text = "眼睛也需要休息啦。"
+[[gentle.tired]]
+id = "gt03"
+text = "闭上眼睛歇一分钟，再继续。"
+[[gentle.tired]]
+id = "gt04"
+text = "活动活动脖子和手腕吧。"
+[[gentle.tired]]
+id = "gt05"
+text = "累了的话，休息不是偷懒。"
+[[gentle.tired]]
+id = "gt06"
+text = "去倒杯水，顺便看看远处。"
+[[gentle.tired]]
+id = "gt07"
+text = "你今天已经做了很多了。"
+[[gentle.tired]]
+id = "gt08"
+text = "歇一会儿，效率会回来的。"
+[[gentle.tired]]
+id = "gt09"
+text = "站起来伸个懒腰吧。"
+[[gentle.tired]]
+id = "gt10"
+text = "剩下的可以分成小块慢慢做。"
+[[gentle.tired]]
+id = "gt11"
+text = "给自己五分钟，什么都不做也可以。"
+[[gentle.tired]]
+id = "gt12"
+text = "吃点东西补充一下能量吧。"
+[[gentle.tired]]
+id = "gt13"
+text = "辛苦了，先休息一下再说。"
+[[gentle.tired]]
+id = "gt14"
+text = "累的时候，对自己温柔一点。"
+[[gentle.tired]]
+id = "gt15"
+text = "做完这一段，就奖励自己歇一歇。"
+
+[[gentle.late_night]]
+id = "gn01"
+text = "不早了，剩下的明天再说也来得及。"
+[[gentle.late_night]]
+id = "gn02"
+text = "夜深了，记得早点休息。"
+[[gentle.late_night]]
+id = "gn03"
+text = "今天就到这里吧，晚安。"
+[[gentle.late_night]]
+id = "gn04"
+text = "明天的你会感谢今晚早睡的你。"
+[[gentle.late_night]]
+id = "gn05"
+text = "很晚了，屏幕亮度可以调低一点。"
+[[gentle.late_night]]
+id = "gn06"
+text = "把明天要做的写下来，放心去休息吧。"
+[[gentle.late_night]]
+id = "gn07"
+text = "熬夜很辛苦，先照顾好自己。"
+[[gentle.late_night]]
+id = "gn08"
+text = "这么晚还在忙，辛苦你了。"
+[[gentle.late_night]]
+id = "gn09"
+text = "事情做不完很正常，身体更重要。"
+[[gentle.late_night]]
+id = "gn10"
+text = "收个尾就去休息吧，好吗？"
+[[gentle.late_night]]
+id = "gn11"
+text = "夜里想事容易想多，明天再看看。"
+[[gentle.late_night]]
+id = "gn12"
+text = "该关灯啦，明天见。"
+[[gentle.late_night]]
+id = "gn13"
+text = "保存好文件，今天可以收工了。"
+[[gentle.late_night]]
+id = "gn14"
+text = "睡前放下手机，让眼睛也休息。"
+[[gentle.late_night]]
+id = "gn15"
+text = "晚安，今天也辛苦了。"
+
+[[gentle.cheer]]
+id = "gc01"
+text = "今天也在好好努力呢。"
+[[gentle.cheer]]
+id = "gc02"
+text = "节奏很稳，继续保持。"
+[[gentle.cheer]]
+id = "gc03"
+text = "记得起来喝口水哦。"
+[[gentle.cheer]]
+id = "gc04"
+text = "有我在旁边陪着你。"
+[[gentle.cheer]]
+id = "gc05"
+text = "一点一点来，已经很好了。"
+[[gentle.cheer]]
+id = "gc06"
+text = "今天的你也很可靠。"
+[[gentle.cheer]]
+id = "gc07"
+text = "做完这件，给自己一个小奖励吧。"
+[[gentle.cheer]]
+id = "gc08"
+text = "状态不错，别忘了偶尔抬头看看远处。"
+[[gentle.cheer]]
+id = "gc09"
+text = "你认真的样子很好。"
+[[gentle.cheer]]
+id = "gc10"
+text = "今天天气怎么样？有空看看窗外。"
+[[gentle.cheer]]
+id = "gc11"
+text = "慢慢来，比较快。"
+[[gentle.cheer]]
+id = "gc12"
+text = "已经完成不少了，真不错。"
+[[gentle.cheer]]
+id = "gc13"
+text = "累了随时可以叫我聊聊。"
+[[gentle.cheer]]
+id = "gc14"
+text = "忙里偷闲，伸个懒腰吧。"
+[[gentle.cheer]]
+id = "gc15"
+text = "愿你今天也有一件开心的小事。"
+
+# ======================= lively 元气（P2，FR-CHT-10） =======================
+
+[[lively.hesitant]]
+id = "lh01"
+text = "卡住啦？没事，喝口水再冲！"
+[[lively.hesitant]]
+id = "lh02"
+text = "想不好就先放放，灵感一会儿就来。"
+[[lively.hesitant]]
+id = "lh03"
+text = "先写个开头，后面会顺的。"
+[[lively.hesitant]]
+id = "lh04"
+text = "删了重写也是在进步嘛。"
+[[lively.hesitant]]
+id = "lh05"
+text = "大胆说出来，没那么难的！"
+[[lively.hesitant]]
+id = "lh06"
+text = "纠结的话，先选一个试试看。"
+[[lively.hesitant]]
+id = "lh07"
+text = "不着急回，想好了再出手。"
+[[lively.hesitant]]
+id = "lh08"
+text = "你心里其实已经有答案啦。"
+[[lively.hesitant]]
+id = "lh09"
+text = "深吸一口气，一句一句来。"
+[[lively.hesitant]]
+id = "lh10"
+text = "说错了也能补救，放轻松。"
+[[lively.hesitant]]
+id = "lh11"
+text = "先起个草稿，回头再润色。"
+[[lively.hesitant]]
+id = "lh12"
+text = "在乎才会犹豫，这很正常啦。"
+[[lively.hesitant]]
+id = "lh13"
+text = "要不先去倒杯水，回来就想好了。"
+[[lively.hesitant]]
+id = "lh14"
+text = "把想法丢给我聊聊也行哦。"
+[[lively.hesitant]]
+id = "lh15"
+text = "慢慢来，好话不怕晚。"
+
+[[lively.low]]
+id = "ll01"
+text = "今天不顺也没事，明天又是新的一天。"
+[[lively.low]]
+id = "ll02"
+text = "来，起来走两步，换换心情！"
+[[lively.low]]
+id = "ll03"
+text = "去吃点好吃的吧，你值得。"
+[[lively.low]]
+id = "ll04"
+text = "放首喜欢的歌，跟着哼两句？"
+[[lively.low]]
+id = "ll05"
+text = "你已经很棒了，别对自己太凶。"
+[[lively.low]]
+id = "ll06"
+text = "先搞定一件小事，找回手感。"
+[[lively.low]]
+id = "ll07"
+text = "找个朋友聊两句，会好很多。"
+[[lively.low]]
+id = "ll08"
+text = "出门晒晒太阳吧，充充电。"
+[[lively.low]]
+id = "ll09"
+text = "低谷也是路的一部分，会走出去的。"
+[[lively.low]]
+id = "ll10"
+text = "给自己泡杯热饮，暖暖的。"
+[[lively.low]]
+id = "ll11"
+text = "想吐槽就来找我，我听着呢。"
+[[lively.low]]
+id = "ll12"
+text = "今天就当充电日，慢一点没关系。"
+[[lively.low]]
+id = "ll13"
+text = "抱抱你，先休息一下吧。"
+[[lively.low]]
+id = "ll14"
+text = "做不完的明天再战！"
+[[lively.low]]
+id = "ll15"
+text = "你比自己想的更厉害。"
+
+[[lively.agitated]]
+id = "la01"
+text = "停！先深呼吸三次。"
+[[lively.agitated]]
+id = "la02"
+text = "火气上来啦？喝口水降降温。"
+[[lively.agitated]]
+id = "la03"
+text = "先离开屏幕一分钟，回来再战。"
+[[lively.agitated]]
+id = "la04"
+text = "别急别急，一件一件来。"
+[[lively.agitated]]
+id = "la05"
+text = "这条消息要不要等会儿再发？"
+[[lively.agitated]]
+id = "la06"
+text = "伸个懒腰，把烦躁甩掉！"
+[[lively.agitated]]
+id = "la07"
+text = "肩膀放松，手指也歇歇。"
+[[lively.agitated]]
+id = "la08"
+text = "看看窗外，十秒就好。"
+[[lively.agitated]]
+id = "la09"
+text = "生气没关系，别憋着，也别冲动。"
+[[lively.agitated]]
+id = "la10"
+text = "把最难的那件拆小一点试试。"
+[[lively.agitated]]
+id = "la11"
+text = "按一下改写键，帮你把话说圆一点。"
+[[lively.agitated]]
+id = "la12"
+text = "来，吸气四秒，呼气六秒。"
+[[lively.agitated]]
+id = "la13"
+text = "先搞定最要紧的，其他的不跑。"
+[[lively.agitated]]
+id = "la14"
+text = "冷静下来的你更厉害！"
+[[lively.agitated]]
+id = "la15"
+text = "去洗把脸，回来清清爽爽。"
+
+[[lively.tired]]
+id = "lt01"
+text = "电量不足啦，快去补充一下！"
+[[lively.tired]]
+id = "lt02"
+text = "起来活动一下，满血回来。"
+[[lively.tired]]
+id = "lt03"
+text = "眼睛喊累了，看看远处吧。"
+[[lively.tired]]
+id = "lt04"
+text = "休息五分钟，效率翻倍。"
+[[lively.tired]]
+id = "lt05"
+text = "转转脖子，甩甩手腕！"
+[[lively.tired]]
+id = "lt06"
+text = "去倒杯水，顺便走两步。"
+[[lively.tired]]
+id = "lt07"
+text = "干了这么久，奖励自己歇会儿。"
+[[lively.tired]]
+id = "lt08"
+text = "吃点小零食，补补能量。"
+[[lively.tired]]
+id = "lt09"
+text = "闭眼一分钟，假装在度假。"
+[[lively.tired]]
+id = "lt10"
+text = "剩下的拆成小块，轻松拿下。"
+[[lively.tired]]
+id = "lt11"
+text = "站起来伸展一下，身体会谢谢你。"
+[[lively.tired]]
+id = "lt12"
+text = "辛苦啦，休息不是偷懒哦。"
+[[lively.tired]]
+id = "lt13"
+text = "先歇口气，马上又能冲。"
+[[lively.tired]]
+id = "lt14"
+text = "今天已经很能干了！"
+[[lively.tired]]
+id = "lt15"
+text = "去窗边透透气吧。"
+
+[[lively.late_night]]
+id = "ln01"
+text = "夜猫子，该睡觉啦！"
+[[lively.late_night]]
+id = "ln02"
+text = "明天再战，今晚先充电。"
+[[lively.late_night]]
+id = "ln03"
+text = "保存一下，可以收工啦。"
+[[lively.late_night]]
+id = "ln04"
+text = "早睡的人明天更有精神哦。"
+[[lively.late_night]]
+id = "ln05"
+text = "很晚啦，给自己放个假吧。"
+[[lively.late_night]]
+id = "ln06"
+text = "把明天的事写下来，安心去睡。"
+[[lively.late_night]]
+id = "ln07"
+text = "关灯倒计时开始！"
+[[lively.late_night]]
+id = "ln08"
+text = "辛苦一天了，晚安！"
+[[lively.late_night]]
+id = "ln09"
+text = "收个尾，明天的你会更强。"
+[[lively.late_night]]
+id = "ln10"
+text = "该和屏幕说晚安啦。"
+[[lively.late_night]]
+id = "ln11"
+text = "熬夜伤身，咱们明天继续。"
+[[lively.late_night]]
+id = "ln12"
+text = "最后一行写完就去睡吧。"
+[[lively.late_night]]
+id = "ln13"
+text = "月亮都困了，你也歇歇吧。"
+[[lively.late_night]]
+id = "ln14"
+text = "今天到此为止，明天见！"
+[[lively.late_night]]
+id = "ln15"
+text = "好好睡一觉，醒来又是满格。"
+
+[[lively.cheer]]
+id = "lc01"
+text = "状态在线，继续冲！"
+[[lively.cheer]]
+id = "lc02"
+text = "今天也很能干嘛！"
+[[lively.cheer]]
+id = "lc03"
+text = "记得喝水，保持满格。"
+[[lively.cheer]]
+id = "lc04"
+text = "节奏不错，稳稳的。"
+[[lively.cheer]]
+id = "lc05"
+text = "做完这件，奖励自己一下！"
+[[lively.cheer]]
+id = "lc06"
+text = "有我陪着，放心干吧。"
+[[lively.cheer]]
+id = "lc07"
+text = "偶尔抬头看看远处哦。"
+[[lively.cheer]]
+id = "lc08"
+text = "进度喜人，给自己点个赞。"
+[[lively.cheer]]
+id = "lc09"
+text = "今天的你很靠谱！"
+[[lively.cheer]]
+id = "lc10"
+text = "忙归忙，别忘了伸懒腰。"
+[[lively.cheer]]
+id = "lc11"
+text = "一步一步来，已经很好啦。"
+[[lively.cheer]]
+id = "lc12"
+text = "保持这个状态，稳了！"
+[[lively.cheer]]
+id = "lc13"
+text = "累了随时来找我聊聊。"
+[[lively.cheer]]
+id = "lc14"
+text = "愿你今天有件开心事。"
+[[lively.cheer]]
+id = "lc15"
+text = "今天也是元气满满的一天！"
