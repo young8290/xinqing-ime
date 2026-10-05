@@ -31,8 +31,13 @@ pub struct AppState {
 
 impl AppState {
     pub fn init(data_dir: &Path) -> anyhow::Result<Self> {
+        Self::init_file(data_dir, DB_FILE)
+    }
+
+    /// 打开数据目录下的 `file`（演示模式用 `xinqing_demo.db`，ADR 0023）。
+    pub fn init_file(data_dir: &Path, file: &str) -> anyhow::Result<Self> {
         std::fs::create_dir_all(data_dir)?;
-        let path = data_dir.join(DB_FILE);
+        let path = data_dir.join(file);
         let (db, db_rebuilt) = open_or_rebuild(&path)?;
         Ok(Self {
             db: Mutex::new(Db::open_reader(&path)?),
@@ -125,7 +130,10 @@ fn open_or_rebuild(path: &Path) -> anyhow::Result<(Db, bool)> {
 
 fn backup_path(path: &Path) -> PathBuf {
     let ts = chrono::Local::now().format("%Y%m%d-%H%M%S");
-    path.with_file_name(format!("{DB_FILE}.corrupt-{ts}"))
+    let name = path
+        .file_name()
+        .map_or_else(|| DB_FILE.into(), |n| n.to_string_lossy());
+    path.with_file_name(format!("{name}.corrupt-{ts}"))
 }
 
 #[cfg(test)]

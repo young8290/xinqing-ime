@@ -48,6 +48,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::self_report_list,
             commands::baseline_reset,
             commands::get_routine,
+            commands::demo_status,
             commands::pause_set,
             commands::settings_get,
             commands::settings_set,
@@ -103,6 +104,8 @@ pub fn export_bindings(path: &Path) -> anyhow::Result<()> {
 
 pub fn run() {
     let launch = LaunchArgs::parse(std::env::args().skip(1));
+    // 演示模式要在任何服务取时钟之前定下来（ADR 0023）
+    sim::set_demo(launch.demo);
     let builder = specta_builder();
 
     tauri::Builder::default()
@@ -118,7 +121,11 @@ pub fn run() {
         .setup(move |app| {
             builder.mount_events(app);
             let data_dir = paths::hub_data_dir()?;
-            let state = state::AppState::init(&data_dir)?;
+            let state = if sim::demo() {
+                sim::open_demo_state(&data_dir)?
+            } else {
+                state::AppState::init(&data_dir)?
+            };
             let needs_onboarding = state.needs_onboarding()?;
             let cfg = consent::xqp_cfg(&ConsentState::load(&state.db())?);
             app.manage(state);

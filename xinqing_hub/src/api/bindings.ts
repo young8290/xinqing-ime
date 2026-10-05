@@ -53,6 +53,8 @@ export const commands = {
 	 *  界面一律称“停止打字时间”，并注明只统计这台电脑上的打字、不等于入睡时间（DS-COPY-09）。
 	 */
 	getRoutine: (days: number) => typedError<Routine, UiError>(__TAURI_INVOKE("get_routine", { days })),
+	/**  是否为演示模式（FR-DMO-03）：是的话界面在标题栏显示“演示模式”。以 `--demo` 启动时为是（ADR 0023）。 */
+	demoStatus: () => typedError<DemoStatus, UiError>(__TAURI_INVOKE("demo_status")),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
@@ -331,6 +333,13 @@ export type ConsentItem =
 export type ConsentState = {
 	policy_ver: number,
 	items: ConsentEntry[],
+};
+
+/**  `demo_status`：界面据此在标题栏显示“演示模式”（FR-DMO-03）。 */
+export type DemoStatus = {
+	enabled: boolean,
+	/**  时间加速倍数；不是演示模式时为 1 */
+	speed: number,
 };
 
 /**  判断来源（`explain.toml` 的 `[source]`）。 */
