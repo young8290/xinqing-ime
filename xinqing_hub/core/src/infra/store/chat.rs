@@ -197,12 +197,19 @@ impl Db {
         Ok(rows.collect::<Result<_, _>>()?)
     }
 
-    pub fn memory_insert(&self, content: &str, ts: i64) -> Result<i64, StoreError> {
-        self.conn.execute(
-            "INSERT INTO memory (content, created_ts) VALUES (?1, ?2)",
-            params![content, ts],
+    /// 已有 `max` 条时不写入，返回 `None`（FR-CHT-07 第 2 条）。计数和插入在同一条语句里。
+    pub fn memory_insert(
+        &self,
+        content: &str,
+        ts: i64,
+        max: usize,
+    ) -> Result<Option<i64>, StoreError> {
+        let inserted = self.conn.execute(
+            "INSERT INTO memory (content, created_ts)
+             SELECT ?1, ?2 WHERE (SELECT COUNT(*) FROM memory) < ?3",
+            params![content, ts, max as i64],
         )?;
-        Ok(self.conn.last_insert_rowid())
+        Ok((inserted != 0).then(|| self.conn.last_insert_rowid()))
     }
 
     pub fn memory_update(&self, id: i64, content: &str) -> Result<bool, StoreError> {
@@ -344,9 +351,18 @@ mod tests {
     }
 
     #[test]
+    fn memory_insert_stops_at_cap() {
+        let db = Db::open_in_memory().unwrap();
+        assert!(db.memory_insert("一", 1, 2).unwrap().is_some());
+        assert!(db.memory_insert("二", 2, 2).unwrap().is_some());
+        assert_eq!(db.memory_insert("三", 3, 2).unwrap(), None);
+        assert_eq!(db.memories_list().unwrap().len(), 2);
+    }
+
+    #[test]
     fn memory_crud_and_chat_search() {
         let db = Db::open_in_memory().unwrap();
-        let id = db.memory_insert("记住我喜欢晴天", 10).unwrap();
+        let id = db.memory_insert("记住我喜欢晴天", 10, 50).unwrap().unwrap();
         assert_eq!(db.memories_list().unwrap()[0].content, "记住我喜欢晴天");
         assert!(db.memory_update(id, "记住我喜欢晴天和咖啡").unwrap());
         assert_eq!(

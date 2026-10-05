@@ -7,7 +7,7 @@ use serde::Serialize;
 use specta::Type;
 use tauri::State;
 use xinqing_hub_core::chat::{ChatError, ChatService, Sent};
-use xinqing_hub_core::domain::chat::SafeMode;
+use xinqing_hub_core::domain::chat::{self, SafeMode};
 
 use crate::chat::Chat;
 use crate::error::UiError;
@@ -174,20 +174,23 @@ pub fn memory_list(state: State<'_, AppState>) -> Result<Vec<MemoryItem>, UiErro
 }
 
 fn validate_memory(content: &str) -> Result<&str, UiError> {
-    let content = content.trim();
-    if content.is_empty() || content.chars().count() > 100 {
-        return Err(UiError::new("chat.memory_invalid", "error.generic"));
-    }
-    Ok(content)
+    chat::memory_entry(content).ok_or_else(|| UiError::new("chat.memory_invalid", "error.generic"))
 }
 
+/// 记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。
 #[tauri::command]
 #[specta::specta]
 pub fn memory_add(state: State<'_, AppState>, content: String) -> Result<u32, UiError> {
     let content = validate_memory(&content)?;
-    Ok(state
+    state
         .db()
-        .memory_insert(content, chrono::Utc::now().timestamp_millis())? as u32)
+        .memory_insert(
+            content,
+            chrono::Utc::now().timestamp_millis(),
+            chat::MEMORY_MAX,
+        )?
+        .map(|id| id as u32)
+        .ok_or_else(|| UiError::new("chat.memory_full", "error.generic"))
 }
 
 #[tauri::command]

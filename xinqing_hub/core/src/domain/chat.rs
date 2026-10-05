@@ -26,10 +26,19 @@ pub const CONTEXT_TOKENS: usize = 3000;
 /// 长期记忆：最近 10 条、合计 300 字（FR-CHT-05）。
 pub const MEMORY_ITEMS: usize = 10;
 pub const MEMORY_CHARS: usize = 300;
+/// “晴晴记住的事”最多 50 条，每条 ≤ 100 字（FR-CHT-07 第 2 条；100 字也是 `memory` 表的 CHECK）。
+pub const MEMORY_MAX: usize = 50;
+pub const MEMORY_ENTRY_CHARS: usize = 100;
 /// 今日状态摘要上限 200 字（FR-CHT-05）。
 pub const SUMMARY_CHARS: usize = 200;
 /// Q-CRISIS 阈值（08 第 3 节，偏向召回）。
 pub const JEV_CRISIS_THRESHOLD: f64 = 0.5;
+
+/// 一条要记住的内容：去掉首尾空白后非空且不超过 100 字（FR-CHT-07 第 2 条），否则 `None`。
+pub fn memory_entry(content: &str) -> Option<&str> {
+    let content = content.trim();
+    (!content.is_empty() && content.chars().count() <= MEMORY_ENTRY_CHARS).then_some(content)
+}
 
 /// 会话的安全状态，存在 `chat_session.safe_mode`（ADR 0018 第 3 条）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -444,6 +453,14 @@ mod tests {
             "今天考试没考好 心里有点"
         );
         assert_eq!(title_of("嗨"), "嗨");
+    }
+
+    #[test]
+    fn memory_entry_trims_and_limits_length() {
+        assert_eq!(memory_entry("  我喜欢晴天 "), Some("我喜欢晴天"));
+        assert_eq!(memory_entry("   "), None);
+        assert!(memory_entry(&"晴".repeat(MEMORY_ENTRY_CHARS)).is_some());
+        assert_eq!(memory_entry(&"晴".repeat(MEMORY_ENTRY_CHARS + 1)), None);
     }
 
     #[test]
