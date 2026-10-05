@@ -31,6 +31,10 @@ struct Args {
     /// 倍速（1 / 5 / 20 …）；0 表示不等待，尽快发完
     #[arg(long, default_value_t = 1.0)]
     speed: f64,
+    /// 握手后先暂停，等标准输入的命令再回放（FR-DMO-01 暂停 / 单步）：
+    /// `p` 暂停或继续，回车或 `n` 在暂停时发下一条，`c` 继续
+    #[arg(long)]
+    paused: bool,
     /// 命名管道名（仅 Windows）
     #[arg(long, default_value = xqp::PIPE_NAME_DEV)]
     pipe: String,
@@ -81,13 +85,13 @@ async fn main() -> Result<()> {
         let (stream, peer) = listener.accept().await?;
         eprintln!("xq-sim：Hub 已连接 {peer}");
         let (r, w) = stream.into_split();
-        return serve(r, w, msgs, args.speed).await;
+        return serve(r, w, msgs, args.speed, Gate::from_stdin(args.paused)).await;
     }
-    serve_pipe(&args.pipe, msgs, args.speed).await
+    serve_pipe(&args.pipe, msgs, args.speed, args.paused).await
 }
 
 #[cfg(windows)]
-async fn serve_pipe(name: &str, msgs: Vec<Up>, speed: f64) -> Result<()> {
+async fn serve_pipe(name: &str, msgs: Vec<Up>, speed: f64, paused: bool) -> Result<()> {
     use tokio::net::windows::named_pipe::ServerOptions;
     let path = format!(r"\\.\pipe\{name}");
     let server = ServerOptions::new()
@@ -99,11 +103,11 @@ async fn serve_pipe(name: &str, msgs: Vec<Up>, speed: f64) -> Result<()> {
     server.connect().await?;
     eprintln!("xq-sim：Hub 已连接");
     let (r, w) = tokio::io::split(server);
-    serve(r, w, msgs, speed).await
+    serve(r, w, msgs, speed, Gate::from_stdin(paused)).await
 }
 
 #[cfg(not(windows))]
-async fn serve_pipe(_name: &str, _msgs: Vec<Up>, _speed: f64) -> Result<()> {
+async fn serve_pipe(_name: &str, _msgs: Vec<Up>, _speed: f64, _paused: bool) -> Result<()> {
     bail!("命名管道只在 Windows 上可用；请改用 --tcp 127.0.0.1:<端口> 或 --stdout")
 }
 
@@ -236,7 +240,7 @@ async fn send<W: AsyncWrite + Unpin, T: serde::Serialize>(w: &mut W, msg: &T) ->
     Ok(())
 }
 
-async fn serve<R, W>(mut r: R, mut w: W, msgs: Vec<Up>, speed: f64) -> Result<()>
+async fn serve<R, W>(mut r: R, mut w: W, msgs: Vec<Up>, speed: f64, mut gate: Gate) -> Result<()>
 where
     R: AsyncRead + Unpin + Send + 'static,
     W: AsyncWrite + Unpin,
@@ -295,7 +299,9 @@ where
     let mut seq = 0u32;
     let mut last_ts = 0u64;
     let mut next_hb = 5_000u64;
+    gate.announce();
     for mut m in msgs.into_iter().filter(|m| !matches!(m, Up::Hello { .. })) {
+        let stepped = gate.wait(&mut w, last_ts, &mut seq).await?;
         let ts = m.ts().unwrap_or(last_ts);
         while ts >= next_hb {
             pace(next_hb.saturating_sub(last_ts), speed).await;
@@ -313,7 +319,10 @@ where
             .await?;
             next_hb += 5_000;
         }
-        pace(ts.saturating_sub(last_ts), speed).await;
+        // 单步时不按脚本间隔等待，按一下发一条
+        if !stepped {
+            pace(ts.saturating_sub(last_ts), speed).await;
+        }
         last_ts = ts;
         seq += 1;
         m.set_seq(seq);
@@ -331,6 +340,125 @@ where
     .await?;
     reader.abort();
     Ok(())
+}
+
+/// 回放控制命令（FR-DMO-01 暂停、单步），标准输入每行一个。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Cmd {
+    /// `p`：暂停或继续
+    Toggle,
+    /// 回车或 `n`：暂停时发下一条
+    Step,
+    /// `c`：继续
+    Resume,
+}
+
+fn parse_cmd(line: &str) -> Option<Cmd> {
+    match line.trim() {
+        "p" | "pause" => Some(Cmd::Toggle),
+        "" | "n" | "next" => Some(Cmd::Step),
+        "c" | "continue" => Some(Cmd::Resume),
+        _ => None,
+    }
+}
+
+/// 暂停 / 单步的闸门。暂停期间每 5 秒发一次 ts 不前进的心跳：Hub 收到过心跳后 15 秒没有消息会断开重连。
+struct Gate {
+    paused: bool,
+    steps: u32,
+    cmds: tokio::sync::mpsc::UnboundedReceiver<Cmd>,
+    closed: bool,
+    /// 暂停期间的心跳间隔（与核心一致，5 秒）
+    hb_every: Duration,
+}
+
+impl Gate {
+    fn new(paused: bool, cmds: tokio::sync::mpsc::UnboundedReceiver<Cmd>) -> Self {
+        Self {
+            paused,
+            steps: 0,
+            cmds,
+            closed: false,
+            hb_every: Duration::from_secs(5),
+        }
+    }
+
+    /// 从标准输入读命令。标准输入关着（例如在脚本里跑）就收不到命令，照常回放。
+    fn from_stdin(paused: bool) -> Self {
+        use tokio::io::AsyncBufReadExt;
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let mut lines = tokio::io::BufReader::new(tokio::io::stdin()).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                match parse_cmd(&line) {
+                    Some(c) => {
+                        if tx.send(c).is_err() {
+                            break;
+                        }
+                    }
+                    None => eprintln!("xq-sim：不认识的命令 {line:?}（p 暂停/继续，回车或 n 单步，c 继续）"),
+                }
+            }
+        });
+        Self::new(paused, rx)
+    }
+
+    fn announce(&self) {
+        eprintln!("xq-sim：回放控制：p 暂停/继续，暂停时回车或 n 发下一条，c 继续");
+        if self.paused {
+            eprintln!("xq-sim：已暂停");
+        }
+    }
+
+    fn apply(&mut self, c: Cmd) {
+        match c {
+            Cmd::Toggle => self.paused = !self.paused,
+            Cmd::Resume => self.paused = false,
+            Cmd::Step if self.paused => self.steps += 1,
+            Cmd::Step => {}
+        }
+        if c != Cmd::Step {
+            eprintln!("xq-sim：{}", if self.paused { "已暂停" } else { "继续回放" });
+        }
+    }
+
+    /// 发下一条脚本消息之前调用。暂停时等到继续或单步；返回这一条是不是单步放行的。
+    async fn wait<W: AsyncWrite + Unpin>(
+        &mut self,
+        w: &mut W,
+        last_ts: u64,
+        seq: &mut u32,
+    ) -> Result<bool> {
+        loop {
+            while let Ok(c) = self.cmds.try_recv() {
+                self.apply(c);
+            }
+            if !self.paused {
+                return Ok(false);
+            }
+            if self.steps > 0 {
+                self.steps -= 1;
+                return Ok(true);
+            }
+            if self.closed {
+                // 标准输入已关，没人能再发命令：不卡死，接着回放
+                eprintln!("xq-sim：标准输入已关闭，继续回放");
+                self.paused = false;
+                return Ok(false);
+            }
+            tokio::select! {
+                c = self.cmds.recv() => match c {
+                    Some(c) => self.apply(c),
+                    None => self.closed = true,
+                },
+                _ = tokio::time::sleep(self.hb_every) => {
+                    *seq += 1;
+                    let hb = Up::Hb { ts: last_ts, seq: Some(*seq), dropped: 0, queue: 0 };
+                    send(w, &hb).await?;
+                }
+            }
+        }
+    }
 }
 
 async fn pace(delta_ms: u64, speed: f64) {
@@ -381,4 +509,56 @@ async fn listen(args: &Args, out: &PathBuf) -> Result<()> {
     }
     eprintln!("xq-sim：已录制 {n} 条到 {}", out.display());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_control_commands() {
+        assert_eq!(parse_cmd("p"), Some(Cmd::Toggle));
+        assert_eq!(parse_cmd(""), Some(Cmd::Step));
+        assert_eq!(parse_cmd(" n "), Some(Cmd::Step));
+        assert_eq!(parse_cmd("c"), Some(Cmd::Resume));
+        assert_eq!(parse_cmd("x"), None);
+    }
+
+    #[tokio::test]
+    async fn paused_gate_steps_one_at_a_time_and_keeps_link_alive() {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut gate = Gate::new(true, rx);
+        gate.hb_every = Duration::from_millis(10);
+        let mut out = Vec::new();
+        let mut seq = 7;
+        // 暂停时没有命令：只发 ts 不前进的心跳
+        let waited = tokio::time::timeout(
+            Duration::from_millis(35),
+            gate.wait(&mut out, 1_000, &mut seq),
+        )
+        .await;
+        assert!(waited.is_err(), "暂停时不应放行");
+        assert!(seq > 7);
+        assert!(!out.is_empty());
+        // 单步放行一条，并告诉调用方不要按脚本间隔等
+        tx.send(Cmd::Step).unwrap();
+        assert!(gate.wait(&mut out, 1_000, &mut seq).await.unwrap());
+        // 继续之后不再拦
+        tx.send(Cmd::Resume).unwrap();
+        assert!(!gate.wait(&mut out, 1_000, &mut seq).await.unwrap());
+        // 运行中单步不起作用
+        tx.send(Cmd::Step).unwrap();
+        assert!(!gate.wait(&mut out, 1_000, &mut seq).await.unwrap());
+        assert_eq!(gate.steps, 0);
+    }
+
+    #[tokio::test]
+    async fn closed_stdin_does_not_hang_a_paused_replay() {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        drop(tx);
+        let mut gate = Gate::new(true, rx);
+        let mut seq = 0;
+        assert!(!gate.wait(&mut Vec::new(), 0, &mut seq).await.unwrap());
+        assert!(!gate.paused);
+    }
 }
