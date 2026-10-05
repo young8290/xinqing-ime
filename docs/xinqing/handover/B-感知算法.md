@@ -2,7 +2,7 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（B-09：作息洞察统计与 `daily_summary` 计时列）
+> 最后更新：2026-10-05（B-10：演示模式的加速时钟与演示数据库）
 
 ## 1. 任务状态
 
@@ -16,8 +16,8 @@
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
 | B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
 | B-08 | 使用时长与四类休息提醒等（P0） | 第一部分完成（PR 合并后） | 判断 `domain/rest.rs`、服务 `rest.rs`、`infra/store/rest.rs`；外壳 `src-tauri/src/rest.rs`；小组件 `windows/widget/{useRest.ts,RestCard.vue}` | 见第 3.1 节：系统通知、专注时段、设置界面 |
-| B-09 | 作息洞察统计 | 后端完成（PR 合并后） | 统计 `domain/routine.rs`、写库 `infra/store/summary.rs`；`get_routine(days)` 命令；见第 3.2 节 | 看板周报的折线和数字归 D-07；周信 / 晚间小结引用等 C-10 认领 |
-| B-10 | 演示模式（clock 替换、演示数据库） | 未开始 | `infra/clock.rs` 已有 `Clock` / `ManualClock` 可用 | 计划 W10 |
+| B-09 | 作息洞察统计 | 后端完成 | 统计 `domain/routine.rs`、写库 `infra/store/summary.rs`；`get_routine(days)` 命令；见第 3.2 节 | 看板周报的折线和数字归 D-07；周信 / 晚间小结引用等 C-10 认领 |
+| B-10 | 演示模式（clock 替换、演示数据库） | 后端完成（PR 合并后） | `ScaledClock`（`infra/clock.rs`）、预置数据 `domain/demo.rs`、外壳 `src-tauri/src/sim.rs`（`--demo`、`open_demo_state`）、`demo_status` 命令；ADR 0023；见第 3.3 节 | 标题栏“演示模式”和演示者视图归 D；`dev.demo` 设置键等 C 登记；研究模式（FR-DMO-04）未做 |
 | B-11 | E-STATE 评测与报告 | 未开始 | — | 依赖 B-02 的录制数据；`xq-replay --json` 已能输出每个窗口的特征、状态和解释 |
 | （C-10） | 情绪日记、晚间小结、周信 | 未认领 | — | 16 第 3 节建议从 C 移给 B，W1 评审会还没定 |
 
@@ -31,6 +31,7 @@ xinqing_hub/core/src/
 ├─ domain/explain.rs  状态解释（FR-STA-09）
 ├─ domain/rest.rs     使用时长与休息提醒（FR-RST）；服务在 rest.rs
 ├─ domain/routine.rs  作息洞察与 daily_summary 计时列（FR-REV-03）
+├─ domain/demo.rs     演示库预置数据（FR-DMO-03）
 ├─ pipeline.rs        XQP 事件 → 窗口 → 特征 → 规则 → 融合；replay() 供测试和 xq-replay
 ├─ sense.rs           实时感知任务（与外壳之间只走 SensePort）
 └─ bin/xq-replay.rs   离线回放
@@ -86,6 +87,21 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 - **文案**：界面必须写“停止打字时间”，注明“只统计在这台电脑上打字的时间，不等于入睡时间”，不得出现“睡眠质量 / 睡眠监测 / 失眠”（DS-COPY-09）；
   这部分界面文案在 D-07 里，后端没有给用户看的文字。
 
+## 3.3 B-10 演示模式
+
+- **怎么开**：先退出 Hub，再 `xinqing_hub --demo`（发行构建也有效）。Hub 已在运行时第二个实例只转交参数，不会进入演示模式。
+  C 把 `dev.demo` 登记进注册表后，外壳启动时读真实库的这个键即可（ADR 0023 第 1 条），代码入口在 `lib.rs` 的 `sim::set_demo`。
+- **时钟**：`sim::clock()` 在演示模式下是 `ScaledClock`（×60，`XQ_SIM_START_AT` 可指定起点），各服务共用。
+  打字特征按 XQP 真实毫秒算、不加速；休息提醒按演示时钟（护眼 20 分钟连续 = 真实 20 秒，停 2 秒就断开连续）。
+  B 的命令和启动时的基线重算 / “不准”重放已改用 `sim::clock()`；其他角色的命令和自动清理还用系统时间（ADR 0023 第 2 条）。
+- **数据**：数据目录下 `xinqing_demo.db`，每次以演示模式启动都删掉重建并预置（`domain::demo::seed`）：
+  7 天 × 45 个窗口（越过冷启动，启动重算得到个人基线）、每窗口一条状态记录、每天的计时列和停止打字时间（一晚过午夜）、
+  3 条自评、2 条待确认日程。真实库已给的同意照搬，真实库不存在时不会被创建。
+- **验证**：`cargo test -p xinqing-hub sim`（重建、不碰真实库）、`cargo test -p xinqing-hub-core demo`（预置结果、可复现）；
+  在 Linux 上可以 `XQ_HUB_DATA_DIR=/tmp/x xvfb-run -a target/debug/xinqing_hub --demo` 看启动日志“演示模式：…预置 315 个窗口”。
+- **没做**：标题栏字样和演示者视图（D，前端用 `demo_status`）；情绪日历的 `state_dist_json` / `dominant_state`、周信、晚间小结的预置
+  （各自的汇总还没有）；研究模式 FR-DMO-04。
+
 ## 4. 关键决定与待评审
 
 - ADR 0008（状态识别规格的解释，7 条）：**已接受**（B、E 同意，产品书 V1.4 已同步；第 5 条 R1b 的协议字段等 A）。B 的意见：同意，尤其第 1 条（组字中停顿不切窗）不改的话 R2 永远不触发。
@@ -94,6 +110,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
   ③ 实时路径改为先交出解释再推送 `status:changed`，界面收到状态变化后取到的一定是同一次切换的解释，界面也可以用 `Explanation.state` 与快照核对。
 - ADR 0014（个人基线的持久化与重算：数据来源、重算时机、窗口数口径、最少样本数、重置基线）：#25 提出；C 已同意（#25 评论，编号由 0012 改为 0014），等 E 评审。
 - ADR 0011（自评天气的实现解释：“说不上来”不覆盖、校准的计法、自评期间的解释、总线字段类型、覆盖不跨重启）：#17 提出，等 D 与 E 评审。
+- ADR 0023（演示模式的实现解释：`--demo` 开启、×60 时钟只加速提醒不加速打字特征、演示库每次重建、同意沿用真实库、预置内容）：B-10 的 PR 提出，等 C、D、E 评审。
 - 这几份 ADR 接受后都要回产品书仓库改 04 FR-STA-01/03/04/06/08/09/10、10 第 5.1/5.3 节、15 和 17 第 2.3 节，并写 00 第 5 节修订记录。
 
 ## 5. 已知问题
@@ -116,7 +133,8 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 
 1. B-08 剩余：系统通知（随 D-09）、专注时段（等 C 的自由文本设置类型）；
 2. B-01 已完成：`--baseline`、`--start-at`（#46，ADR 0021，待 A、E 评审），暂停 / 单步；剩 Windows 管道客户端版 `--listen`；
-3. B-10 演示模式（×60 加速、演示数据库）：`sim::clock()` 已是各服务共用的时钟入口，换成加速时钟即可。
+3. B-10 剩余：研究模式 FR-DMO-04（定时自评邀请、`source = esm`）；跟进 ADR 0023 评审；
+4. B-11 评测报告：等 B-02 的真人录制。
 
 ## 7. 修订记录
 
@@ -130,4 +148,5 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-05 | B-08 第一部分：使用时长、四类休息提醒、时机与勿扰、疲劳联动、`reminder_log`、小组件提醒卡片 |
 | 2026-10-05 | B-03 / B-04：窗口切分、特征、基线统计的 Python 参考实现与 Rust 对拍（FR-STA-02/03 验收），CI 校验对拍文件 |
 | 2026-10-05 | B-09：`daily_summary` 的使用时长、停止打字时间、休息提醒计数；作息洞察统计与 `get_routine` 命令（TC-REV-04） |
+| 2026-10-05 | B-10：演示模式（`--demo`、×60 `ScaledClock`、每次重建并预置一周的演示库、`demo_status`）与 ADR 0023 |
 | 2026-10-05 | B-01：xq-sim 暂停 / 单步（C 代做） |

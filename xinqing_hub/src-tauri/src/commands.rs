@@ -29,6 +29,7 @@ use crate::events::{SelfReportChanged, SettingsChanged, StatusChanged};
 use crate::gateway::Ai;
 use crate::rest::Rest;
 use crate::sensing::Sensing;
+use crate::sim::{self, DemoStatus};
 use crate::state::AppState;
 use crate::windows::{self, WindowTarget};
 
@@ -99,7 +100,7 @@ pub fn submit_feedback(
 ) -> Result<(), UiError> {
     match target {
         FeedbackTarget::MoodState => {
-            let ts = chrono::Utc::now().timestamp_millis();
+            let ts = sim::clock().now_ms();
             // 写连接：先提交排队中的状态记录，“记到最近一条”才是界面上显示的那条
             let rec = state
                 .writer()
@@ -130,7 +131,7 @@ pub fn self_report_set(
     note: Option<String>,
 ) -> Result<(), UiError> {
     let note = note.map(zeroize::Zeroizing::new);
-    let ts = chrono::Utc::now().timestamp_millis();
+    let ts = sim::clock().now_ms();
     let rec = state.writer().write_sync(|db| {
         self_report::record(
             db,
@@ -178,7 +179,14 @@ pub fn self_report_list(
 #[tauri::command]
 #[specta::specta]
 pub fn get_routine(state: State<'_, AppState>, days: u32) -> Result<Routine, UiError> {
-    Ok(routine::get(&state.db(), days, chrono::Local::now())?)
+    Ok(routine::get(&state.db(), days, sim::clock().now())?)
+}
+
+/// 是否为演示模式（FR-DMO-03）：是的话界面在标题栏显示“演示模式”。以 `--demo` 启动时为是（ADR 0023）。
+#[tauri::command]
+#[specta::specta]
+pub fn demo_status() -> Result<DemoStatus, UiError> {
+    Ok(sim::demo_status())
 }
 
 /// 重置基线（设置页“感知”分类，FR-SET-04、FR-STA-03 第 4 条）：清空个人统计值，
@@ -193,7 +201,7 @@ pub fn baseline_reset(
         // `XQ_SIM_BASELINE` 回放期间不读写真实基线（ADR 0021）
         return Err(UiError::new("baseline.fixed", "error.generic"));
     }
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = sim::clock().now_ms();
     let stats = state.writer().write_sync(|db| persist::reset(db, now))?;
     sensing.apply_baseline(&stats);
     if sensing.cmds.try_send(SenseCmd::Baseline(stats)).is_err() {
