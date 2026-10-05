@@ -176,6 +176,26 @@ impl Db {
         Ok(rows.collect::<Result<_, _>>()?)
     }
 
+    /// `date`（`YYYY-MM-DD`）当天已加入、且到 `now_hhmm`（`HH:MM`）为止已经开始的日程数；全天日程算已完成
+    /// （晚间小结的“完成日程”，FR-REV-01，ADR 0029）。
+    pub fn schedules_done_on(&self, date: &str, now_hhmm: &str) -> Result<u32, StoreError> {
+        Ok(self.conn.query_row(
+            "SELECT count(*) FROM schedule WHERE status='added' AND date=?1
+             AND (all_day=1 OR time IS NULL OR time<=?2)",
+            params![date, now_hhmm],
+            |r| r.get(0),
+        )?)
+    }
+
+    /// `[from, to)`（Unix 毫秒）之间完成的待办数。
+    pub fn todos_done_between(&self, from: i64, to: i64) -> Result<u32, StoreError> {
+        Ok(self.conn.query_row(
+            "SELECT count(*) FROM todo WHERE status='done' AND done_ts>=?1 AND done_ts<?2",
+            params![from, to],
+            |r| r.get(0),
+        )?)
+    }
+
     pub fn todo_mark_done(&self, id: i64, done_ts: i64) -> Result<bool, StoreError> {
         Ok(self.conn.execute(
             "UPDATE todo SET status='done',done_ts=?2 WHERE id=?1 AND status='open'",
@@ -220,6 +240,35 @@ mod tests {
             source: "ai".into(),
             flags: vec![],
         }
+    }
+
+    #[test]
+    fn counts_for_the_evening_summary() {
+        let db = Db::open_in_memory().unwrap();
+        db.schedule_create(&schedule(), "added", 1).unwrap();
+        let mut later = schedule();
+        later.title = "晚课".into();
+        later.time = Some("19:00".into());
+        db.schedule_create(&later, "added", 2).unwrap();
+        let mut pending = schedule();
+        pending.title = "未确认".into();
+        db.schedule_create(&pending, "pending", 3).unwrap();
+        assert_eq!(db.schedules_done_on("2026-10-09", "16:00").unwrap(), 1);
+        assert_eq!(db.schedules_done_on("2026-10-09", "22:30").unwrap(), 2);
+        assert_eq!(db.schedules_done_on("2026-10-10", "22:30").unwrap(), 0);
+
+        let draft = |t: &str| TodoDraft {
+            title: t.into(),
+            due_date: None,
+            source: "manual".into(),
+        };
+        let (a, _) = db.todo_create(&draft("交报告"), 1).unwrap();
+        let (b, _) = db.todo_create(&draft("买菜"), 1).unwrap();
+        db.todo_create(&draft("还书"), 1).unwrap();
+        db.todo_mark_done(a, 150).unwrap();
+        db.todo_mark_done(b, 250).unwrap();
+        assert_eq!(db.todos_done_between(100, 200).unwrap(), 1);
+        assert_eq!(db.todos_done_between(100, 300).unwrap(), 2);
     }
 
     #[test]

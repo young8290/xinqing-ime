@@ -8,6 +8,7 @@ mod cleanup;
 mod comfort;
 mod commands;
 mod error;
+mod evening;
 mod events;
 mod fullscreen;
 mod gateway;
@@ -101,6 +102,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::ChatErrorEvent,
             events::SafetyTriggered,
             events::SafetyInvite,
+            events::ReviewEvening,
         ])
 }
 
@@ -152,6 +154,7 @@ pub fn run() {
             // 对话与对话里的危机安全（C-07、C-08）
             chat::start(app.handle());
             rewrite::start(app.handle());
+            evening::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。
