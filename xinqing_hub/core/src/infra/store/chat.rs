@@ -28,6 +28,23 @@ pub struct MessageRow {
     pub ai_generated: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemoryRow {
+    pub id: i64,
+    pub content: String,
+    pub created_ts: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChatSearchRow {
+    pub id: i64,
+    pub session_id: i64,
+    pub title: String,
+    pub role: String,
+    pub content: String,
+    pub ts: i64,
+}
+
 /// 新写入的一条消息。
 pub struct NewMessage<'a> {
     pub session_id: i64,
@@ -166,6 +183,62 @@ impl Db {
         Ok(rows.collect::<Result<_, _>>()?)
     }
 
+    pub fn memories_list(&self) -> Result<Vec<MemoryRow>, StoreError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, content, created_ts FROM memory ORDER BY created_ts DESC, id DESC",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(MemoryRow {
+                id: r.get(0)?,
+                content: r.get(1)?,
+                created_ts: r.get(2)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    pub fn memory_insert(&self, content: &str, ts: i64) -> Result<i64, StoreError> {
+        self.conn.execute(
+            "INSERT INTO memory (content, created_ts) VALUES (?1, ?2)",
+            params![content, ts],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    pub fn memory_update(&self, id: i64, content: &str) -> Result<bool, StoreError> {
+        Ok(self.conn.execute(
+            "UPDATE memory SET content = ?2 WHERE id = ?1",
+            params![id, content],
+        )? != 0)
+    }
+
+    pub fn memory_delete(&self, id: i64) -> Result<bool, StoreError> {
+        Ok(self
+            .conn
+            .execute("DELETE FROM memory WHERE id = ?1", [id])?
+            != 0)
+    }
+
+    pub fn chat_search(&self, query: &str, limit: usize) -> Result<Vec<ChatSearchRow>, StoreError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT m.id, m.session_id, s.title, m.role, m.content, m.ts
+             FROM chat_message m JOIN chat_session s ON s.id = m.session_id
+             WHERE instr(lower(m.content), lower(?1)) > 0
+             ORDER BY m.ts DESC, m.id DESC LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![query, limit as i64], |r| {
+            Ok(ChatSearchRow {
+                id: r.get(0)?,
+                session_id: r.get(1)?,
+                title: r.get(2)?,
+                role: r.get(3)?,
+                content: r.get(4)?,
+                ts: r.get(5)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
     /// `since` 之后每次显示的状态（今日状态摘要），从旧到新。
     pub fn shown_states_since(&self, since: i64) -> Result<Vec<(i64, MoodState)>, StoreError> {
         let mut stmt = self
@@ -268,5 +341,27 @@ mod tests {
             )
             .unwrap();
         assert_eq!(db.memories_recent(10).unwrap(), ["新", "旧"]);
+    }
+
+    #[test]
+    fn memory_crud_and_chat_search() {
+        let db = Db::open_in_memory().unwrap();
+        let id = db.memory_insert("记住我喜欢晴天", 10).unwrap();
+        assert_eq!(db.memories_list().unwrap()[0].content, "记住我喜欢晴天");
+        assert!(db.memory_update(id, "记住我喜欢晴天和咖啡").unwrap());
+        assert_eq!(
+            db.memories_list().unwrap()[0].content,
+            "记住我喜欢晴天和咖啡"
+        );
+        assert!(db.memory_delete(id).unwrap());
+        assert!(db.memories_list().unwrap().is_empty());
+
+        let session = db.chat_session_create("搜索测试", 20).unwrap();
+        db.chat_message_insert(&msg(session, "user", "今天想喝咖啡", 30))
+            .unwrap();
+        let found = db.chat_search("咖啡", 50).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].session_id, session);
+        assert!(db.chat_search("不存在", 50).unwrap().is_empty());
     }
 }

@@ -301,6 +301,11 @@ pub const KEYS: &[KeySpec] = &[
         default: || 100.0.into(),
     },
     KeySpec {
+        key: "chat.retention_days",
+        kind: Kind::Choice(&["30", "90", "365", "permanent"]),
+        default: || "90".into(),
+    },
+    KeySpec {
         key: "dev.mode",
         kind: Kind::Bool,
         default: || false.into(),

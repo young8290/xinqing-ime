@@ -72,6 +72,11 @@ export const commands = {
 	chatListSessions: () => typedError<ChatSessionItem[], UiError>(__TAURI_INVOKE("chat_list_sessions")),
 	/**  一个会话的消息，从旧到新。 */
 	chatGetMessages: (sessionId: number) => typedError<ChatMessageItem[], UiError>(__TAURI_INVOKE("chat_get_messages", { sessionId })),
+	chatSearch: (query: string) => typedError<ChatSearchItem[], UiError>(__TAURI_INVOKE("chat_search", { query })),
+	memoryList: () => typedError<MemoryItem[], UiError>(__TAURI_INVOKE("memory_list")),
+	memoryAdd: (content: string) => typedError<number, UiError>(__TAURI_INVOKE("memory_add", { content })),
+	memoryUpdate: (id: number, content: string) => typedError<null, UiError>(__TAURI_INVOKE("memory_update", { id, content })),
+	memoryDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("memory_delete", { id })),
 	/**
 	 *  发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
 	 *  异步命令：回复在 tokio 运行时里的后台任务中生成。
@@ -201,6 +206,15 @@ export type ChatMessageItem = {
 	ts: number | null,
 	/**  为真时显示 `AI 生成` 标签（FR-CHT-04 第 4 条） */
 	ai_generated: boolean,
+};
+
+export type ChatSearchItem = {
+	id: number,
+	session_id: number,
+	title: string,
+	role: string,
+	content: string,
+	ts: number | null,
 };
 
 /**  `chat_send` / `chat_retry` 的结果；回复经 `chat:*` 事件推送。 */
@@ -389,6 +403,12 @@ export type LlmView = {
 	key_tail: string | null,
 	/**  按优先级排列 */
 	models: string[],
+};
+
+export type MemoryItem = {
+	id: number,
+	content: string,
+	created_ts: number | null,
 };
 
 /**  “测试连接”里一个模型的结果（FR-AIG-04 第 4 条）。 */

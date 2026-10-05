@@ -35,6 +35,23 @@ pub struct ChatMessageItem {
     pub ai_generated: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct MemoryItem {
+    pub id: u32,
+    pub content: String,
+    pub created_ts: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct ChatSearchItem {
+    pub id: u32,
+    pub session_id: u32,
+    pub title: String,
+    pub role: String,
+    pub content: String,
+    pub ts: f64,
+}
+
 /// `chat_send` / `chat_retry` 的结果；回复经 `chat:*` 事件推送。
 #[derive(Debug, Clone, Serialize, Type)]
 pub struct ChatSent {
@@ -114,6 +131,82 @@ pub fn chat_get_messages(
             ai_generated: m.ai_generated,
         })
         .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn chat_search(
+    state: State<'_, AppState>,
+    query: String,
+) -> Result<Vec<ChatSearchItem>, UiError> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    Ok(state
+        .db()
+        .chat_search(query, 50)?
+        .into_iter()
+        .map(|m| ChatSearchItem {
+            id: m.id as u32,
+            session_id: m.session_id as u32,
+            title: m.title,
+            role: m.role,
+            content: m.content,
+            ts: m.ts as f64,
+        })
+        .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_list(state: State<'_, AppState>) -> Result<Vec<MemoryItem>, UiError> {
+    Ok(state
+        .db()
+        .memories_list()?
+        .into_iter()
+        .map(|m| MemoryItem {
+            id: m.id as u32,
+            content: m.content,
+            created_ts: m.created_ts as f64,
+        })
+        .collect())
+}
+
+fn validate_memory(content: &str) -> Result<&str, UiError> {
+    let content = content.trim();
+    if content.is_empty() || content.chars().count() > 100 {
+        return Err(UiError::new("chat.memory_invalid", "error.generic"));
+    }
+    Ok(content)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_add(state: State<'_, AppState>, content: String) -> Result<u32, UiError> {
+    let content = validate_memory(&content)?;
+    Ok(state
+        .db()
+        .memory_insert(content, chrono::Utc::now().timestamp_millis())? as u32)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_update(state: State<'_, AppState>, id: u32, content: String) -> Result<(), UiError> {
+    let content = validate_memory(&content)?;
+    if !state.db().memory_update(i64::from(id), content)? {
+        return Err(UiError::new("chat.memory_missing", "error.generic"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_delete(state: State<'_, AppState>, id: u32) -> Result<(), UiError> {
+    if !state.db().memory_delete(i64::from(id))? {
+        return Err(UiError::new("chat.memory_missing", "error.generic"));
+    }
+    Ok(())
 }
 
 /// 发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
