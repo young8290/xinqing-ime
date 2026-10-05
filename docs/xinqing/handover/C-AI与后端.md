@@ -15,7 +15,7 @@
 | C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **后端完成** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)（已合并）；第三部分（安静时段、自定义勿扰应用）：[xinqing-ime#44](https://github.com/young8290/xinqing-ime/pull/44)（已合并）；ADR 0015、0019 | 见第 3.1 节：主动关怀要等 B 把 Jev 接进 `Sense`；系统专注助手不判断（ADR 0019 第 7 条）；E-COMFORT 评测 |
 | C-05 | 日程识别：L1/L2/L3、代码校验、去重、提醒调度、冲突 | 本地初筛、结构化存储与 AI 抽取字段校验完成 | [xinqing-ime#42](https://github.com/young8290/xinqing-ime/pull/42)（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；P-SCHEDULE / P-TODO 输出校验（08 第 5 节 V1～V3）与 FR-SCH-04 校验第 2～5 条的规范化（`validate_schedule_json`、`validate_todo_json`，同在 `domain/schedule.rs`）：Hu-yiye 的 [xinqing-ime#52](https://github.com/young8290/xinqing-ime/pull/52)；模板 `hub_templates/schedule_patterns.toml`、评测集 `eval/datasets/e_plan.jsonl`、`e_extract.jsonl` | L2/L3 网关接线（含 FR-SCH-04 校验第 1 条：用原句算出的日期覆盖模型日期并标 `adjusted`）、提醒调度与冲突处理待做；V4 禁用词、V7 语言没有用在日程 / 待办标题上：标题取自用户原句，禁用词表里的“吃药”“治疗”等会把正常日程拦下，要不要用待 E 定；提醒调度 `scheduler` 也给 B-04（04:00 重算基线）用 |
 | C-06 | 待办识别与清单、提醒 | 本地初筛与结构化存储完成 | #42（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；`prompts/todo.md`、评测集 `eval/datasets/e_todo.jsonl` | AI 抽取、提醒调度与前端清单待做（P1） |
-| C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P0 部分完成** | [xinqing-ime#40](https://github.com/young8290/xinqing-ime/pull/40)（已合并）：纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018 | 见第 3.3 节：快捷指令、记忆增删改、历史搜索与保留期设置（P1） |
+| C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P1 部分完成** | [xinqing-ime#40](https://github.com/young8290/xinqing-ime/pull/40)（已合并）：纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018。记忆增删改、历史搜索、`chat.retention_days`：[xinqing-ime#49](https://github.com/young8290/xinqing-ime/pull/49) | 见第 3.3 节：快捷指令；对话里说“记住”时先确认再写入、消息上的“让晴晴记住”（FR-CHT-07 第 1 条）；设置页“晴晴记住的事”与历史搜索界面等 D |
 | C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
 | C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | 未开始 | `prompts/rewrite.md`、`eval/datasets/e_rewrite.jsonl`；`sense.rs` 收到 `rewrite_req` 时先回 `RewriteFail::Offline` | 计划 W8–W9；依赖 A-08 改写模式；V8 校验、可还原占位符 `[号码1]` |
 | C-10 | 情绪日记、晚间小结、周信 | 未开始 | `hub_templates/evening.toml`、`letter_fallback.md`、`prompts/diary.md`、`letter.md` | 16 第 3 节建议移给 B，W1 评审会还没定（B 的交接文档也记了“未认领”） |
@@ -93,7 +93,8 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 安全模式：P-CHAT-SAFE，大模型不可用时本地固定回应；`safety_log` 只记时间和通道 | FR-SAF-03/04/05 | 完成 |
 | 输出校验 V3（600 字截断）、V4（替换为 `chat.replaced`）、V6（替换为固定回应） | 08 第 5 节 | 完成；V4 替换句见 ADR 0018 第 2 条 |
 | “我说的不是这个意思”：`safety_dismiss`，`safe_mode = 2`，阈值改 `threshold_after_dismiss` | FR-SAF-06 | 完成 |
-| 快捷指令、记忆增删改、历史搜索、`chat.retention_days` 设置 | FR-CHT-06/07/08 | 未做（P1） |
+| 记忆增删改、历史搜索、`chat.retention_days` 设置 | FR-CHT-07/08 | 命令完成（[xinqing-ime#49](https://github.com/young8290/xinqing-ime/pull/49)）：`memory_list/add/update/delete`（最多 50 条、每条 ≤ 100 字，满了返回 `chat.memory_full`）、`chat_search`（最多 50 条）；自动清理读取 30 / 90 / 365 天或永久。对话中“记住”的确认流程与“让晴晴记住”按钮未做 |
+| 快捷指令 | FR-CHT-06 | 未做（P1） |
 | E-CHAT 对话安全评测（12 的用例集 100% 通过） | FR-CHT-03 验收 | 未做：要真实接口 |
 
 ## 4. 关键决定与待评审
