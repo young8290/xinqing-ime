@@ -6,7 +6,12 @@
 # 清单是 config/app.toml。设置程序 wind-setting 是上游私有仓，这里不检出，安装包里没有设置程序。
 name: XinQing Package
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      installer_ref:
+        description: "wind-installer（young8290 的 fork）的分支或提交，用来试还没合进 main 的安装器改动"
+        required: false
+        default: main
   pull_request:
     branches: [main]
     paths:
@@ -36,10 +41,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: WindInput
+      # 用心晴自己的 fork：上游缺 WebView2 检测、快捷方式通知标识、完成页说明、清应用自启值
+      # 这几项，心晴在 fork 里补（A-10，见 docs/xinqing/handover/A-输入法.md）。fork 是公开仓，
+      # 检出不需要令牌。PR 触发时 inputs 为空，回落到 main。
       - name: 检出 wind-installer
         uses: actions/checkout@v4
         with:
-          repository: huanfeng/wind-installer
+          repository: young8290/wind-installer
+          ref: ${{ inputs.installer_ref || 'main' }}
           path: wind-installer
       - name: 检出 wind-portable
         uses: actions/checkout@v4

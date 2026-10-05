@@ -60,23 +60,26 @@ C-PLT-05：登录、锁屏、UAC 提权框处于安全桌面，输入法不采�
 
 ## 4. 进行中：A-10 安装包
 
-`scripts/dev.ps1 8` 出包，清单是 `config/app.toml`，安装器是上游的通用生成器 [wind-installer](https://github.com/huanfeng/wind-installer)
-（清单驱动，本仓不改它的代码）。Actions 里手动跑 “XinQing Package” 就能拿到 `XinQing-Setup-<版本>-dev.<提交号>.exe` 去真机试装。
+`scripts/dev.ps1 8` 出包，清单是 `config/app.toml`。安装器是通用生成器 wind-installer（清单驱动），心晴用自己的 fork
+[young8290/wind-installer](https://github.com/young8290/wind-installer)：上游缺的四项能力在 fork 里补（fork 的 PR #1），
+`xinqing-package.yml` 检出 fork 的 main。Actions 里手动跑 “XinQing Package” 就能拿到 `XinQing-Setup-<版本>-dev.<提交号>.exe`
+去真机试装；手动跑时可填 `installer_ref`，用 fork 里还没合并的分支打包。本地打包要把 fork 克隆到本仓同级的 `wind-installer` 目录。
 
 | 部分 | 需求 | 状态 |
 |---|---|---|
 | Hub 进安装包：`Build-Hub` 用 pnpm 构建 `xinqing_hub.exe`，连同 `hub_templates/` 放进 `build/` | FR-OPS-01 | 完成（没装 pnpm 时跳过；`XQ_REQUIRE_HUB=1` 时报错） |
-| 开始菜单“心晴”快捷方式（打开 Hub） | FR-OPS-01 | 完成，但没有应用标识（AppUserModelID），Windows 通知会显示不对，见下 |
+| 开始菜单“心晴”快捷方式（打开 Hub） | FR-OPS-01 | 完成 |
 | 升级、卸载前结束 Hub（`process_names` 加 `xinqing_hub`） | FR-OPS-02 | 完成 |
 | 卸载时可选删除心晴数据（`%LOCALAPPDATA%\XinQing\hub`） | FR-OPS-02 | 完成：并进“删除心晴数据、用户词库和配置数据”这一个勾选，默认不选；产品书写的是两个选项 |
 | 不自动设为默认输入法 | FR-OPS-01 | 安装器本来就不设 |
 | 安装包名 | FR-OPS-01 | `XinQing-Setup-<版本>.exe`（打包器固定“名称-版本”的顺序），产品书写的是 `XinQing-<版本>-Setup.exe` |
-| 检测 WebView2、缺失时下载微软引导程序 | FR-OPS-01 | **未做**：wind-installer 没有这项能力 |
-| 快捷方式写应用标识（通知要用） | FR-OPS-01、FR-NTF-01 | **未做**：wind-installer 的快捷方式段不支持；也可以由 Hub 启动时自己在注册表登记应用标识（C 的 `notify.rs`） |
-| 完成页提示“按 Win + Space 切换到心晴输入法”、许可页放 MIT 全文与“基于清风输入法”声明 | FR-OPS-01、FR-OPS-06 | **未做**：安装器的文案段没有这两处 |
-| 卸载时删掉 Hub 的“登录时后台启动”启动项 | FR-OPS-02 | **未做**：Hub 侧这项设置也还没做；安装器只撤销自己写过的东西 |
+| 检测 WebView2、缺失时下载微软引导程序 | FR-OPS-01、C-PLT-06 | 已写，未实测：清单 `[[prerequisite]]`。打包时 `Add-WebView2Bootstrapper` 下载微软在线引导程序到 `redist\`、校验微软签名；装完检测，缺了静默运行它（需联网，最长等 20 分钟），仍缺则完成页给下载链接。便携版只提示 |
+| 快捷方式写应用标识（通知要用） | FR-OPS-01、FR-NTF-01 | 已写，未实测：“心晴”快捷方式带 `app_user_model_id = "com.xinqing.hub"`，须与 `tauri.conf.json` 的 identifier 一致。Hub 还没接通知插件 |
+| 完成页提示、许可页放 MIT 全文与“基于清风输入法”声明 | FR-OPS-01、FR-OPS-06 | 已写，未实测：完成页两行说明；“我已阅读并同意《许可协议与开源声明》”点开是 `config/installer-license.txt` 加根目录 `LICENSE` 拼成的全文。`LICENSE`、`NOTICE.md` 随包装进安装目录 |
+| 卸载时删掉 Hub 的“登录时后台启动”启动项 | FR-OPS-02 | 已写，未实测：清单 `[runtime_autostart]` 认领值名 `XinQingHub` 和 `心晴`。**给 Hub 做这项设置的人**：Run 键值名用 `XinQingHub`（tauri-plugin-autostart 的 `Builder::app_name`） |
 
-标“未做”的几项都要给 wind-installer 加通用能力（它的 AGENTS.md 有“新增一种能力的标准套路”）。young 2026-10-04 定了 fork：等 young 把它 fork 到 young8290 名下，在 fork 里补这几项，再把 `xinqing-package.yml` 改为检出 fork。
+这四项依赖 fork 的 PR #1：要先合并它，再合并本仓的对应 PR，否则打包时旧安装器会忽略这些清单字段（不报错，但功能不生效）。
+fork 刚建时 Actions 默认关着，要在 fork 的 Actions 页点一次启用，PR #1 的 Windows CI 才会跑。
 
 ## 5. A-08 剩余事项
 
@@ -110,7 +113,7 @@ Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrit
 
 ## 8. 下一步（按优先级）
 
-1. A-10 剩余：WebView2、应用标识、完成页与许可页文案（要先定 wind-installer 怎么改）；在真机上试装一次 Actions 产出的安装包；
+1. A-10 剩余：在真机上试装一次 Actions 产出的安装包，重点看 Win10 无 WebView2 时的代装、完成页、协议全文、开始菜单快捷方式；
 2. A-08 收尾：首次使用说明的归属定下来后实现；与 C 联调真实的 `rewrite_result`；
 3. 真机验证清单（需要有 Windows 的组员）：并装、命名管道、改写替换（含 emoji 和扩展区汉字）、锁屏与 UAC、工具栏；
 4. A-11 剩余：真机上用 typer 跑 TC-PERF-01、TC-STA-04 出数，兼容矩阵；A-12 每两周查一次上游。
@@ -124,3 +127,4 @@ Hub 一侧（提示词、保真校验、隐私占位符、每日上限、`rewrit
 | 2026-10-04 | A-10 第一部分：Hub 进安装包、开始菜单快捷方式、卸载结束 Hub 与删除心晴数据、试装用的打包流水线 |
 | 2026-10-04 | A-10 第一部分已合并，安装器缺项定为 fork wind-installer；A-11 第一部分：`tools/typer`；A-12 查过上游无更新 |
 | 2026-10-04 | A-11：核心耗时埋点（dev 构建，每 2,000 键记一行汇总） |
+| 2026-10-05 | A-10 第二部分：安装器改用 fork，补 WebView2、通知标识、完成页与许可全文、卸载清 Hub 自启项 |
