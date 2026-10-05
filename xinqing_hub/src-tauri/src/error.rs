@@ -5,6 +5,7 @@ use serde::Serialize;
 use specta::Type;
 use xinqing_hub_core::domain::self_report::SelfReportError;
 use xinqing_hub_core::domain::settings::SettingsError;
+use xinqing_hub_core::infra::imeconf::ImeRpcError;
 use xinqing_hub_core::infra::store::StoreError;
 
 #[derive(Debug, Clone, Serialize, Type, thiserror::Error)]
@@ -63,5 +64,18 @@ impl From<SelfReportError> for UiError {
 impl From<tauri::Error> for UiError {
     fn from(e: tauri::Error) -> Self {
         UiError::internal("tauri", e)
+    }
+}
+
+impl From<ImeRpcError> for UiError {
+    fn from(e: ImeRpcError) -> Self {
+        match e {
+            // 输入法核心没在跑：说清楚，不报技术细节（DS-COPY-06）
+            ImeRpcError::Unavailable(cause) => {
+                eprintln!("[ime.unavailable] {cause}");
+                UiError::new("ime.unavailable", "error.ime_unavailable")
+            }
+            e => UiError::internal("ime.rpc", e),
+        }
     }
 }
