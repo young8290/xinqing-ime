@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri_specta::Event;
 use xinqing_hub_core::care::ComfortSource;
+use xinqing_hub_core::chat::ChatFailure;
 use xinqing_hub_core::domain::rest::RestKind;
 use xinqing_hub_core::domain::self_report::SelfWeather;
 use xinqing_hub_core::domain::status::StatusSnapshot;
@@ -72,3 +73,42 @@ pub struct RestDue {
 #[derive(Debug, Clone, Serialize, Type, Event)]
 #[tauri_specta(event_name = "ime_config:changed")]
 pub struct ImeConfigChanged(pub ImeConfigChange);
+
+/// `chat:delta`：对话回复的一段增量（FR-CHT-04 第 1 条），按到达顺序拼接显示。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "chat:delta")]
+pub struct ChatDelta {
+    pub request_id: u32,
+    pub text_delta: String,
+}
+
+/// `chat:done`：回复结束。`text` 是最终写库的全文，校验替换或截断过时与增量拼出来的不同，界面以它为准；
+/// `ai_generated` 为假（固定回应、替换句）时不显示 `AI 生成` 标签。用户停止生成且一个字都没有时 `message_id` 为 `null`。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "chat:done")]
+pub struct ChatDone {
+    pub request_id: u32,
+    pub session_id: u32,
+    pub message_id: Option<u32>,
+    pub text: String,
+    pub ai_generated: bool,
+    pub stopped: bool,
+}
+
+/// `chat:error`：没拿到回复（超时、模型不可用、今日额度用完）。用户消息已保存，界面移除半截回复，
+/// 显示 `chat.stuck` 或 `chat.daily_cap` 和“重试”（`chat_retry`）。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "chat:error")]
+pub struct ChatErrorEvent {
+    pub request_id: u32,
+    pub session_id: u32,
+    pub reason: ChatFailure,
+}
+
+/// `safety:triggered`：危机识别命中（FR-SAF-01）。对话窗口立即在顶部固定显示求助卡片（FR-SAF-02），
+/// 本会话切换为安全模式。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "safety:triggered")]
+pub struct SafetyTriggered {
+    pub session_id: u32,
+}

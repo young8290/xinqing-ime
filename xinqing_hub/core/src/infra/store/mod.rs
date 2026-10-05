@@ -15,10 +15,13 @@ use crate::domain::rules::Hints;
 use crate::infra::gateway::NetLogEntry;
 use crate::infra::templates::AppCat;
 
+mod chat;
 mod comfort;
 pub mod export;
 mod rest;
+mod chat;
 mod schedule;
+pub use chat::{MessageRow, NewMessage, SessionRow};
 pub use comfort::ComfortRecord;
 pub use schedule::{ScheduleRow, TodoRow};
 
