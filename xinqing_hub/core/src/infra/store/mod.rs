@@ -20,6 +20,7 @@ mod comfort;
 pub mod export;
 mod rest;
 mod schedule;
+mod summary;
 pub use chat::{MessageRow, NewMessage, SessionRow};
 pub use comfort::ComfortRecord;
 pub use schedule::{ScheduleRow, TodoRow};

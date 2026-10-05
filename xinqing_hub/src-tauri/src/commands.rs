@@ -16,6 +16,7 @@ use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::features::persist;
 use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
 use xinqing_hub_core::domain::rest::{RestAction, RestKind};
+use xinqing_hub_core::domain::routine::{self, Routine};
 use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
@@ -141,6 +142,14 @@ pub fn self_report_list(
     let date = chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d")
         .map_err(|_| UiError::new("self_report.bad_date", "error.generic"))?;
     Ok(self_report::list_day(&state.db(), date)?)
+}
+
+/// 作息洞察（FR-REV-03，看板周报）：截至最近一个已经结束的晚上共 `days` 晚（1–90）的停止打字时间。
+/// 界面一律称“停止打字时间”，并注明只统计这台电脑上的打字、不等于入睡时间（DS-COPY-09）。
+#[tauri::command]
+#[specta::specta]
+pub fn get_routine(state: State<'_, AppState>, days: u32) -> Result<Routine, UiError> {
+    Ok(routine::get(&state.db(), days, chrono::Local::now())?)
 }
 
 /// 重置基线（设置页“感知”分类，FR-SET-04、FR-STA-03 第 4 条）：清空个人统计值，
