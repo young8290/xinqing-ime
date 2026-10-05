@@ -115,6 +115,22 @@ pub struct ChatErrorEvent {
     pub reason: ChatFailure,
 }
 
+/// `safety:invite` 的来源。目前只有温柔改写。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum SafetyInviteSource {
+    Rewrite,
+}
+
+/// `safety:invite`：改写时原文命中危机词表（FR-RWR-05 第 3 条，ADR 0028 第 4 条）。核心已退出改写模式并在光标旁
+/// 显示气泡；界面在小组件一句话区给出最高优先级的求助入口（`rewrite.crisis_bubble`），点了打开对话并显示求助卡片。
+/// 不自动弹出对话窗口：用户正在别的应用里打字。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "safety:invite")]
+pub struct SafetyInvite {
+    pub source: SafetyInviteSource,
+}
+
 /// `safety:triggered`：危机识别命中（FR-SAF-01）。对话窗口立即在顶部固定显示求助卡片（FR-SAF-02），
 /// 本会话切换为安全模式。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
