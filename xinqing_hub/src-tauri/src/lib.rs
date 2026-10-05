@@ -53,6 +53,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::ai::ai_test_connection,
             commands::ai::ai_usage_today,
             commands::comfort::comfort_feedback,
+            commands::ime::ime_schema,
+            commands::ime::ime_config_get,
+            commands::ime::ime_config_set,
         ])
         .events(collect_events![
             events::StatusChanged,

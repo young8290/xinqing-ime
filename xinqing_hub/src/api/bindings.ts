@@ -64,6 +64,12 @@ export const commands = {
 	 *  这句话已被清理时什么也不做。
 	 */
 	comfortFeedback: (id: number, verdict: ComfortVerdict) => typedError<null, UiError>(__TAURI_INVOKE("comfort_feedback", { id, verdict })),
+	/**  全部已登记的输入法配置键与类型，设置页据此生成表单。 */
+	imeSchema: () => typedError<ImeField[], UiError>(__TAURI_INVOKE("ime_schema")),
+	/**  整份合并后的输入法配置。 */
+	imeConfigGet: () => typedError<ImeConfig, UiError>(__TAURI_INVOKE("ime_config_get")),
+	/**  写入若干项：失败项不让整批失败，`skipped` 里带原因，界面显示在对应控件旁（17 第 3.4 节）。 */
+	imeConfigSet: (items: ImeItemInput[]) => typedError<ImeSetResult, UiError>(__TAURI_INVOKE("ime_config_set", { items })),
 };
 
 /** Events */
@@ -203,6 +209,47 @@ export type GatewayHealth = {
 
 /**  `gateway:health`：Jev 与大模型两侧是否可用（`{jev, llm}`），任一侧不可用时小组件显示“离线”角标。 */
 export type GatewayHealthChanged = GatewayHealth;
+
+/**  `ime_config_get` 的返回：整份合并后的配置，界面按键名的点分路径取值。 */
+export type ImeConfig = {
+	values: unknown,
+};
+
+/**  `ime_schema` 的一项：已登记的输入法配置键。 */
+export type ImeField = {
+	/**  点分键名，例如 `ui.candidate.layout` */
+	key: string,
+	kind: ImeFieldKind,
+	/**  只有 `enum` 有：合法取值 */
+	options: string[] | null,
+};
+
+/**  配置项的类型（`config.schema` 的 `type`），决定界面用什么控件（07 FR-SET-02）。 */
+export type ImeFieldKind = "bool" | "int" | "float" | "string" | "enum" | 
+/**  字符串数组（schema 里写作 `string[]`） */
+"string_list" | "map" | "array" | 
+/**  认不出的类型：界面只读显示 JSON */
+"other";
+
+/**  `ime_config_set` 的一项：点分键名与新值。 */
+export type ImeItemInput = {
+	key: string,
+	value: unknown,
+};
+
+/**  `ime_config_set` 的返回：失败项不让整批失败（`config.setItems` 的语义）。 */
+export type ImeSetResult = {
+	/**  有改动需要重启输入法才生效（FR-SET-01 的重启横幅） */
+	needs_restart: boolean,
+	applied: number,
+	skipped: ImeSkipped[],
+};
+
+/**  被核心跳过的一项（未登记、类型或取值不对……），`reason` 是核心给的原因。 */
+export type ImeSkipped = {
+	key: string,
+	reason: string,
+};
 
 export type JevInput = {
 	base_url: string,

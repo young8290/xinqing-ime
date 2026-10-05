@@ -3,6 +3,7 @@
 
 pub mod ai;
 pub mod comfort;
+pub mod ime;
 
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
