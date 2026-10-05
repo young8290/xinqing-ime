@@ -6,7 +6,7 @@
 - 生成的文件（不要手改，CI 会核对）：
   - `src/api/bindings.ts`：命令与事件的 TypeScript 封装，`pnpm gen:bindings`（即 `cargo run -p xinqing-hub --bin export-bindings`）；
   - `src/i18n/zh-CN.ts`：界面文案表，`pnpm gen:i18n`，来源是 `hub_templates/ui_copy.toml` 和 `explain.toml`。窗口标题也要和 `ui_copy.toml` 的 `window.*` 一致。
-- 连接输入法：启动后作为 XQP 客户端连接核心（10 第 2 节），Windows 上是命名管道 `xinqing_tap`（调试构建 `xinqing_tap_dev`）；设置环境变量 `XQ_XQP_TCP=127.0.0.1:18765` 时改连 `xq-sim --tcp`，任何平台都能这样联调。出厂模板默认从可执行文件旁的 `hub_templates/` 读取，调试构建回退到仓库根目录，也可用 `XQ_HUB_TEMPLATES` 指定。
+- 连接输入法：启动后作为 XQP 客户端连接核心（10 第 2 节），Windows 上是命名管道 `xinqing_tap`（调试构建 `xinqing_tap_dev`）；设置环境变量 `XQ_XQP_TCP=127.0.0.1:18765` 时改连 `xq-sim --tcp`，任何平台都能这样联调。出厂模板默认从可执行文件旁的 `hub_templates/` 读取，调试构建回退到仓库根目录，也可用 `XQ_HUB_TEMPLATES` 指定。调试构建另读 `XQ_SIM_BASELINE`（固定基线）和 `XQ_SIM_START_AT`（时钟起点），供 `xq-sim --baseline / --start-at` 回放复现（ADR 0021）。
 - AI 服务：外壳托管 `Arc<Ai>`（`src-tauri/src/gateway.rs`，本身实现 `AiGateway`）。配置来源按优先级：调试构建的仓库根目录 `secrets.toml`（或 `XQ_SECRETS_FILE` 指定）→ 设置页保存的 `secrets.bin`（DPAPI，只在 Windows）→ 调试构建连本机 mock-ai（`XQ_JEV_BASE_URL` / `XQ_LLM_BASE_URL` 可改）→ 离线（ADR 0012）。
 - 数据目录：`%LOCALAPPDATA%\XinQing\hub\`（调试构建为 `XinQingDev`）；设置环境变量 `XQ_HUB_DATA_DIR` 可指到别处，演示和测试时不碰真实数据。
 - 图标：`src-tauri/icons/` 是几何占位（`python3 tools/gen_hub_icons.py` 生成），正式设计稿到位后直接覆盖。

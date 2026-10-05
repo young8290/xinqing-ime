@@ -16,6 +16,7 @@ mod paths;
 mod rest;
 mod secrets;
 mod sensing;
+mod sim;
 mod state;
 mod windows;
 #[cfg(windows)]

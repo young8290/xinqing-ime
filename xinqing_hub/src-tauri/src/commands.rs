@@ -189,6 +189,10 @@ pub fn baseline_reset(
     state: State<'_, AppState>,
     sensing: State<'_, Sensing>,
 ) -> Result<(), UiError> {
+    if sensing.fixed_baseline {
+        // `XQ_SIM_BASELINE` 回放期间不读写真实基线（ADR 0021）
+        return Err(UiError::new("baseline.fixed", "error.generic"));
+    }
     let now = chrono::Utc::now().timestamp_millis();
     let stats = state.writer().write_sync(|db| persist::reset(db, now))?;
     sensing.apply_baseline(&stats);

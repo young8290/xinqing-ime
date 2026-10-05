@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
+use serde::Deserialize;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use xqp::{Down, Up};
 
@@ -19,6 +20,14 @@ struct Args {
     /// 回放脚本（每行一条上行消息，ts 为相对毫秒，seq 可省略）
     #[arg(long)]
     script: Option<PathBuf>,
+    /// 固定基线 TOML（格式同 baseline_default.toml）。由 Hub 读取：xq-sim 校验后打印设好
+    /// `XQ_SIM_BASELINE` 的 Hub 启动命令（ADR 0021）
+    #[arg(long)]
+    baseline: Option<PathBuf>,
+    /// 模拟的起始本地时刻 HH:MM。由 Hub 读取：打印设好 `XQ_SIM_START_AT` 的 Hub 启动命令
+    /// （ADR 0021）。XQP 的 ts 是相对时间，Hub 以收到第一条消息的时刻为起点，平移 ts 没有作用
+    #[arg(long)]
+    start_at: Option<String>,
     /// 倍速（1 / 5 / 20 …）；0 表示不等待，尽快发完
     #[arg(long, default_value_t = 1.0)]
     speed: f64,
@@ -42,6 +51,7 @@ struct Args {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let args = Args::parse();
+    hub_env_hint(&args).await?;
     if let Some(out) = &args.listen {
         return listen(&args, out).await;
     }
@@ -119,6 +129,92 @@ async fn load_script(path: &PathBuf) -> Result<Vec<Up>> {
         out.push(m);
     }
     Ok(out)
+}
+
+#[derive(Debug, Deserialize)]
+struct BaselineFile {
+    version: u32,
+    #[serde(default)]
+    calibrated: bool,
+    day: std::collections::HashMap<String, MedMad>,
+    night: std::collections::HashMap<String, MedMad>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MedMad {
+    med: f64,
+    mad: f64,
+}
+
+async fn load_baseline(path: &PathBuf) -> Result<BaselineFile> {
+    let text = tokio::fs::read_to_string(path)
+        .await
+        .with_context(|| format!("读取基线 {}", path.display()))?;
+    let baseline: BaselineFile =
+        toml::from_str(&text).with_context(|| format!("解析基线 {}", path.display()))?;
+    if baseline.day.is_empty() || baseline.night.is_empty() {
+        bail!("基线必须同时包含 day 和 night 特征");
+    }
+    if baseline
+        .day
+        .values()
+        .chain(baseline.night.values())
+        .any(|v| !v.med.is_finite() || !v.mad.is_finite() || v.mad < 0.0)
+    {
+        bail!("基线中的 med/mad 必须是有限数值，且 mad 不得为负");
+    }
+    Ok(baseline)
+}
+
+fn check_start_at(value: &str) -> Result<()> {
+    let (hour, minute) = value.split_once(':').context("--start-at 格式应为 HH:MM")?;
+    let ok = hour.len() == 2
+        && minute.len() == 2
+        && hour.parse::<u32>().is_ok_and(|h| h < 24)
+        && minute.parse::<u32>().is_ok_and(|m| m < 60);
+    if !ok {
+        bail!("--start-at 应为 00:00 到 23:59");
+    }
+    Ok(())
+}
+
+/// `--baseline` / `--start-at` 要由 Hub 读取（ADR 0021）：校验参数，打印调试构建 Hub 的启动方式。
+async fn hub_env_hint(args: &Args) -> Result<()> {
+    let mut vars = Vec::new();
+    if let Some(path) = &args.baseline {
+        let baseline = load_baseline(path).await?;
+        let abs = std::path::absolute(path).unwrap_or_else(|_| path.clone());
+        eprintln!(
+            "xq-sim：基线 v{}（{}）{}",
+            baseline.version,
+            if baseline.calibrated {
+                "已校准"
+            } else {
+                "未校准"
+            },
+            abs.display()
+        );
+        vars.push(("XQ_SIM_BASELINE", abs.display().to_string()));
+    }
+    if let Some(start_at) = &args.start_at {
+        check_start_at(start_at)?;
+        vars.push(("XQ_SIM_START_AT", start_at.clone()));
+    }
+    if vars.is_empty() {
+        return Ok(());
+    }
+    if let Some(addr) = &args.tcp {
+        vars.push(("XQ_XQP_TCP", addr.clone()));
+    }
+    eprintln!("xq-sim：这些选项由 Hub 读取，请用调试构建的 Hub 并设置环境变量后启动：");
+    let ps: Vec<String> = vars
+        .iter()
+        .map(|(k, v)| format!("$env:{k}='{v}'"))
+        .collect();
+    eprintln!("  PowerShell：{}; pnpm tauri dev", ps.join("; "));
+    let sh: Vec<String> = vars.iter().map(|(k, v)| format!("{k}='{v}'")).collect();
+    eprintln!("  sh：{} pnpm tauri dev", sh.join(" "));
+    Ok(())
 }
 
 async fn read_frame<R: AsyncRead + Unpin>(r: &mut R) -> Result<Option<Vec<u8>>> {

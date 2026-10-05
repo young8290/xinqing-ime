@@ -14,7 +14,6 @@ use xinqing_hub_core::domain::comfort_feedback;
 use xinqing_hub_core::domain::consent::{ConsentItem, ConsentState};
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::validate::BannedWords;
-use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::infra::store::ComfortRecord;
 use xinqing_hub_core::infra::templates::TemplateDirs;
 use xqp::Down;
@@ -50,7 +49,7 @@ pub fn start(app: &AppHandle) {
     let service = ComfortService::new(
         Arc::new(ShellPort { app: app.clone() }),
         gateway,
-        Arc::new(SystemClock),
+        crate::sim::clock(),
         templates,
         prompt,
         Arc::new(banned),

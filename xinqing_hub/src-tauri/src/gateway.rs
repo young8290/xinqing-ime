@@ -15,7 +15,6 @@ use tauri_specta::Event;
 use tokio::sync::{mpsc, watch};
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::status::StatusSnapshot;
-use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::infra::gateway::{
     AiError, AiGateway, CompleteRequest, CompleteResponse, Delta, GatewayHealth, JudgeRequest,
     JudgeResponse, NetLogEntry,
@@ -173,9 +172,9 @@ fn build(
     log_tx: &mpsc::UnboundedSender<NetLogEntry>,
     old: Option<&HttpGateway>,
 ) -> HttpGateway {
-    let gw = HttpGateway::new(secrets.to_config(), Arc::new(SystemClock)).unwrap_or_else(|e| {
+    let gw = HttpGateway::new(secrets.to_config(), crate::sim::clock()).unwrap_or_else(|e| {
         eprintln!("AI 网关配置无效，使用离线模式：{e}");
-        HttpGateway::new(GatewayConfig::default(), Arc::new(SystemClock))
+        HttpGateway::new(GatewayConfig::default(), crate::sim::clock())
             .expect("空配置的离线网关必须可创建")
     });
     let gw = match old {

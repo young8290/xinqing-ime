@@ -16,7 +16,6 @@ use xinqing_hub_core::domain::consent::{ConsentItem, ConsentState};
 use xinqing_hub_core::domain::safety::CrisisLexicon;
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::validate::BannedWords;
-use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::infra::store::Db;
 use xinqing_hub_core::infra::templates::TemplateDirs;
 
@@ -47,7 +46,7 @@ pub fn start(app: &AppHandle) {
         Ok((prompts, copy, banned, lex)) => Some(Arc::new(ChatService::new(
             Arc::new(ShellPort { app: app.clone() }),
             app.state::<Arc<Ai>>().inner().clone(),
-            Arc::new(SystemClock),
+            crate::sim::clock(),
             prompts,
             copy,
             Arc::new(banned),
