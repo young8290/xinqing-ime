@@ -8,6 +8,12 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 export const commands = {
 	getStatus: () => typedError<StatusSnapshot, UiError>(__TAURI_INVOKE("get_status")),
 	/**
+	 *  导出用户数据（FR-DAT-03），写到前端文件选择器给的 `path`（已存在则覆盖）。
+	 *  1 年数据量要几秒，放进 `spawn_blocking`，不占主线程。先提交排队中的数据（ADR 0020 第 3 条最多晚 5 秒），
+	 *  再在只读连接上导出，导出期间不挡写入。
+	 */
+	dataExport: (path: string) => typedError<null, UiError>(__TAURI_INVOKE("data_export", { path })),
+	/**
 	 *  状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；
 	 *  带上时是看板时间线上那个状态点的解释，记录不存在或窗口已清理时为 `null`。
 	 */
@@ -67,6 +73,11 @@ export const commands = {
 	/**  逐个模型发一条最小请求，返回可用性和延迟（FR-AIG-04 第 4 条）。没配置大模型时为空列表。 */
 	aiTestConnection: () => typedError<ModelProbeView[], UiError>(__TAURI_INVOKE("ai_test_connection")),
 	aiUsageToday: () => typedError<UsageRow[], UiError>(__TAURI_INVOKE("ai_usage_today")),
+	/**
+	 *  返回设置页需要的最近出网记录（FR-SET-09、09 D-20）。数据库本身只保留最近 200 条，
+	 *  界面再取最近 20 条；记录不含用户输入、提示词或模型回复。
+	 */
+	aiNetLogRecent: () => typedError<NetLogView[], UiError>(__TAURI_INVOKE("ai_net_log_recent")),
 	/**
 	 *  一句暖心话上的 👍 有用 / 👎 不合适 / 🔕 今天先别说了。`id` 是 `comfort:new` 带的行号。
 	 *  👎 的模板句以后不再出现；🔕 让今天剩余时间不再主动关怀（休息提醒不受影响）；
@@ -433,6 +444,19 @@ export type ModelProbeView = {
 
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
+
+/**  设置页展示的出网记录；只包含接口、模型、字段名和计量信息，不含请求或响应正文。 */
+export type NetLogView = {
+	/**  Unix 毫秒；前端用 number 展示即可，时间不会超过 JavaScript 安全整数范围。 */
+	ts: number | null,
+	api: string,
+	model: string | null,
+	fields: string[],
+	latency_ms: number | null,
+	status: string,
+	tokens_in: number | null,
+	tokens_out: number | null,
+};
 
 /**  用户对提醒卡片的操作（FR-RST-06 第 2 条），也是 `reminder_log.action` 的取值。 */
 export type RestAction = 

@@ -13,7 +13,7 @@
 | PM-02 | 每周例会、风险登记更新、周报 | 未开始（需要人） | 模板：16 第 6.1 节 | 纪要放 `docs/meetings/YYYY-MM-DD.md`（目录还没有）；风险状态见第 4.3 节 |
 | PM-03 | 需求、设计、测试评审各一次 | 未开始 | 模板：16 第 6.2 节 | 计划 W2 / W4 / W6；ADR 评审在做（第 4.1 节），不替代正式评审会 |
 | PM-04 | 一手调研：问卷与访谈 | 未开始（需要人） | 问卷与提纲：12 第 8 节 | 要真人做，Claude 只能帮整理结果 |
-| E-01 | 数据导出、删除、撤回同意、自动清理 | **进行中** | 第一部分（自动清理）：[xinqing-ime#20](https://github.com/young8290/xinqing-ime/pull/20)（已合并），ADR 0013；第二部分（导出，core）：[xinqing-ime#32](https://github.com/young8290/xinqing-ime/pull/32) | 见第 3 节 |
+| E-01 | 数据导出、删除、撤回同意、自动清理 | **进行中** | 第一部分（自动清理）：[xinqing-ime#20](https://github.com/young8290/xinqing-ime/pull/20)（已合并），ADR 0013；第二部分（导出，core）：[xinqing-ime#32](https://github.com/young8290/xinqing-ime/pull/32)；Tauri `data_export(path)` 命令：[xinqing-ime#47](https://github.com/young8290/xinqing-ime/pull/47) | 见第 3 节 |
 | E-02 | 数据导入与恢复（合并 / 覆盖、事务回滚） | 未开始 | — | 计划 W10，依赖 E-01 的导出格式 |
 | E-03 | db-grep、隐私自动化测试（NFR-PRI） | 未开始 | — | 计划 W8。已有的隐私约束测试：`window_features_reject_text`（store）、Q-STATE 字段白名单与脱敏（`core/src/infra/gateway`） |
 | E-04 | 测试用例维护与执行（18 全部用例）、缺陷管理 | 未开始 | — | 计划 W6–W12；目前各 PR 的单元测试按需求编号写，还没人按 TC 编号执行和记录 |
@@ -49,7 +49,7 @@ eval/datasets/e_crisis_ext.jsonl  危机词表扩充集（E-08 补充的开发�
 |---|---|---|
 | 本地存储、数据库损坏后备份并重建 | FR-DAT-01、TC-DAT-07 | 完成（C，`state.rs`，有测试）；界面提示“已为你重建”等 D-02 一句话区 |
 | 自动清理：按 09 第 1 节保留期删除、增量 VACUUM、失败只记日志 | FR-DAT-02、TC-DAT-08 | 完成（#20）。对话保留期暂用默认 90 天：`chat.retention_days` 还没登记（设置键注册表负责人 C），登记后在 `cleanup.rs` 的 `run_once` 里读 |
-| 导出：zip，每表一个 JSON + 字段说明 + `manifest.json`（版本、SHA-256），AI 文本带标识，不导出密钥 | FR-DAT-03、TC-DAT-01、TC-PERF-11 | core 完成（#32，`infra/store/export.rs`）：同一读事务内导出快照，先写 `.part` 再改名；1 年数据量 release 构建 2.5 秒（`one_year_export_is_fast`，`--ignored`）。**还差** `data_export(path)` 命令（10 第 5.1 节已定义，但改 `bindings.ts` 按 13 第 3.1 节单独提契约 PR，D 评审）和设置页按钮（D-08） |
+| 导出：zip，每表一个 JSON + 字段说明 + `manifest.json`（版本、SHA-256），AI 文本带标识，不导出密钥 | FR-DAT-03、TC-DAT-01、TC-PERF-11 | core 完成（#32，`infra/store/export.rs`）；[xinqing-ime#47](https://github.com/young8290/xinqing-ime/pull/47) 接入 Tauri `data_export(path)`（异步命令，导出在 `spawn_blocking` 里跑，不占主线程）；同一读事务、`.part` 原子替换和性能测试保持不变。**还差** 设置页按钮（D-08） |
 | 删除全部数据：输入“删除”确认，删库重建、删日志 Hub 部分、可选删密钥，回到引导 | FR-DAT-04、TC-DAT-02、NFR-PRI-06 | 未做。要在外壳里关闭连接 → 删 `xinqing.db*` → 重建 → 重新打开引导窗口；密钥已由 C 存进 `hub\secrets.bin`（ADR 0012），“含密钥”时删这一个文件 |
 | 撤回同意：逐项撤回立即生效，② ③ ⑤ 提示“已发送的数据无法撤回”，撤回 ① 询问是否删情绪数据 | FR-DAT-05、TC-DAT-03、NFR-PRI-05 | 未做。`consent_set` 已能写撤回；要补：撤回后重新下发 XQP `cfg`、通知网关停止 Jev、撤回 ① 时删 D-06～D-10、D-16～D-18 |
 

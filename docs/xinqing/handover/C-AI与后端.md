@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | C-01 | Hub 骨架：分层、事件总线、SQLite 迁移 v1、单写线程、settings | **基本完成** | `core/src/bus.rs`、`core/migrations/`（0001、0002）、`core/src/infra/store/`（单写入口 `writer.rs`，ADR 0020，[xinqing-ime#54](https://github.com/young8290/xinqing-ime/pull/54)）、`core/src/domain/settings.rs`（设置键 `KEYS`、内部键 `INTERNAL_KEYS`）；设置值的列表与格式类型：#44（已合并），ADR 0019 | 设置键已登记 27 个，10 第 6.2 节其余的（`chat.retention_days`、`review.*`、`sch.*` 等）随各功能补；设置页若要“键注册表 → schema”的命令，等 D 提 |
 | C-02 | mock-ai（Jev 三类、OpenAI 兼容含 SSE、各故障场景） | 完成 | `tools/mock-ai/` | 16 第 3 节建议移给 E，W1 评审会还没定 |
-| C-03 | AI 网关：trait、Jev/LLM 客户端、熔断、重试、健康检查、隐私过滤、密钥 DPAPI、预算 | 主体完成 | HTTP 实现：`xinqing_hub/gateway/`；trait、熔断、预算、脱敏：`core/src/infra/gateway/`；接入外壳：[xinqing-ime#21](https://github.com/young8290/xinqing-ime/pull/21)（已合并，含 Hu-yiye 的 [#7](https://github.com/young8290/xinqing-ime/pull/7)），ADR 0012 | 见第 3.2 节 |
+| C-03 | AI 网关：trait、Jev/LLM 客户端、熔断、重试、健康检查、隐私过滤、密钥 DPAPI、预算 | 主体完成 | HTTP 实现：`xinqing_hub/gateway/`；trait、熔断、预算、脱敏：`core/src/infra/gateway/`；接入外壳：[xinqing-ime#21](https://github.com/young8290/xinqing-ime/pull/21)（已合并，含 Hu-yiye 的 [#7](https://github.com/young8290/xinqing-ime/pull/7)），ADR 0012；最近出网记录命令：[xinqing-ime#48](https://github.com/young8290/xinqing-ime/pull/48) | 见第 3.2 节 |
 | C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **后端完成** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)（已合并）；第三部分（安静时段、自定义勿扰应用）：[xinqing-ime#44](https://github.com/young8290/xinqing-ime/pull/44)（已合并）；ADR 0015、0019 | 见第 3.1 节：主动关怀要等 B 把 Jev 接进 `Sense`；系统专注助手不判断（ADR 0019 第 7 条）；E-COMFORT 评测 |
 | C-05 | 日程识别：L1/L2/L3、代码校验、去重、提醒调度、冲突 | 本地初筛、结构化存储与 AI 抽取字段校验完成 | [xinqing-ime#42](https://github.com/young8290/xinqing-ime/pull/42)（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；P-SCHEDULE / P-TODO 输出校验（08 第 5 节 V1～V3）与 FR-SCH-04 校验第 2～5 条的规范化（`validate_schedule_json`、`validate_todo_json`，同在 `domain/schedule.rs`）：Hu-yiye 的 [xinqing-ime#52](https://github.com/young8290/xinqing-ime/pull/52)；模板 `hub_templates/schedule_patterns.toml`、评测集 `eval/datasets/e_plan.jsonl`、`e_extract.jsonl` | L2/L3 网关接线（含 FR-SCH-04 校验第 1 条：用原句算出的日期覆盖模型日期并标 `adjusted`）、提醒调度与冲突处理待做；V4 禁用词、V7 语言没有用在日程 / 待办标题上：标题取自用户原句，禁用词表里的“吃药”“治疗”等会把正常日程拦下，要不要用待 E 定；提醒调度 `scheduler` 也给 B-04（04:00 重算基线）用 |
 | C-06 | 待办识别与清单、提醒 | 本地初筛与结构化存储完成 | #42（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；`prompts/todo.md`、评测集 `eval/datasets/e_todo.jsonl` | AI 抽取、提醒调度与前端清单待做（P1） |
@@ -19,7 +19,7 @@
 | C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
 | C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | 未开始 | `prompts/rewrite.md`、`eval/datasets/e_rewrite.jsonl`；`sense.rs` 收到 `rewrite_req` 时先回 `RewriteFail::Offline` | 计划 W8–W9；依赖 A-08 改写模式；V8 校验、可还原占位符 `[号码1]` |
 | C-10 | 情绪日记、晚间小结、周信 | 未开始 | `hub_templates/evening.toml`、`letter_fallback.md`、`prompts/diary.md`、`letter.md` | 16 第 3 节建议移给 B，W1 评审会还没定（B 的交接文档也记了“未认领”） |
-| C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表 | E-COMFORT 没有脚本；报告（`eval/reports/`）要等各服务做完、用真实接口跑出预测文件 |
+| C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表、E-COMFORT | E-COMFORT：`eval_comfort.py` 与评测集 `e_comfort.jsonl`（6 种状态摘要 × 若干次，共 50 条），[xinqing-ime#50](https://github.com/young8290/xinqing-ime/pull/50)；报告（`eval/reports/`）仍要等真实接口生成预测文件 |
 
 ## 2. 代码地图（C 负责的部分）
 
@@ -70,14 +70,14 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 负面自评立即回应，不受冷却与上限限制，不占名额 | FR-STA-10 第 2 条 | 完成（#27）：订阅 `HubEvent::SelfReport`。“和晴晴聊聊”按钮是界面（D），对话是 C-07 |
 | 频率档位 `care.level`（多一些 8 次 / 20 分钟、适中 5 / 30、少一些 2 / 60、关闭） | FR-CMF-06 | 完成（#27），新增设置键 |
 | 反馈 👍 / 👎 / 🔕、模板句屏蔽、连续 3 天负反馈自动降档并告知 | FR-CMF-05、FR-CMF-06 第 2 条 | 完成（#29）：`domain::comfort_feedback`、命令 `comfort_feedback(id, verdict)`（ADR 0015 第 9 条，没有并进 `submit_feedback`）；🔕 到当天 24:00；降档最低到“少一些”，推 `care:reduced` 与 `settings:changed`。等 D 在一句话区悬停时接三个按钮 |
-| E-COMFORT 评测（50 次生成、人工违规率 < 5%） | 08 第 8 节、C-11 | 未做：要真实接口 |
+| E-COMFORT 评测（50 次生成、人工违规率 < 5%） | 08 第 8 节、C-11 | 脚本完成（[xinqing-ime#50](https://github.com/young8290/xinqing-ime/pull/50)）：`eval/tools/eval_comfort.py`；评测集 `eval/datasets/e_comfort.jsonl` 是状态摘要，不是用户原话；报告待真实接口预测文件 |
 
 ### 3.2 C-03 剩余
 
 | 部分 | 需求 | 状态 |
 |---|---|---|
 | 每日预算上限设置 → `set_cap` | FR-AIG-07、10 第 6.2 节 | 完成（#44）：`ai.daily_caps` 拆成 `ai.cap.jev` / `llm` / `chat` / `schedule` / `rewrite` 五个整数键（ADR 0019 第 4 条）；外壳启动时和 `settings_set` 改了这些键时调 `Ai::apply_caps`，立即生效、今日用量不清零。设置页控件等 D（FR-SET-08）。`ai.llm_models` 仍随 `secrets_set` 存（ADR 0012） |
-| 设置页“最近 20 次出网请求”（`Db::net_log_recent` 已有） | FR-SET-09 | 未做：要一个命令，10 第 5.1 节没列，和 D 的设置页隐私分类一起加 |
+| 设置页“最近 20 次出网请求”（`Db::net_log_recent` 已有） | FR-SET-09 | 命令完成（[xinqing-ime#48](https://github.com/young8290/xinqing-ime/pull/48)）：`ai_net_log_recent`；设置页隐私分类里的展示等 D 接入（FR-SET-09 只显示字段名和时间） |
 | 演示者视图的网关指标（`HttpGateway::metrics` / `models` 已有） | FR-AIG-08 | 未做：随 B-10 演示模式 |
 | Jev 判断接进实时感知（`Sense`） | FR-STA-05 | **B 的任务**（B 交接文档 B-06）。外壳托管的 `Arc<Ai>` 实现 `AiGateway`，`sensing::start` 里 `app.state::<Arc<Ai>>()` 拿到后转成 `Arc<dyn AiGateway>` 传给 `Sense` 即可；顺带把 `need_comfort`、`valence` 填进 `MoodEvent::Sample` |
 
@@ -156,4 +156,5 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 2026-10-05 | C-07 对话（P0 部分）与 C-08 危机安全的对话部分、D-06 对话窗口第一版，ADR 0018 |
 | 2026-10-05 | C-07/C-08 已合并（#40）；设置值扩展（列表、整数、格式文本）、`care.dnd_apps` / `care.quiet_hours` 接进暖心话、`safety.school_phone`、`ai.cap.*` 接进网关，ADR 0019 |
 | 2026-10-05 | #44 已合并；单写入口 `DbWriter`（一个写连接 + 只读连接，普通数据 5 秒 / 100 条批量，用户确认类同步写），ADR 0020 |
+| 2026-10-05 | C-11 补 E-COMFORT 评测集（6 种状态摘要）、结构/长度/禁用词/人工违规率脚本与单测（#50） |
 | 2026-10-05 | C-07 快捷指令：吐槽 / 理一理做成会话的对话方式（迁移 0003、`chat_set_mode`、两段新提示词），ADR 0022（#51） |

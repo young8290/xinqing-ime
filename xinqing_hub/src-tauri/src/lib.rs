@@ -40,6 +40,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             commands::get_status,
+            commands::data_export,
             commands::state_explain,
             commands::submit_feedback,
             commands::self_report_set,
@@ -57,6 +58,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::ai::secrets_set,
             commands::ai::ai_test_connection,
             commands::ai::ai_usage_today,
+            commands::ai::ai_net_log_recent,
             commands::comfort::comfort_feedback,
             commands::chat::chat_list_sessions,
             commands::chat::chat_get_messages,
