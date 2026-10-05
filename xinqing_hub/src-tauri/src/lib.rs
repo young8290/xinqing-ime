@@ -10,6 +10,7 @@ mod error;
 mod events;
 mod fullscreen;
 mod gateway;
+mod ime_events;
 mod paths;
 mod rest;
 mod secrets;
@@ -67,6 +68,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::ComfortNew,
             events::CareReduced,
             events::RestDue,
+            events::ImeConfigChanged,
         ])
 }
 
@@ -119,6 +121,8 @@ pub fn run() {
             }
             // 前台全屏时自动隐藏小组件（FR-WGT-01）
             fullscreen::start(app.handle());
+            // 输入法配置变更：设置中心跟着刷新（ADR 0017）
+            ime_events::start(app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())
