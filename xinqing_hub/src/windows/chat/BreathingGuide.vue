@@ -11,6 +11,7 @@ const round = ref(1)
 const step = ref(0)
 const finished = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
+const closeBtn = ref<HTMLButtonElement | null>(null)
 
 const phase = computed(() => PHASES[step.value]!)
 const label = computed(() => {
@@ -38,7 +39,11 @@ function schedule(): void {
   }, phase.value.seconds * 1000)
 }
 
-onMounted(schedule)
+onMounted(() => {
+  schedule()
+  // 盖住整个窗口的对话框：焦点移到“结束”按钮，Esc 由对话窗口关掉它（DS-A11Y-01）
+  closeBtn.value?.focus()
+})
 onBeforeUnmount(() => clearTimeout(timer))
 </script>
 
@@ -52,7 +57,7 @@ onBeforeUnmount(() => clearTimeout(timer))
     />
     <p class="label" aria-live="polite">{{ label }}</p>
     <p v-if="!finished" class="round">{{ t('chat.breathe_round', { n: round }) }}</p>
-    <button class="compact" @click="emit('close')">{{ t('chat.breathe_close') }}</button>
+    <button ref="closeBtn" class="compact" @click="emit('close')">{{ t('chat.breathe_close') }}</button>
   </div>
 </template>
 
@@ -99,6 +104,6 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 .compact {
   padding: 0 var(--xq-sp-3);
-  font-size: var(--xq-fs-xs);
+  font-size: var(--xq-fs-sm);
 }
 </style>

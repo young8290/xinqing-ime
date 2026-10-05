@@ -21,6 +21,8 @@ const confirmAll = ref(false)
 const copiedId = ref<ChatLine | null>(null)
 const logEl = ref<HTMLElement | null>(null)
 const inputEl = ref<HTMLTextAreaElement | null>(null)
+const historyBtn = ref<HTMLButtonElement | null>(null)
+const drawerEl = ref<HTMLElement | null>(null)
 
 const groups = computed(() => {
   const now = Date.now()
@@ -87,11 +89,24 @@ function onInputKeydown(e: KeyboardEvent): void {
 }
 
 function onKeydown(e: KeyboardEvent): void {
-  // Esc 关闭窗口，不结束会话（FR-CHT-01）；抽屉开着时先关抽屉
+  // Esc 关闭窗口，不结束会话（FR-CHT-01）；呼吸引导、抽屉开着时先关它们（DS-A11Y-01）
   if (e.key !== 'Escape') return
-  if (drawer.value) drawer.value = false
+  if (breathing.value) closeBreathing()
+  else if (drawer.value) drawer.value = false
   else void getCurrentWindow().hide()
 }
+
+function closeBreathing(): void {
+  breathing.value = false
+  inputEl.value?.focus()
+}
+
+// 抽屉打开时焦点移进去，关上时回到“历史”按钮，键盘用户不会迷路（DS-A11Y-01）
+watch(drawer, async (open) => {
+  await nextTick()
+  if (open) drawerEl.value?.querySelector<HTMLElement>('button')?.focus()
+  else if (drawerEl.value === null && document.activeElement === document.body) historyBtn.value?.focus()
+})
 
 async function openSession(id: number): Promise<void> {
   drawer.value = false
@@ -129,6 +144,7 @@ async function removeAll(): Promise<void> {
     <p class="notice" role="note">{{ t('chat.header_notice') }}</p>
     <header class="bar">
       <button
+        ref="historyBtn"
         class="icon"
         :aria-label="t('chat.history')"
         :title="t('chat.history')"
@@ -155,7 +171,9 @@ async function removeAll(): Promise<void> {
     <div ref="logEl" class="log" role="log" aria-live="polite">
       <p v-if="chat.lines.value.length === 0" class="empty">{{ t('chat.empty') }}</p>
       <div v-for="(l, i) in chat.lines.value" :key="l.id ?? `p${i}`" class="row" :class="l.role">
-        <p v-if="l.pending && !l.content" class="typing">{{ t('chat.typing') }}</p>
+        <p v-if="l.pending && !l.content" class="typing">
+          {{ t('chat.typing') }}<span class="dots" aria-hidden="true"><span /><span /><span /></span>
+        </p>
         <p v-else class="bubble">{{ l.content }}</p>
         <div v-if="l.role === 'assistant' && !l.pending" class="meta">
           <span v-if="l.aiGenerated" class="tag">{{ t('chat.ai_tag') }}</span>
@@ -175,8 +193,8 @@ async function removeAll(): Promise<void> {
       </div>
     </div>
 
-    <div v-if="chat.memoryAsk.value" class="ask" role="dialog" :aria-label="t('chat.remember_ask')">
-      <p>{{ t('chat.remember_ask') }}</p>
+    <div v-if="chat.memoryAsk.value" class="ask" role="group" :aria-label="t('chat.remember_ask')">
+      <p role="status">{{ t('chat.remember_ask') }}</p>
       <blockquote>{{ chat.memoryAsk.value }}</blockquote>
       <button class="compact primary" @click="remember">{{ t('chat.remember_yes') }}</button>
       <button class="compact" @click="chat.declineRemember">{{ t('chat.remember_no') }}</button>
@@ -226,9 +244,9 @@ async function removeAll(): Promise<void> {
       </button>
     </form>
 
-    <BreathingGuide v-if="breathing" @close="breathing = false" />
+    <BreathingGuide v-if="breathing" @close="closeBreathing" />
 
-    <nav v-if="drawer" class="drawer" :aria-label="t('chat.history')">
+    <nav v-if="drawer" ref="drawerEl" class="drawer" :aria-label="t('chat.history')">
       <p v-if="groups.length === 0" class="muted">{{ t('chat.history_empty') }}</p>
       <section v-for="g in groups" :key="g.key">
         <h2>{{ t(`chat.${g.key}`) }}</h2>
@@ -309,7 +327,7 @@ async function removeAll(): Promise<void> {
 
 .compact {
   padding: 0 var(--xq-sp-2);
-  font-size: var(--xq-fs-xs);
+  font-size: var(--xq-fs-sm);
 }
 
 .log {
@@ -345,6 +363,8 @@ async function removeAll(): Promise<void> {
 .typing {
   margin: 0;
   padding: var(--xq-sp-2) var(--xq-sp-3);
+  /* 透明边框：高对比度主题下背景色被换掉，气泡靠边框分开（DS-A11Y-04） */
+  border: 1px solid transparent;
   border-radius: var(--xq-radius-card);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -364,30 +384,78 @@ async function removeAll(): Promise<void> {
   color: var(--xq-text-2);
 }
 
+/* “晴晴正在输入…”的三个点（FR-CHT-04 第 1 条）：每点 1.2 秒一明一暗，远低于每秒 3 次（DS-MOTION-04）；
+   系统关闭动画时 base.css 把动画停在第一帧 */
+.dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: var(--xq-sp-1);
+  vertical-align: middle;
+}
+
+.dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: dot 1.2s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .meta {
   display: flex;
   gap: var(--xq-sp-2);
   align-items: center;
-  margin-top: var(--xq-sp-1);
   color: var(--xq-text-3);
   font-size: var(--xq-fs-xs);
   line-height: var(--xq-lh-xs);
 }
 
+/* `AI 生成` 标签（DS-COPY-05）：--xq-text-2 文字、--xq-surface-2 底色、圆角；透明边框给高对比度主题用 */
 .tag {
-  padding: 0 var(--xq-sp-1);
-  border: 1px solid var(--xq-border);
+  padding: 0 var(--xq-sp-2);
+  border: 1px solid transparent;
   border-radius: var(--xq-radius-sm);
+  background: var(--xq-surface-2);
+  color: var(--xq-text-2);
 }
 
+/* 文字样式的小按钮：看起来是链接，点击目标仍守 32 × 32（DS-A11Y-03，base.css 的最小尺寸不覆盖） */
 .link {
-  min-width: 0;
-  min-height: 0;
-  padding: 0;
-  border: 0;
+  padding: 0 var(--xq-sp-1);
+  border-color: transparent;
   background: transparent;
   color: var(--xq-link);
   font-size: var(--xq-fs-xs);
+}
+
+/* “让晴晴记住”每条用户消息都有：平时隐去，鼠标移到这条消息上或键盘聚焦时才出现，免得满屏都是 */
+.remember {
+  opacity: 0;
+  transition: opacity 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.row:hover .remember,
+.remember:focus-visible {
+  opacity: 1;
 }
 
 .failure {

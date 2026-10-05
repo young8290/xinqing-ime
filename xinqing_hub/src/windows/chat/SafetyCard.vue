@@ -104,10 +104,10 @@ ul {
   gap: var(--xq-sp-1);
 }
 
-/* 仍守 32 × 32 的点击目标（DS-A11Y-03），只收窄左右留白 */
+/* 仍守 32 × 32 的点击目标（DS-A11Y-03），只收窄左右留白；求助卡片上的按钮不用最小字号 */
 .compact {
   padding: 0 var(--xq-sp-2);
-  font-size: var(--xq-fs-xs);
+  font-size: var(--xq-fs-sm);
 }
 
 .link {
