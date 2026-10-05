@@ -2,16 +2,16 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（B-08 第一部分：休息提醒）
+> 最后更新：2026-10-05（B-03 / B-04：特征与基线的 Python 对拍）
 
 ## 1. 任务状态
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 大部分完成 | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`） | `--baseline`、`--start-at` 目前只在 `xq-replay` 里；FR-DMO-01 要求 `xq-sim` 也支持（改写时间戳的会话起点、发给 Hub 的基线），未做 |
+| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 大部分完成 | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`） | `--baseline`、`--start-at` 目前只在 `xq-replay` 里。要让 `xq-sim` 也支持，得把参数送到 Hub：`hello.caps` 是枚举，需要改 XQP 契约（A），或者改由 Hub 的开发者选项读取；`--start-at` 还依赖演示时钟（B-10）。方案见第 6 节 |
 | B-02 | 录制 7 个 E-STATE 脚本与双人标注 | 未开始（需要人） | 剧本：`eval/datasets/e_state_scripts.md` | 要全员真人录制，Claude 做不了；剧本待两人评审。现在只有 3 个合成脚本（`tools/xq-sim/scripts/`，由 `gen_synthetic.py` 生成） |
-| B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008 | 与 Python 对拍目前只有危机词表（`tests/crisis_parity.rs`），特征对拍脚本未写 |
-| B-04 | 个人基线、冷启动默认值 | 完成（#25 合并后） | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；[xinqing-ime#25](https://github.com/young8290/xinqing-ime/pull/25)，ADR 0014 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准 |
+| B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008；Python 对拍：`eval/tools/features_ref.py` + `tests/features_parity.rs`（本 PR） | — |
+| B-04 | 个人基线、冷启动默认值 | 完成 | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；[xinqing-ime#25](https://github.com/young8290/xinqing-ime/pull/25)，ADR 0014 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准；7 天基线统计已与 Python 对拍（本 PR） |
 | B-05 | 本地规则 R1–R6 | 完成（R1b 除外） | `domain/rules.rs`、`domain/features/typo.rs` | R1b 需要核心在 `comp` 里加 `invalid` 字段（ADR 0008 第 5 条），待 A 决定 |
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
 | B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
@@ -96,8 +96,8 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 ## 6. 下一步（按优先级）
 
 1. B-08 剩余：系统通知（随 D-09）、专注时段、`daily_summary` 统计；
-2. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`；
-3. B-03 剩余：特征计算与 Python 参考实现对拍。
+2. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`。建议做法：不改 XQP，改为 Hub 在调试构建里读环境变量 `XQ_SIM_BASELINE`（固定基线文件，不读写真实基线）和 `XQ_SIM_START_AT`（演示时钟起点，和 B-10 一起做）；`xq-sim` 收到这两个参数时打印对应的 Hub 启动命令。另一种做法是在 `hello` 里加可选字段，那要先写 ADR，请 A 评审契约。和 A、E 商量后再定；
+3. B-10 演示模式（时钟替换、演示数据库），与上一条的 `--start-at` 一起做。
 
 ## 7. 修订记录
 
@@ -109,3 +109,4 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-04 | B-07 第四部分：自评天气后端与 ADR 0011；处理 D 对 ADR 0010 的三点建议（`prob_pct`、先交解释再推送状态） |
 | 2026-10-04 | B-04：基线写读 `baseline` 表、启动和 04:00 重算、`baseline_reset` 命令与 ADR 0014；修复 #16 / #17 交叉合并后的前端字段名（#22） |
 | 2026-10-05 | B-08 第一部分：使用时长、四类休息提醒、时机与勿扰、疲劳联动、`reminder_log`、小组件提醒卡片 |
+| 2026-10-05 | B-03 / B-04：窗口切分、特征、基线统计的 Python 参考实现与 Rust 对拍（FR-STA-02/03 验收），CI 校验对拍文件 |
