@@ -3,13 +3,13 @@
 > 负责范围（产品书 13 第 1 节）：AIG 网关、CMF 暖心话、CHT 对话、DIA 日记、SAF 危机安全、SCH 日程与待办、RWR 温柔改写的 Hub 部分、REV-01/02 晚间小结与周信、评测脚本；
 > 另是数据库迁移（`xinqing_hub/core/migrations/`）与设置键注册表（`xinqing_hub/core/src/domain/settings.rs`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.3 节。本文件随 C 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（单写入口 `DbWriter`，ADR 0020）
+> 最后更新：2026-10-05（`settings_schema` 命令，ADR 0019 第 9 条）
 
 ## 1. 任务状态
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| C-01 | Hub 骨架：分层、事件总线、SQLite 迁移 v1、单写线程、settings | **基本完成** | `core/src/bus.rs`、`core/migrations/`（0001、0002）、`core/src/infra/store/`（单写入口 `writer.rs`，ADR 0020，[xinqing-ime#54](https://github.com/young8290/xinqing-ime/pull/54)）、`core/src/domain/settings.rs`（设置键 `KEYS`、内部键 `INTERNAL_KEYS`）；设置值的列表与格式类型：#44（已合并），ADR 0019 | 设置键已登记 27 个，10 第 6.2 节其余的（`chat.retention_days`、`review.*`、`sch.*` 等）随各功能补；设置页若要“键注册表 → schema”的命令，等 D 提 |
+| C-01 | Hub 骨架：分层、事件总线、SQLite 迁移 v1、单写线程、settings | **基本完成** | `core/src/bus.rs`、`core/migrations/`（0001、0002）、`core/src/infra/store/`（单写入口 `writer.rs`，ADR 0020，[xinqing-ime#54](https://github.com/young8290/xinqing-ime/pull/54)（已合并））、`core/src/domain/settings.rs`（设置键 `KEYS`、内部键 `INTERNAL_KEYS`）；设置值的列表与格式类型：#44（已合并），ADR 0019；设置页用的 `settings_schema` 命令：本 PR（ADR 0019 第 9 条） | 设置键已登记 29 个，10 第 6.2 节其余的（`review.*`、`sch.*`、`hotkey.*` 等）随各功能补 |
 | C-02 | mock-ai（Jev 三类、OpenAI 兼容含 SSE、各故障场景） | 完成 | `tools/mock-ai/` | 16 第 3 节建议移给 E，W1 评审会还没定 |
 | C-03 | AI 网关：trait、Jev/LLM 客户端、熔断、重试、健康检查、隐私过滤、密钥 DPAPI、预算 | 主体完成 | HTTP 实现：`xinqing_hub/gateway/`；trait、熔断、预算、脱敏：`core/src/infra/gateway/`；接入外壳：[xinqing-ime#21](https://github.com/young8290/xinqing-ime/pull/21)（已合并，含 Hu-yiye 的 [#7](https://github.com/young8290/xinqing-ime/pull/7)），ADR 0012；最近出网记录命令：[xinqing-ime#48](https://github.com/young8290/xinqing-ime/pull/48) | 见第 3.2 节 |
 | C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **后端完成** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)（已合并）；第三部分（安静时段、自定义勿扰应用）：[xinqing-ime#44](https://github.com/young8290/xinqing-ime/pull/44)（已合并）；ADR 0015、0019 | 见第 3.1 节：主动关怀要等 B 把 Jev 接进 `Sense`；系统专注助手不判断（ADR 0019 第 7 条）；E-COMFORT 评测 |
@@ -32,7 +32,7 @@ xinqing_hub/
 │  ├─ validate.rs            08 第 5 节输出校验（V1、V3 计数、V4 禁用词、V5 重复、V7 语言；V2/V6/V8/V9 随功能补）
 │  ├─ safety.rs              危机词表本地通道
 │  ├─ dnd.rs                 勿扰应用与安静时段的解析、判断（暖心话用，休息提醒也可用）
-│  └─ settings.rs            设置键注册表（契约）：值的四种形态与格式校验（ADR 0019）、`cap_key` / `caps`
+│  └─ settings.rs            设置键注册表（契约）：值的四种形态与格式校验（ADR 0019）、`schema()`（给 `settings_schema`）、`cap_key` / `caps`
 ├─ core/src/care.rs          暖心话服务 ComfortService：订阅总线 → 触发 → 大模型（重试 1 次）或模板 → comfort_log → ComfortPort::show
 ├─ core/src/infra/store/     Db：迁移、只读连接 open_reader、单写入口 writer.rs（DbWriter）、窗口与状态、反馈、net_log（只留最近 200 条）；comfort.rs 是 comfort_log 的读写；schedule.rs 写结构化日程/待办并去重
 ├─ core/migrations/          0001_init.sql、0002_comfort_trigger.sql（契约；已发布的脚本不改，新改动按 main 上的最大编号顺延）
@@ -141,7 +141,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 ## 6. 下一步（按优先级）
 
-1. 跟进 ADR 0019 的评审（D、E）；D 做设置页“关怀”“AI 服务”分类时如需改形状，在本 ADR 上改；
+1. 跟进 ADR 0019 的评审（D 已同意，待 E）；D 做设置页“关怀”“AI 服务”分类时用 `settings_schema` 出控件，如需改形状在本 ADR 上改；
 2. 跟进 ADR 0020 的评审（B、D、E）；
 3. C-07 剩余：设置页“晴晴记住的事”与历史搜索的界面（D）；日记的危机识别与“写成情绪日记”随 C-10；
 4. C-05 日程剩余（P0，W7–W8）：本地初筛、存储、抽取结果校验（含代码日期校验）都有了，还差 L2/L3 的网关接线、提醒调度 `scheduler` 与冲突处理。
@@ -159,3 +159,4 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 2026-10-05 | C-11 补 E-COMFORT 评测集（6 种状态摘要）、结构/长度/禁用词/人工违规率脚本与单测（#50） |
 | 2026-10-05 | C-07 快捷指令：吐槽 / 理一理做成会话的对话方式（迁移 0003、`chat_set_mode`、两段新提示词），ADR 0022（#51） |
 | 2026-10-05 | C-05 FR-SCH-04 校验第 1 条（`domain/when.rs`）、标题截断与 V4 口径（ADR 0024）；C-07 “记住”先确认、记忆的专门提示、快捷指令按钮与呼吸引导（#57） |
+| 2026-10-05 | #54 已合并；按 D 在 ADR 0019 评审中的提议加只读命令 `settings_schema`（`SettingField` / `SettingFieldKind` / `SettingItem`），ADR 0019 第 9 条 |
