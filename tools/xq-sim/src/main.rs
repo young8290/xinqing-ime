@@ -9,7 +9,9 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
+use chrono::{Local, Timelike};
 use clap::Parser;
+use serde::Deserialize;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use xqp::{Down, Up};
 
@@ -19,6 +21,12 @@ struct Args {
     /// 回放脚本（每行一条上行消息，ts 为相对毫秒，seq 可省略）
     #[arg(long)]
     script: Option<PathBuf>,
+    /// 固定基线 TOML；仅用于校验并记录本次模拟参数，XQP v1 不在 cfg 中传输基线
+    #[arg(long)]
+    baseline: Option<PathBuf>,
+    /// 模拟会话的本地起始时刻（HH:MM）；回放时间轴会平移到该时刻
+    #[arg(long)]
+    start_at: Option<String>,
     /// 倍速（1 / 5 / 20 …）；0 表示不等待，尽快发完
     #[arg(long, default_value_t = 1.0)]
     speed: f64,
@@ -42,11 +50,20 @@ struct Args {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let args = Args::parse();
+    if let Some(path) = &args.baseline {
+        let baseline = load_baseline(path).await?;
+        eprintln!(
+            "xq-sim：使用基线 v{}（{}） {}",
+            baseline.version,
+            if baseline.calibrated { "已校准" } else { "未校准" },
+            path.display()
+        );
+    }
     if let Some(out) = &args.listen {
         return listen(&args, out).await;
     }
     let script = args.script.as_ref().context("需要 --script")?;
-    let msgs = load_script(script).await?;
+    let msgs = load_script(script, args.start_at.as_deref()).await?;
     if args.check {
         println!("{}：{} 条消息，校验通过", script.display(), msgs.len());
         return Ok(());
@@ -97,7 +114,7 @@ async fn serve_pipe(_name: &str, _msgs: Vec<Up>, _speed: f64) -> Result<()> {
     bail!("命名管道只在 Windows 上可用；请改用 --tcp 127.0.0.1:<端口> 或 --stdout")
 }
 
-async fn load_script(path: &PathBuf) -> Result<Vec<Up>> {
+async fn load_script(path: &PathBuf, start_at: Option<&str>) -> Result<Vec<Up>> {
     let text = tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("读取 {}", path.display()))?;
@@ -118,7 +135,67 @@ async fn load_script(path: &PathBuf) -> Result<Vec<Up>> {
         }
         out.push(m);
     }
+    if let Some(start_at) = start_at {
+        let shift = start_offset_ms(start_at)?;
+        for msg in &mut out {
+            if let Some(ts) = msg.ts() {
+                msg.set_ts(ts.saturating_add(shift));
+            }
+        }
+    }
     Ok(out)
+}
+
+#[derive(Debug, Deserialize)]
+struct BaselineFile {
+    version: u32,
+    #[serde(default)]
+    calibrated: bool,
+    day: std::collections::HashMap<String, MedMad>,
+    night: std::collections::HashMap<String, MedMad>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MedMad {
+    med: f64,
+    mad: f64,
+}
+
+async fn load_baseline(path: &PathBuf) -> Result<BaselineFile> {
+    let text = tokio::fs::read_to_string(path)
+        .await
+        .with_context(|| format!("读取基线 {}", path.display()))?;
+    let baseline: BaselineFile = toml::from_str(&text)
+        .with_context(|| format!("解析基线 {}", path.display()))?;
+    if baseline.day.is_empty() || baseline.night.is_empty() {
+        bail!("基线必须同时包含 day 和 night 特征");
+    }
+    if baseline
+        .day
+        .values()
+        .chain(baseline.night.values())
+        .any(|v| !v.med.is_finite() || !v.mad.is_finite() || v.mad < 0.0)
+    {
+        bail!("基线中的 med/mad 必须是有限数值，且 mad 不得为负");
+    }
+    Ok(baseline)
+}
+
+fn start_offset_ms(value: &str) -> Result<u64> {
+    let (hour, minute) = value
+        .split_once(':')
+        .context("--start-at 格式应为 HH:MM")?;
+    let hour: u32 = hour.parse().context("--start-at 小时无效")?;
+    let minute: u32 = minute.parse().context("--start-at 分钟无效")?;
+    if hour >= 24 || minute >= 60 {
+        bail!("--start-at 格式应为 00:00 到 23:59");
+    }
+    let now = Local::now();
+    let now_ms = (now.hour() * 60 + now.minute()) as u64 * 60_000
+        + now.second() as u64 * 1_000
+        + now.nanosecond() as u64 / 1_000_000;
+    let target_ms = (hour * 60 + minute) as u64 * 60_000;
+    Ok(now_ms.saturating_sub(target_ms))
 }
 
 async fn read_frame<R: AsyncRead + Unpin>(r: &mut R) -> Result<Option<Vec<u8>>> {

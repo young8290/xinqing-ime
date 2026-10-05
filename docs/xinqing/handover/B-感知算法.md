@@ -8,7 +8,7 @@
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 大部分完成 | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`） | `--baseline`、`--start-at` 目前只在 `xq-replay` 里；FR-DMO-01 要求 `xq-sim` 也支持（改写时间戳的会话起点、发给 Hub 的基线），未做 |
+| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 完成（本 PR） | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`） | `--baseline` 校验固定基线并记录版本；`--start-at` 平移回放时间轴。XQP v1 没有基线下行字段，因此不把基线内容发送给 Hub |
 | B-02 | 录制 7 个 E-STATE 脚本与双人标注 | 未开始（需要人） | 剧本：`eval/datasets/e_state_scripts.md` | 要全员真人录制，Claude 做不了；剧本待两人评审。现在只有 3 个合成脚本（`tools/xq-sim/scripts/`，由 `gen_synthetic.py` 生成） |
 | B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008 | 与 Python 对拍目前只有危机词表（`tests/crisis_parity.rs`），特征对拍脚本未写 |
 | B-04 | 个人基线、冷启动默认值 | 完成（#25 合并后） | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；[xinqing-ime#25](https://github.com/young8290/xinqing-ime/pull/25)，ADR 0014 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准 |
