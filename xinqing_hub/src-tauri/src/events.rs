@@ -39,6 +39,12 @@ pub struct SelfReportChanged {
 #[tauri_specta(event_name = "gateway:health")]
 pub struct GatewayHealthChanged(pub GatewayHealth);
 
+/// `review:evening`：晚间小结（FR-REV-01）。小组件卡片层显示（FR-WGT-07）：统计、天气色带和一句本地模板（不加 AI 标识）；
+/// 卡片上的“看看今天的看板”打开看板，“今天不用了”只收起卡片（同一天不会再出）。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "review:evening")]
+pub struct ReviewEvening(pub xinqing_hub_core::domain::evening::EveningSummary);
+
 /// `comfort:new`：晴晴说了一句暖心话（FR-CMF-04）。小组件一句话区显示；`ai_generated` 时句尾加 `AI 生成` 标签，
 /// 模板句不加。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]

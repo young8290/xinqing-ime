@@ -157,6 +157,7 @@ export const events = {
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
 	researchInvite: makeEvent<ResearchInvite>("research:invite"),
 	restDue: makeEvent<RestDue>("rest:due"),
+	reviewEvening: makeEvent<ReviewEvening>("review:evening"),
 	safetyInvite: makeEvent<SafetyInvite>("safety:invite"),
 	safetyTriggered: makeEvent<SafetyTriggered>("safety:triggered"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
@@ -356,6 +357,26 @@ export type DemoStatus = {
 	speed: number,
 };
 
+/**  晚间小结卡片的内容（`review:evening` 事件）。只有统计值和一句本地模板。 */
+export type EveningSummary = {
+	/**  哪一天的小结（本地 `YYYY-MM-DD`） */
+	date: string,
+	/**  打字时长（分钟） */
+	typing_min: number,
+	/**  喝水次数（点了喝水提醒的“已完成”） */
+	water: number,
+	/**  休息提醒：完成 / 出现次数 */
+	rests_done: number,
+	rests_due: number,
+	/**  完成的日程（当天已到点、已加入的日程）与待办数 */
+	schedules_done: number,
+	todos_done: number,
+	/**  天气色带，从早到晚 */
+	band: MoodState[],
+	/**  结束语（本地模板，不加 AI 标识） */
+	line: string,
+};
+
 /**  判断来源（`explain.toml` 的 `[source]`）。 */
 export type ExplainSource = "jev" | "rule" | 
 /**  自评（FR-STA-10） */
@@ -533,6 +554,12 @@ export type RestDue = {
 
 /**  四类提醒，声明顺序即优先级（高 → 低）。 */
 export type RestKind = "night" | "move" | "eye" | "water";
+
+/**
+ *  `review:evening`：晚间小结（FR-REV-01）。小组件卡片层显示（FR-WGT-07）：统计、天气色带和一句本地模板（不加 AI 标识）；
+ *  卡片上的“看看今天的看板”打开看板，“今天不用了”只收起卡片（同一天不会再出）。
+ */
+export type ReviewEvening = EveningSummary;
 
 /**  作息洞察（FR-REV-03）：最近若干晚的停止打字时间、平均停止时间、熬夜天数。 */
 export type Routine = {
