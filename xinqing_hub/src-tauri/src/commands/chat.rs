@@ -178,17 +178,15 @@ fn validate_memory(content: &str) -> Result<&str, UiError> {
 }
 
 /// 记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。
+/// 记忆是用户确认类数据，同步写（ADR 0020 第 4 条）。
 #[tauri::command]
 #[specta::specta]
 pub fn memory_add(state: State<'_, AppState>, content: String) -> Result<u32, UiError> {
     let content = validate_memory(&content)?;
+    let now = chrono::Utc::now().timestamp_millis();
     state
-        .db()
-        .memory_insert(
-            content,
-            chrono::Utc::now().timestamp_millis(),
-            chat::MEMORY_MAX,
-        )?
+        .writer()
+        .write_sync(|db| db.memory_insert(content, now, chat::MEMORY_MAX))?
         .map(|id| id as u32)
         .ok_or_else(|| UiError::new("chat.memory_full", "error.generic"))
 }
@@ -197,7 +195,10 @@ pub fn memory_add(state: State<'_, AppState>, content: String) -> Result<u32, Ui
 #[specta::specta]
 pub fn memory_update(state: State<'_, AppState>, id: u32, content: String) -> Result<(), UiError> {
     let content = validate_memory(&content)?;
-    if !state.db().memory_update(i64::from(id), content)? {
+    if !state
+        .writer()
+        .write_sync(|db| db.memory_update(i64::from(id), content))?
+    {
         return Err(UiError::new("chat.memory_missing", "error.generic"));
     }
     Ok(())
@@ -206,7 +207,10 @@ pub fn memory_update(state: State<'_, AppState>, id: u32, content: String) -> Re
 #[tauri::command]
 #[specta::specta]
 pub fn memory_delete(state: State<'_, AppState>, id: u32) -> Result<(), UiError> {
-    if !state.db().memory_delete(i64::from(id))? {
+    if !state
+        .writer()
+        .write_sync(|db| db.memory_delete(i64::from(id)))?
+    {
         return Err(UiError::new("chat.memory_missing", "error.generic"));
     }
     Ok(())
