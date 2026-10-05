@@ -1,6 +1,7 @@
 //! 暖心话服务（03 第 2.2 节 `comfort` 任务，C-04）：订阅总线，在需要的时候说一句话。
 //!
-//! - 主动关怀：每个窗口（`MoodEvent::Sample`）按 FR-CMF-01 判断，受频率档位、冷却、每日上限、无痕和勿扰约束；
+//! - 主动关怀：每个窗口（`MoodEvent::Sample`）按 FR-CMF-01 判断，受频率档位、冷却、每日上限、无痕和勿扰约束
+//!   （前台全屏由外壳探测；勿扰应用、安静时段读设置，ADR 0019）；
 //! - 自评回应：负面自评（`HubEvent::SelfReport`）立即回应，**不受**冷却和每日上限限制（FR-STA-10 第 2 条）。
 //!
 //! 生成：已同意 ④ 时用 P-COMFORT 调大模型（超时 8 秒，在网关），按 08 第 5 节校验，不通过重新生成 1 次，
@@ -20,6 +21,7 @@ use crate::bus::{HubEvent, MoodEvent};
 use crate::domain::comfort::{
     self, CareLevel, ComfortPrompt, ComfortTemplates, Gate, Group, Style, Summary, Trigger,
 };
+use crate::domain::dnd;
 use crate::domain::validate::BannedWords;
 use crate::infra::clock::Clock;
 use crate::infra::gateway::{AiGateway, CompleteRequest, Message, Scenario};
@@ -83,9 +85,17 @@ pub trait ComfortPort: Send + Sync {
     fn style(&self) -> Style;
     /// 是否已同意 ④（状态摘要发给大模型）。
     fn llm_allowed(&self) -> bool;
-    /// 外壳探测到的勿扰情形（前台全屏等，FR-CMF-01 第 5 条）。勿扰应用由服务自己按焦点事件判断。
+    /// 外壳探测到的勿扰情形（前台全屏等，FR-CMF-01 第 5 条）。勿扰应用、安静时段由服务自己判断。
     fn dnd(&self) -> bool {
         false
+    }
+    /// 设置 `care.dnd_apps`：勿扰应用的进程名，服务按焦点事件里的前台应用比较（忽略大小写）。
+    fn dnd_apps(&self) -> Vec<String> {
+        dnd::DEFAULT_APPS.iter().map(|s| s.to_string()).collect()
+    }
+    /// 设置 `care.quiet_hours`：安静时段 `"HH:MM-HH:MM"`，按本地时间判断。
+    fn quiet_hours(&self) -> Vec<String> {
+        Vec::new()
     }
     /// 用户点了 🔕 之后，主动关怀停到什么时候（Unix 毫秒，FR-CMF-05）。
     fn muted_until(&self) -> Option<i64> {
@@ -222,9 +232,25 @@ impl ComfortService {
             today,
             last_ms,
             paused: self.paused,
-            dnd: self.port.dnd() || self.app.as_deref().is_some_and(comfort::is_dnd_app),
+            dnd: self.dnd(ts),
             muted: self.port.muted_until().is_some_and(|until| ts < until),
         }
+    }
+
+    /// 勿扰情形（FR-CMF-01 第 5 条）：外壳探测的全屏等、前台是勿扰应用、处于安静时段。
+    fn dnd(&self, ts: i64) -> bool {
+        if self.port.dnd() {
+            return true;
+        }
+        if let Some(app) = self.app.as_deref()
+            && dnd::is_dnd_app(app, &self.port.dnd_apps())
+        {
+            return true;
+        }
+        Local
+            .timestamp_millis_opt(ts)
+            .single()
+            .is_some_and(|t| dnd::in_quiet_hours(&self.port.quiet_hours(), t.time()))
     }
 
     /// 生成、写库、显示一句话。
@@ -359,6 +385,7 @@ mod tests {
     use super::*;
     use crate::domain::fusion::{FusionOut, Source};
     use crate::domain::self_report::SelfWeather;
+    use crate::domain::settings;
     use crate::infra::clock::ManualClock;
     use crate::infra::gateway::{
         AiError, CompleteResponse, Delta, GatewayHealth, JudgeRequest, JudgeResponse,
@@ -435,6 +462,18 @@ mod tests {
                 shown: Mutex::new(Vec::new()),
             })
         }
+
+        fn list(&self, key: &str) -> Vec<String> {
+            settings::get(&self.db.lock().unwrap(), key)
+                .unwrap()
+                .as_list()
+                .unwrap()
+                .to_vec()
+        }
+
+        fn set(&self, key: &str, v: &[&str]) {
+            settings::set(&self.db.lock().unwrap(), key, &v.into()).unwrap();
+        }
     }
 
     impl ComfortPort for FakePort {
@@ -449,6 +488,12 @@ mod tests {
         }
         fn dnd(&self) -> bool {
             *self.dnd.lock().unwrap()
+        }
+        fn dnd_apps(&self) -> Vec<String> {
+            self.list("care.dnd_apps")
+        }
+        fn quiet_hours(&self) -> Vec<String> {
+            self.list("care.quiet_hours")
         }
         fn muted_until(&self) -> Option<i64> {
             *self.muted.lock().unwrap()
@@ -580,6 +625,21 @@ mod tests {
         assert!(low_for(&mut s, start_ms() + 10 * MIN, 5).await.is_empty());
         *port.dnd.lock().unwrap() = false;
         assert_eq!(low_for(&mut s, start_ms() + 20 * MIN, 2).await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn user_dnd_apps_and_quiet_hours_block() {
+        let port = FakePort::new(false);
+        let mut s = service(port.clone(), FakeLlm::with(&[]));
+        // 用户删光出厂的勿扰应用、加上自己的：腾讯会议不再拦，OBS 拦
+        port.set("care.dnd_apps", &["obs64.exe"]);
+        s.app = Some("OBS64.EXE".into());
+        assert!(low_for(&mut s, start_ms(), 5).await.is_empty());
+        s.app = Some("WeMeetApp.exe".into());
+        // 14:00 起，安静时段 14:10-14:30
+        port.set("care.quiet_hours", &["14:10-14:30"]);
+        assert!(low_for(&mut s, start_ms() + 10 * MIN, 20).await.is_empty());
+        assert_eq!(low_for(&mut s, start_ms() + 30 * MIN, 2).await.len(), 1);
     }
 
     #[tokio::test]
