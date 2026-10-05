@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import type { ChatDelta, ChatDone, ChatErrorEvent, ChatMessageItem, ChatSent, ChatSessionItem } from '@/api'
 import { t } from '@/i18n'
+import { TOTAL_SECONDS } from './breathing'
 import { dayGroup } from './useChat'
 
 type Listener<T> = (e: { payload: T }) => void
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   chatCopy: vi.fn(),
   chatDeleteAll: vi.fn(),
   safetyDismiss: vi.fn(),
+  chatSetMode: vi.fn(),
+  memoryAdd: vi.fn(),
   hide: vi.fn(),
   writeText: vi.fn(),
   delta: null as null | Listener<ChatDelta>,
@@ -42,6 +45,8 @@ vi.mock('@/api', async (orig) => ({
     chatDelete: () => Promise.resolve({ status: 'ok', data: null }),
     chatDeleteAll: mocks.chatDeleteAll,
     safetyDismiss: mocks.safetyDismiss,
+    chatSetMode: mocks.chatSetMode,
+    memoryAdd: mocks.memoryAdd,
   },
   events: {
     chatDelta: { listen: listen('delta') },
@@ -61,6 +66,7 @@ const sent = (over: Partial<ChatSent> = {}): ChatSent => ({
   user_message_id: 10,
   new_session: true,
   safety: false,
+  memory_candidate: null,
   ...over,
 })
 const done = (over: Partial<ChatDone> = {}): ChatDone => ({
@@ -95,6 +101,8 @@ describe('对话窗口', () => {
       f.mockReset().mockReturnValue(ok())
     mocks.chatSend.mockReturnValue(ok(sent()))
     mocks.safetyDismiss.mockReset().mockReturnValue(ok())
+    mocks.chatSetMode.mockReset().mockReturnValue(ok())
+    mocks.memoryAdd.mockReset().mockReturnValue(ok(1))
     mocks.writeText.mockReset().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: mocks.writeText },
@@ -274,6 +282,100 @@ describe('对话窗口', () => {
     await w.find('.danger button').trigger('click')
     await flushPromises()
     expect(mocks.chatDeleteAll).toHaveBeenCalled()
+  })
+})
+
+describe('记忆与快捷指令', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mocks.sessions = []
+    mocks.messages = {}
+    mocks.chatSend.mockReset().mockReturnValue(ok(sent()))
+    mocks.chatSetMode.mockReset().mockReturnValue(ok())
+    mocks.memoryAdd.mockReset().mockReturnValue(ok(1))
+    document.body.innerHTML = ''
+  })
+
+  it('对话里明确说“记住”时先问，点“记住”才写入（FR-CHT-07 第 1 条）', async () => {
+    mocks.chatSend.mockReturnValue(ok(sent({ memory_candidate: '下周三考英语' })))
+    const w = await mountChat()
+    await type(w, '帮我记一下：下周三考英语')
+    expect(w.find('.ask').text()).toContain(t('chat.remember_ask'))
+    expect(w.find('.ask blockquote').text()).toBe('下周三考英语')
+    expect(mocks.memoryAdd).not.toHaveBeenCalled()
+    await w.find('.ask .primary').trigger('click')
+    await flushPromises()
+    expect(mocks.memoryAdd).toHaveBeenCalledWith('下周三考英语')
+    expect(w.find('.ask').exists()).toBe(false)
+    expect(w.find('.info').text()).toBe(t('chat.remember_done'))
+  })
+
+  it('消息上的“让晴晴记住”也先确认；“不用了”就不写；满 50 条时说清楚', async () => {
+    mocks.sessions = [{ id: 3, title: 'x', created_ts: NOW, last_ts: NOW, safe_mode: 'off', mode: 'normal' }]
+    mocks.messages[3] = [{ id: 1, role: 'user', content: '我对芒果过敏', ts: NOW, ai_generated: false }]
+    const w = await mountChat()
+    await w.find('.remember').trigger('click')
+    expect(w.find('.ask blockquote').text()).toBe('我对芒果过敏')
+    await w.findAll('.ask button')[1]!.trigger('click')
+    expect(w.find('.ask').exists()).toBe(false)
+    expect(mocks.memoryAdd).not.toHaveBeenCalled()
+    mocks.memoryAdd.mockReturnValue(
+      Promise.resolve({
+        status: 'error',
+        error: { code: 'chat.memory_full', message_key: 'error.memory_full' },
+      }),
+    )
+    await w.find('.remember').trigger('click')
+    await w.find('.ask .primary').trigger('click')
+    await flushPromises()
+    expect(w.find('.error').text()).toBe(t('error.memory_full'))
+  })
+
+  it('还没有会话时选“我只是想吐槽”，随第一条消息带上；之后可以回到平常（FR-CHT-06）', async () => {
+    const w = await mountChat()
+    await w.findAll('.shortcuts button')[0]!.trigger('click')
+    await flushPromises()
+    expect(mocks.chatSetMode).not.toHaveBeenCalled()
+    expect(w.find('.mode').text()).toContain(t('chat.mode_vent'))
+    await type(w, '今天被说了一顿')
+    expect(mocks.chatSend).toHaveBeenCalledWith(null, '今天被说了一顿', 'vent')
+    mocks.done!({ payload: done() })
+    await flushPromises()
+    await w.find('.mode button').trigger('click')
+    await flushPromises()
+    expect(mocks.chatSetMode).toHaveBeenCalledWith(1, 'normal')
+    expect(w.find('.mode').exists()).toBe(false)
+  })
+
+  it('打开会话时显示它的对话方式', async () => {
+    mocks.sessions = [
+      { id: 3, title: 'x', created_ts: NOW, last_ts: NOW, safe_mode: 'off', mode: 'organize' },
+    ]
+    const w = await mountChat()
+    expect(w.find('.mode').text()).toContain(t('chat.mode_organize'))
+  })
+
+  it('陪我呼吸：吸 4 秒、停 4 秒、呼 6 秒，共 4 轮，不调用后端', async () => {
+    vi.useFakeTimers()
+    try {
+      const w = await mountChat()
+      await w.findAll('.shortcuts button')[2]!.trigger('click')
+      const label = () => w.find('.breathing .label').text()
+      expect(label()).toBe(t('chat.breathe_in'))
+      await vi.advanceTimersByTimeAsync(4000)
+      expect(label()).toBe(t('chat.breathe_hold'))
+      await vi.advanceTimersByTimeAsync(4000)
+      expect(label()).toBe(t('chat.breathe_out'))
+      await vi.advanceTimersByTimeAsync(6000)
+      expect(w.find('.breathing .round').text()).toBe(t('chat.breathe_round', { n: 2 }))
+      await vi.advanceTimersByTimeAsync((TOTAL_SECONDS - 14) * 1000)
+      expect(label()).toBe(t('chat.breathe_done'))
+      expect(mocks.chatSend).not.toHaveBeenCalled()
+      await w.find('.breathing button').trigger('click')
+      expect(w.find('.breathing').exists()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

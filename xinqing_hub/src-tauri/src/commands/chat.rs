@@ -64,6 +64,8 @@ pub struct ChatSent {
     pub new_session: bool,
     /// 本地词表命中：立即显示求助卡片
     pub safety: bool,
+    /// 用户明确要求记住的内容：先问“要让晴晴记住这件事吗？”，确认后调 `memory_add`（FR-CHT-07 第 1 条）
+    pub memory_candidate: Option<String>,
 }
 
 impl From<Sent> for ChatSent {
@@ -74,6 +76,7 @@ impl From<Sent> for ChatSent {
             user_message_id: s.user_message_id.map(|id| id as u32),
             new_session: s.new_session,
             safety: s.safety,
+            memory_candidate: s.memory_candidate,
         }
     }
 }
@@ -189,7 +192,7 @@ pub fn memory_list(state: State<'_, AppState>) -> Result<Vec<MemoryItem>, UiErro
 }
 
 fn validate_memory(content: &str) -> Result<&str, UiError> {
-    chat::memory_entry(content).ok_or_else(|| UiError::new("chat.memory_invalid", "error.generic"))
+    chat::memory_entry(content).ok_or_else(|| UiError::new("chat.memory_invalid", "error.memory_invalid"))
 }
 
 /// 记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。
@@ -203,7 +206,7 @@ pub fn memory_add(state: State<'_, AppState>, content: String) -> Result<u32, Ui
         .writer()
         .write_sync(|db| db.memory_insert(content, now, chat::MEMORY_MAX))?
         .map(|id| id as u32)
-        .ok_or_else(|| UiError::new("chat.memory_full", "error.generic"))
+        .ok_or_else(|| UiError::new("chat.memory_full", "error.memory_full"))
 }
 
 #[tauri::command]
