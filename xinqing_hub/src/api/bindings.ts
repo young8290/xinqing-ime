@@ -65,6 +65,8 @@ export const commands = {
 	researchClear: () => typedError<number, UiError>(__TAURI_INVOKE("research_clear")),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
+	/**  全部设置键的类型、取值范围与默认值（ADR 0019 第 9 条），设置页按它出控件，与 `ime_schema` 对称。 */
+	settingsSchema: () => __TAURI_INVOKE<SettingField[]>("settings_schema"),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
 	settingsSet: (key: string, value: SettingValue) => typedError<null, UiError>(__TAURI_INVOKE("settings_set", { key, value })),
 	consentGet: () => typedError<ConsentState, UiError>(__TAURI_INVOKE("consent_get")),
@@ -608,6 +610,43 @@ export type SelfWeather =
 "night" | 
 /**  🤷 说不上来 */
 "unsure";
+
+/**  `settings_schema` 的一项（ADR 0019 第 9 条）：设置页按它出控件、设范围、写提示，不在前端另抄一份取值范围。 */
+export type SettingField = {
+	key: string,
+	kind: SettingFieldKind,
+	default: SettingValue,
+};
+
+/**  取值范围（[`Kind`] 的可序列化形态），按 `type` 区分。 */
+export type SettingFieldKind = { type: "bool" } | 
+/**  闭区间 */
+{ type: "number"; min: number | null; max: number | null } | 
+/**  闭区间内的整数 */
+{ type: "int"; min: number | null; max: number | null } | 
+/**  枚举字符串 */
+{ type: "choice"; options: string[] } | 
+/**  一段文字，格式见 `item` */
+{ type: "text"; item: SettingItem } | 
+/**  字符串列表：最多 `max_items` 项，每项格式见 `item`，不许重复（忽略 ASCII 大小写） */
+{ type: "list"; item: SettingItem; max_items: number };
+
+/**
+ *  文字类设置的格式。只放已知格式，不收任意文本：设置值会出现在界面和固定文案里（求助卡片），
+ *  任意文本绕得过禁用词校验（ADR 0019 第 3 条）。
+ */
+export type SettingItem = 
+/**  进程名，如 `Zoom.exe`（[`dnd::valid_app`]） */
+"app" | 
+/**  时段 `"HH:MM-HH:MM"`，可跨午夜（[`dnd::QuietRange`]） */
+"time_range" | 
+/**  电话号码：数字、空格与 `+-()`，至少 3 个数字，不超过 [`PHONE_MAX_CHARS`] 字；空串表示没填 */
+"phone" | 
+/**
+ *  用户研究的匿名编号（FR-DMO-04、12 第 4 节）：ASCII 字母、数字、`-`、`_`，不超过
+ *  [`RESEARCH_ID_MAX_CHARS`] 字；空串表示没填
+ */
+"research_id";
 
 /**  设置项的值。只有这四种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"` / `["22:00-07:00"]`）。 */
 export type SettingValue = boolean | number | null | string | string[];

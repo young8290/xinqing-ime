@@ -93,19 +93,21 @@ pub enum Kind {
     },
     /// 枚举字符串
     Choice(&'static [&'static str]),
-    /// 自由填写的一段文字，格式由 [`Item`] 约束
-    Text(Item),
-    /// 字符串列表：最多 `max` 项，每项按 [`Item`] 校验，不许重复（忽略 ASCII 大小写）
+    /// 自由填写的一段文字，格式由 [`SettingItem`] 约束
+    Text(SettingItem),
+    /// 字符串列表：最多 `max` 项，每项按 [`SettingItem`] 校验，不许重复（忽略 ASCII 大小写）
     List {
-        item: Item,
+        item: SettingItem,
         max: usize,
     },
 }
 
 /// 文字类设置的格式。只放已知格式，不收任意文本：设置值会出现在界面和固定文案里（求助卡片），
 /// 任意文本绕得过禁用词校验（ADR 0019 第 3 条）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Item {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum SettingItem {
     /// 进程名，如 `Zoom.exe`（[`dnd::valid_app`]）
     App,
     /// 时段 `"HH:MM-HH:MM"`，可跨午夜（[`dnd::QuietRange`]）
@@ -120,12 +122,12 @@ pub enum Item {
 pub const PHONE_MAX_CHARS: usize = 24;
 pub const RESEARCH_ID_MAX_CHARS: usize = 16;
 
-impl Item {
+impl SettingItem {
     pub fn accepts(self, s: &str) -> bool {
         match self {
-            Item::App => dnd::valid_app(s),
-            Item::TimeRange => dnd::QuietRange::parse(s).is_some(),
-            Item::Phone => {
+            SettingItem::App => dnd::valid_app(s),
+            SettingItem::TimeRange => dnd::QuietRange::parse(s).is_some(),
+            SettingItem::Phone => {
                 s.is_empty()
                     || (s.chars().count() <= PHONE_MAX_CHARS
                         && s.trim() == s
@@ -134,7 +136,7 @@ impl Item {
                         })
                         && s.chars().filter(char::is_ascii_digit).count() >= 3)
             }
-            Item::ResearchId => {
+            SettingItem::ResearchId => {
                 s.len() <= RESEARCH_ID_MAX_CHARS
                     && s.chars()
                         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
@@ -187,7 +189,7 @@ pub const KEYS: &[KeySpec] = &[
     KeySpec {
         key: "care.dnd_apps",
         kind: Kind::List {
-            item: Item::App,
+            item: SettingItem::App,
             max: 32,
         },
         default: || dnd::DEFAULT_APPS.into(),
@@ -195,7 +197,7 @@ pub const KEYS: &[KeySpec] = &[
     KeySpec {
         key: "care.quiet_hours",
         kind: Kind::List {
-            item: Item::TimeRange,
+            item: SettingItem::TimeRange,
             max: 4,
         },
         default: || SettingValue::List(Vec::new()),
@@ -264,7 +266,7 @@ pub const KEYS: &[KeySpec] = &[
     // 求助卡片上的学校心理中心电话（FR-SAF-03），默认没填
     KeySpec {
         key: "safety.school_phone",
-        kind: Kind::Text(Item::Phone),
+        kind: Kind::Text(SettingItem::Phone),
         default: || "".into(),
     },
     // 每日预算上限（FR-AIG-07）：10 第 6.2 节的 `ai.daily_caps` 拆成每类一个整数键（ADR 0019 第 4 条），默认值与
@@ -328,7 +330,7 @@ pub const KEYS: &[KeySpec] = &[
     // 研究模式（FR-DMO-04）：先填研究编号，再打开开关；编号为空时开关不起作用（ADR 0025）
     KeySpec {
         key: "research.id",
-        kind: Kind::Text(Item::ResearchId),
+        kind: Kind::Text(SettingItem::ResearchId),
         default: || "".into(),
     },
     KeySpec {
@@ -355,6 +357,75 @@ pub enum SettingsError {
     OutOfRange { key: String },
     #[error(transparent)]
     Store(#[from] StoreError),
+}
+
+/// `settings_schema` 的一项（ADR 0019 第 9 条）：设置页按它出控件、设范围、写提示，不在前端另抄一份取值范围。
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct SettingField {
+    pub key: String,
+    pub kind: SettingFieldKind,
+    pub default: SettingValue,
+}
+
+/// 取值范围（[`Kind`] 的可序列化形态），按 `type` 区分。
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SettingFieldKind {
+    Bool,
+    /// 闭区间
+    Number {
+        min: f64,
+        max: f64,
+    },
+    /// 闭区间内的整数
+    Int {
+        min: f64,
+        max: f64,
+    },
+    /// 枚举字符串
+    Choice {
+        options: Vec<String>,
+    },
+    /// 一段文字，格式见 `item`
+    Text {
+        item: SettingItem,
+    },
+    /// 字符串列表：最多 `max_items` 项，每项格式见 `item`，不许重复（忽略 ASCII 大小写）
+    List {
+        item: SettingItem,
+        max_items: u32,
+    },
+}
+
+impl From<Kind> for SettingFieldKind {
+    fn from(k: Kind) -> Self {
+        match k {
+            Kind::Bool => SettingFieldKind::Bool,
+            Kind::Number { min, max } => SettingFieldKind::Number { min, max },
+            Kind::Int { min, max } => SettingFieldKind::Int { min, max },
+            Kind::Choice(opts) => SettingFieldKind::Choice {
+                options: opts.iter().map(|s| s.to_string()).collect(),
+            },
+            Kind::Text(item) => SettingFieldKind::Text { item },
+            Kind::List { item, max } => SettingFieldKind::List {
+                item,
+                max_items: u32::try_from(max).unwrap_or(u32::MAX),
+            },
+        }
+    }
+}
+
+/// 全部设置键的取值范围与默认值，顺序同 [`KEYS`]。
+pub fn schema() -> Vec<SettingField> {
+    KEYS.iter()
+        .map(|s| SettingField {
+            key: s.key.to_string(),
+            kind: s.kind.into(),
+            default: (s.default)(),
+        })
+        .collect()
 }
 
 pub fn spec(key: &str) -> Option<&'static KeySpec> {
@@ -607,7 +678,7 @@ mod tests {
 
     #[test]
     fn research_id_is_a_short_anonymous_code() {
-        let ok = |s: &str| Item::ResearchId.accepts(s);
+        let ok = |s: &str| SettingItem::ResearchId.accepts(s);
         assert!(ok(""), "空串表示没填");
         assert!(ok("P01") && ok("xq-2026_07") && ok("ABCDEFGHIJKLMNOP"));
         assert!(!ok("ABCDEFGHIJKLMNOPQ"), "超过 16 字");
@@ -641,6 +712,41 @@ mod tests {
         assert!(caps.contains(&(BudgetKind::ChatTurn, 0)));
         assert!(caps.contains(&(BudgetKind::Jev, 500)));
         assert!(caps.contains(&(BudgetKind::Llm, 200)));
+    }
+
+    #[test]
+    fn schema_lists_every_key_with_its_range() {
+        let fields = schema();
+        assert_eq!(fields.len(), KEYS.len());
+        let by_key = |k: &str| fields.iter().find(|f| f.key == k).unwrap().clone();
+        assert_eq!(
+            by_key("ai.cap.chat").kind,
+            SettingFieldKind::Int {
+                min: 0.0,
+                max: 1000.0
+            }
+        );
+        // 前端按这个形状收窄类型
+        assert_eq!(
+            serde_json::to_value(by_key("care.quiet_hours")).unwrap(),
+            serde_json::json!({
+                "key": "care.quiet_hours",
+                "kind": {"type": "list", "item": "time_range", "max_items": 4},
+                "default": []
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(by_key("ui.theme").kind).unwrap(),
+            serde_json::json!({"type": "choice", "options": ["system", "light", "dark"]})
+        );
+        assert_eq!(
+            serde_json::to_value(by_key("safety.school_phone").kind).unwrap(),
+            serde_json::json!({"type": "text", "item": "phone"})
+        );
+        assert_eq!(
+            serde_json::to_value(by_key("widget.visible").kind).unwrap(),
+            serde_json::json!({"type": "bool"})
+        );
     }
 
     #[test]
