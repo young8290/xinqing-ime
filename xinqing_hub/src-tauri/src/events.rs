@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri_specta::Event;
 use xinqing_hub_core::care::ComfortSource;
+use xinqing_hub_core::domain::rest::RestKind;
 use xinqing_hub_core::domain::self_report::SelfWeather;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::gateway::GatewayHealth;
@@ -53,4 +54,13 @@ pub struct ComfortNew {
 #[tauri_specta(event_name = "care:reduced")]
 pub struct CareReduced {
     pub level: String,
+}
+
+/// `rest:due`：该休息了（FR-RST-06）。小组件显示提醒卡片和 `已完成` / `5 分钟后` / `今天不再提醒`，
+/// 用户的选择经 `rest_action` 交回后端。`tired` 时护眼卡片换文案“打了很久啦，眼睛也累了吧”（FR-RST-07）。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "rest:due")]
+pub struct RestDue {
+    pub kind: RestKind,
+    pub tired: bool,
 }

@@ -51,6 +51,11 @@ export const commands = {
 	consentSet: (item: ConsentItem, granted: boolean) => typedError<ConsentState, UiError>(__TAURI_INVOKE("consent_set", { item, granted })),
 	/**  必须是 async：同步命令跑在主线程，在 Windows 上同步命令里建窗口会死锁（wry#583）。 */
 	openWindow: (target: WindowTarget) => typedError<null, UiError>(__TAURI_INVOKE("open_window", { target })),
+	/**
+	 *  用户点了休息提醒卡片上的按钮（FR-RST-06 第 2 条）：完成或关闭后该类计时清零，“5 分钟后”顺延；
+	 *  每次操作记一条 `reminder_log`（FR-RST-08）。服务没在运行时忽略。
+	 */
+	restAction: (kind: RestKind, action: RestAction) => typedError<null, UiError>(__TAURI_INVOKE("rest_action", { kind, action })),
 	aiConfigGet: () => typedError<AiConfigView, UiError>(__TAURI_INVOKE("ai_config_get")),
 	/**  保存 AI 服务地址与密钥（FR-AIG-06）并立即换用新配置，返回保存后的样子。 */
 	secretsSet: (config: AiConfigInput) => typedError<AiConfigView, UiError>(__TAURI_INVOKE("secrets_set", { config })),
@@ -77,6 +82,7 @@ export const events = {
 	careReduced: makeEvent<CareReduced>("care:reduced"),
 	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
+	restDue: makeEvent<RestDue>("rest:due"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
 	statusChanged: makeEvent<StatusChanged>("status:changed"),
@@ -290,6 +296,27 @@ export type ModelProbeView = {
 
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
+
+/**  用户对提醒卡片的操作（FR-RST-06 第 2 条），也是 `reminder_log.action` 的取值。 */
+export type RestAction = 
+/**  已完成（喝水卡片上叫“喝了”） */
+"done" | 
+/**  5 分钟后 */
+"later" | 
+/**  今天不再提醒 */
+"today_off";
+
+/**
+ *  `rest:due`：该休息了（FR-RST-06）。小组件显示提醒卡片和 `已完成` / `5 分钟后` / `今天不再提醒`，
+ *  用户的选择经 `rest_action` 交回后端。`tired` 时护眼卡片换文案“打了很久啦，眼睛也累了吧”（FR-RST-07）。
+ */
+export type RestDue = {
+	kind: RestKind,
+	tired: boolean,
+};
+
+/**  四类提醒，声明顺序即优先级（高 → 低）。 */
+export type RestKind = "night" | "move" | "eye" | "water";
 
 /**
  *  `self_report:changed`：用户刚自评（FR-STA-10）。到 `until_ts` 之前小组件显示“你说的：…”；

@@ -108,6 +108,62 @@ pub const KEYS: &[KeySpec] = &[
         kind: Kind::Choice(&["gentle", "lively", "brief"]),
         default: || "gentle".into(),
     },
+    // 休息提醒（FR-RST-09）：四类各自的开关与间隔（分钟），默认全部开启；深夜提醒的起始时刻
+    KeySpec {
+        key: "rest.eye.enabled",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
+    KeySpec {
+        key: "rest.eye.interval",
+        kind: Kind::Number {
+            min: 15.0,
+            max: 60.0,
+        },
+        default: || 20.0.into(),
+    },
+    KeySpec {
+        key: "rest.water.enabled",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
+    KeySpec {
+        key: "rest.water.interval",
+        kind: Kind::Number {
+            min: 30.0,
+            max: 120.0,
+        },
+        default: || 60.0.into(),
+    },
+    KeySpec {
+        key: "rest.move.enabled",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
+    KeySpec {
+        key: "rest.move.interval",
+        kind: Kind::Number {
+            min: 30.0,
+            max: 90.0,
+        },
+        default: || 50.0.into(),
+    },
+    KeySpec {
+        key: "rest.night.enabled",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
+    KeySpec {
+        key: "rest.night.start",
+        kind: Kind::Choice(crate::domain::rest::NIGHT_STARTS),
+        default: || "23:30".into(),
+    },
+    // 无痕、英文状态下用系统空闲时间估算使用时长（04 FR-SEN-06 第 4 条、FR-RST-01）
+    KeySpec {
+        key: "rest.count_when_paused",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
     KeySpec {
         key: "dev.mode",
         kind: Kind::Bool,

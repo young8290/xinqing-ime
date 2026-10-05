@@ -17,6 +17,7 @@ use crate::infra::templates::AppCat;
 
 mod comfort;
 pub mod export;
+mod rest;
 pub use comfort::ComfortRecord;
 
 /// `net_log` 只保留最近这么多条（09 D-20）。

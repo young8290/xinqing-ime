@@ -8,6 +8,7 @@ pub mod care;
 pub mod domain;
 pub mod infra;
 pub mod pipeline;
+pub mod rest;
 pub mod sense;
 
 /// Hub 版本（XQP 下行 hello 的 `hub_ver`）。
