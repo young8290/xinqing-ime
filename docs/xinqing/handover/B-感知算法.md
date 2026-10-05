@@ -2,7 +2,7 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（演示与研究模式的设置键，ADR 0025）
+> 最后更新：2026-10-05（B-10：研究模式与 `dev.demo` 启动读取，ADR 0026）
 
 ## 1. 任务状态
 
@@ -17,7 +17,7 @@
 | B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
 | B-08 | 使用时长与四类休息提醒等（P0） | 第一部分完成（PR 合并后） | 判断 `domain/rest.rs`、服务 `rest.rs`、`infra/store/rest.rs`；外壳 `src-tauri/src/rest.rs`；小组件 `windows/widget/{useRest.ts,RestCard.vue}` | 见第 3.1 节：系统通知、专注时段、设置界面 |
 | B-09 | 作息洞察统计 | 后端完成 | 统计 `domain/routine.rs`、写库 `infra/store/summary.rs`；`get_routine(days)` 命令；见第 3.2 节 | 看板周报的折线和数字归 D-07；周信 / 晚间小结引用等 C-10 认领 |
-| B-10 | 演示模式（clock 替换、演示数据库） | 后端完成 | `ScaledClock`（`infra/clock.rs`）、预置数据 `domain/demo.rs`、外壳 `src-tauri/src/sim.rs`（`--demo`、`open_demo_state`）、`demo_status` 命令；ADR 0023；见第 3.3 节 | 标题栏“演示模式”和演示者视图归 D；`dev.demo`、`research.id`、`research.enabled` 三个设置键单独提给 C（ADR 0025）；外壳读 `dev.demo`、研究模式（FR-DMO-04）等键合并后做 |
+| B-10 | 演示模式（clock 替换、演示数据库） | 后端完成 | `ScaledClock`（`infra/clock.rs`）、预置数据 `domain/demo.rs`、外壳 `src-tauri/src/sim.rs`（`--demo`、`open_demo_state`）、`demo_status` 命令；ADR 0023；见第 3.3 节 | 标题栏“演示模式”和演示者视图归 D；设置键见 ADR 0025（#58 已合并）；外壳启动读 `dev.demo`、研究模式（FR-DMO-04）后端完成（PR 合并后，ADR 0026，见第 3.3 节）；邀请面板、研究模式标识、删除确认归 D |
 | B-11 | E-STATE 评测与报告 | 未开始 | — | 依赖 B-02 的录制数据；`xq-replay --json` 已能输出每个窗口的特征、状态和解释 |
 | （C-10） | 情绪日记、晚间小结、周信 | 未认领 | — | 16 第 3 节建议从 C 移给 B，W1 评审会还没定 |
 
@@ -32,6 +32,7 @@ xinqing_hub/core/src/
 ├─ domain/rest.rs     使用时长与休息提醒（FR-RST）；服务在 rest.rs
 ├─ domain/routine.rs  作息洞察与 daily_summary 计时列（FR-REV-03）
 ├─ domain/demo.rs     演示库预置数据（FR-DMO-03）
+├─ domain/research.rs 研究模式的邀请时刻与进度（FR-DMO-04）；服务在 research.rs
 ├─ pipeline.rs        XQP 事件 → 窗口 → 特征 → 规则 → 融合；replay() 供测试和 xq-replay
 ├─ sense.rs           实时感知任务（与外壳之间只走 SensePort）
 └─ bin/xq-replay.rs   离线回放
@@ -53,7 +54,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | “准 / 不准”反馈：`submit_feedback` → `feedback` 表 → `SenseCmd::Unfit` → `Fusion::record_unfit` | FR-STA-07 | 完成（#15）：`domain/feedback.rs`；不带 `target_id` 时记到最近一条 `mood_state`；Hub 启动时用 `feedback::recent_unfit` 重放最近 7 天的“不准”恢复阈值上调。等 D 接到小组件悬停和看板时间线 |
 | 自评天气：`self_report_set(weather, note?)` / `self_report_list(date)`、`self_report:changed`、`HubEvent::SelfReport` | FR-STA-10 | 完成（#17）：`domain/self_report.rs` 写库、按本地日期列出、判断校准；显示覆盖在 `Sense`（`SenseCmd::SelfReport`），60 分钟后或“说不上来”时回到自动判断；覆盖期间 `state_explain()` 返回 `source = self` 的解释。解释见 ADR 0011 |
 | 负面自评后晴晴立即回应（P-COMFORT 或本地模板）、“和晴晴聊聊”按钮 | FR-STA-10 第 2 条 | 不归 B：C 的暖心话订阅 `HubEvent::SelfReport`（`weather.is_negative()`）处理，不受冷却和每日上限限制 |
-| 研究模式的定时自评邀请（`source = esm`） | FR-DMO-04 | 未做（B-10 演示 / 研究模式时一起做）：`self_report_set` 目前固定写 `source = user` |
+| 研究模式的定时自评邀请（`source = esm`） | FR-DMO-04 | 后端完成（B-10，ADR 0026）：邀请后 30 分钟内的第一条自评记 `esm`，见第 3.3 节 |
 
 ## 3.1 B-08 休息提醒
 
@@ -99,7 +100,13 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
   3 条自评、2 条待确认日程。真实库已给的同意照搬，真实库不存在时不会被创建。
 - **验证**：`cargo test -p xinqing-hub sim`（重建、不碰真实库）、`cargo test -p xinqing-hub-core demo`（预置结果、可复现）；
   在 Linux 上可以 `XQ_HUB_DATA_DIR=/tmp/x xvfb-run -a target/debug/xinqing_hub --demo` 看启动日志“演示模式：…预置 315 个窗口”。
-- **没做**：标题栏字样和演示者视图（D，前端用 `demo_status`）；情绪日历的 `state_dist_json` / `dominant_state`、周信、晚间小结的预置
+- **`dev.demo`**：外壳启动时读真实库的这个键（`sim::demo_setting`），为真时等同 `--demo`；切换后要重启 Hub。
+- **研究模式**（FR-DMO-04，ADR 0026）：`domain/research.rs`（时刻规划 `plan`、进度 `Esm`）、服务 `core/src/research.rs`、
+  外壳 `src-tauri/src/research.rs`。`research.id` 非空且 `research.enabled` 才生效。每天 3 个时刻由日期 + 编号确定（[09:00, 22:00)，
+  相邻 ≥90 分钟），重启不变；组字中或 10 秒内有输入、无痕期间都先不弹，最多等 30 分钟，等不到就跳过不补。
+  推送 `research:invite { answer_until_ts }`；之后 30 分钟内的第一条自评记 `source = esm`；`research_dismiss` 跳过，
+  `research_clear` 删全部 `esm` 自评（用户主动的不动）。进度只在内存里。
+- **没做**：标题栏字样和演示者视图（D，前端用 `demo_status`）；研究模式的邀请面板、“研究模式”标识、删除前确认（D）；情绪日历的 `state_dist_json` / `dominant_state`、周信、晚间小结的预置
   （各自的汇总还没有）；研究模式 FR-DMO-04。
 
 ## 4. 关键决定与待评审
@@ -110,6 +117,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
   ③ 实时路径改为先交出解释再推送 `status:changed`，界面收到状态变化后取到的一定是同一次切换的解释，界面也可以用 `Explanation.state` 与快照核对。
 - ADR 0014（个人基线的持久化与重算：数据来源、重算时机、窗口数口径、最少样本数、重置基线）：#25 提出；C 已同意（#25 评论，编号由 0012 改为 0014），等 E 评审。
 - ADR 0011（自评天气的实现解释：“说不上来”不覆盖、校准的计法、自评期间的解释、总线字段类型、覆盖不跨重启）：#17 提出，等 D 与 E 评审。
+- ADR 0026（研究模式的定时自评邀请：时刻按日期 + 编号确定、“在打字”的判断、等不到就跳过、邀请后第一条自评记 `esm`、删除只删 `esm`）：B-10 研究模式的 PR 提出，等 D、E 评审。
 - ADR 0025（演示与研究模式的设置键：`dev.demo`、`research.id`（匿名编号格式）、`research.enabled`）：单独的 PR 提出，等 C、E 评审。
 - ADR 0023（演示模式的实现解释：`--demo` 开启、×60 时钟只加速提醒不加速打字特征、演示库每次重建、同意沿用真实库、预置内容）：B-10 的 PR 提出，等 C、D、E 评审。
 - 这几份 ADR 接受后都要回产品书仓库改 04 FR-STA-01/03/04/06/08/09/10、10 第 5.1/5.3 节、15 和 17 第 2.3 节，并写 00 第 5 节修订记录。
@@ -134,7 +142,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 
 1. B-08 剩余：系统通知（随 D-09）、专注时段（等 C 的自由文本设置类型）；
 2. B-01 已完成：`--baseline`、`--start-at`（#46，ADR 0021，待 A、E 评审），暂停 / 单步；剩 Windows 管道客户端版 `--listen`；
-3. B-10 剩余：ADR 0025 的键合并后，外壳启动读 `dev.demo`；研究模式 FR-DMO-04（定时自评邀请、`source = esm`、关闭时可删研究期间的自评）；跟进 ADR 0023 / 0025 评审；
+3. B-10：后端已全部完成；跟进 ADR 0023 / 0025 / 0026 评审，D 接上演示模式标题栏、演示者视图、研究模式面板后联调；
 4. B-11 评测报告：等 B-02 的真人录制。
 
 ## 7. 修订记录
@@ -151,4 +159,5 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-05 | B-09：`daily_summary` 的使用时长、停止打字时间、休息提醒计数；作息洞察统计与 `get_routine` 命令（TC-REV-04） |
 | 2026-10-05 | B-10：演示模式（`--demo`、×60 `ScaledClock`、每次重建并预置一周的演示库、`demo_status`）与 ADR 0023 |
 | 2026-10-05 | B-01：xq-sim 暂停 / 单步（C 代做） |
-| 2026-10-05 | 设置键 `dev.demo`、`research.id`、`research.enabled` 与 ADR 0025（C 的注册表，单独 PR） |
+| 2026-10-05 | 设置键 `dev.demo`、`research.id`、`research.enabled` 与 ADR 0025（C 的注册表，单独 PR，#58） |
+| 2026-10-05 | B-10：研究模式（定时自评邀请、`source = esm`、`research_dismiss` / `research_clear`）、外壳启动读 `dev.demo`，ADR 0026 |
