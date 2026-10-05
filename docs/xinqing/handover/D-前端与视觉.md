@@ -16,7 +16,7 @@
 | D-05 | 首次引导与同意 | 大部分完成 | `windows/onboarding/`（FR-ONB-01～04，有测试） | FR-ONB-05（AI 地址与密钥、“测试连接”、小组件位置、关怀频率、晴晴打招呼）未做，“测试连接”依赖 C 的网关（xinqing-ime#7） |
 | D-06 | 对话窗口（流式、标识、求助卡片 UI） | 占位 | `windows/chat/`（只有常驻 AI 说明） | 全部；依赖 C 的对话命令与流式事件 |
 | D-07 | 情绪看板 | 占位 | `windows/dashboard/`（只显示当前天气） | 全部（P1，计划 W9）；ECharts 未引入 |
-| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；本 PR：“输入法”页接这个事件和窗口焦点刷新 | 下一步：快捷键录制框、快捷键录制框随后；其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
+| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；本 PR：“输入法”页接这个事件和窗口焦点刷新 | 下一步：快捷键录制框；其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
 | D-09 | 系统通知、无障碍与高对比度、DPI 走查 | 部分 | 令牌里已有 `forced-colors` 高对比度和 `prefers-reduced-motion`；不可见时暂停动画（`mount.ts` + `base.css`） | 系统通知（FR-NTF-01）、150% 文本大小与 100%–200% DPI 走查都没做 |
 
 ## 2. 代码地图（D 负责的部分）
