@@ -1,19 +1,23 @@
 <script setup lang="ts">
-// 设置中心（07 FR-SET-01～10，16 D-08）：左侧分类、右侧内容。目前有“外观”和“隐私与关于”（只有“关于”部分）；
+// 设置中心（07 FR-SET-01～10，16 D-08）：左侧分类、右侧内容。目前有“输入法”（FR-SET-02，ADR 0016）、“外观”和
+// “隐私与关于”（只有“关于”部分）；
 // 其余分类随 schema 表单生成器（D-08）补上，顺序按 FR-SET-01。地址栏的 #about 直接打开“隐私与关于”。
 import { ref, type Component } from 'vue'
 import { t, type CopyKey } from '@/i18n'
 import AboutSection from './AboutSection.vue'
 import AppearanceSection from './AppearanceSection.vue'
+import ImeSection from './ImeSection.vue'
 
-type SectionId = 'appearance' | 'privacy_about'
+type SectionId = 'ime' | 'appearance' | 'privacy_about'
 
 const SECTIONS: { id: SectionId; title: CopyKey; component: Component }[] = [
+  { id: 'ime', title: 'settings.ime', component: ImeSection },
   { id: 'appearance', title: 'settings.appearance', component: AppearanceSection },
   { id: 'privacy_about', title: 'settings.privacy_about', component: AboutSection },
 ]
 
-const current = ref<SectionId>(location.hash === '#about' ? 'privacy_about' : 'appearance')
+// 托盘“设置”打开的就是 Hub（心晴不带清风的设置程序），所以默认先看“输入法”
+const current = ref<SectionId>(location.hash === '#about' ? 'privacy_about' : 'ime')
 </script>
 
 <template>
