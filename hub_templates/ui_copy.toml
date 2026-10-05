@@ -148,7 +148,7 @@ ime_unavailable = "输入法还没启动，启动后就能在这里改输入法�
 [ime]                        # 设置中心“输入法”分类（07 FR-SET-02、ADR 0016）；常用项清单在 xinqing_hub/src/windows/settings/imeForm.ts
 common = "常用"
 advanced = "高级"
-advanced_hint = "以下是输入法的全部其他配置项，名称就是配置键名；改动会立即保存。"
+advanced_hint = "以下是输入法的全部其他配置项，没有中文名称的直接显示配置键名；改动会立即保存。"
 readonly = "这一项在这里只能查看"
 list_add = "添加"
 list_remove = "删除 {item}"
@@ -160,6 +160,24 @@ ui_candidate_layout = "候选排列"
 keys_toggle_mode_keys = "中英切换键"
 ui_theme_name = "主题"
 ui_candidate_font_size = "候选字号"
+# 快捷键（录制框，清单在 xinqing_hub/src/windows/settings/hotkey.ts）；名称在“高级”里也显示
+keys_switch_engine = "轮换输入方案"
+keys_toggle_full_width = "全角 / 半角"
+keys_toggle_punct = "中文 / 英文标点"
+keys_toggle_toolbar = "显示 / 隐藏工具栏"
+keys_open_settings = "打开设置"
+keys_open_dictionary = "打开词库管理"
+keys_add_word = "加词"
+keys_open_add_word_dialog = "打开加词窗口"
+keys_toggle_s2t = "简入繁出"
+keys_toggle_t2s = "繁入简出"
+keys_activate_ime = "切换到心晴输入法"
+keys_take_screenshot = "截图"
+keys_softkeyboard = "软键盘"
+xinqing_pause_hotkey = "无痕模式"
+xinqing_rewrite_hotkey = "温柔改写"
+keys_pin_candidate = "固定候选（加数字键）"
+keys_delete_candidate = "删除候选（加数字键）"
 
 [ime.schema]                 # 输入方案的显示名；没有列出的方案显示方案 ID
 pinyin = "全拼"
@@ -172,6 +190,23 @@ english = "英文"
 [ime.option.ui_candidate_layout]
 horizontal = "横排"
 vertical = "竖排"
+
+[ime.hotkey]                 # 快捷键录制框（ADR 0016 第 5 条）
+unset = "未设置"
+change = "修改“{name}”，现在是 {value}"
+recording = "请按下新的快捷键，Esc 取消，退格清除"
+clear = "清除"
+need_modifier = "要带上 Ctrl、Alt 或 Win，免得和打字冲突"
+unsupported = "输入法认不出这个键，换一个吧"
+taken = "已经给了“{name}”，先把那边改掉吧"
+
+[ime.toggle_key]             # 中英切换键可选的单键（keys.toggle_mode_keys）
+add = "添加切换键"
+lshift = "左 Shift"
+rshift = "右 Shift"
+lctrl = "左 Ctrl"
+rctrl = "右 Ctrl"
+capslock = "Caps Lock"
 
 [about]                      # 07 FR-SET-09“关于”；开源许可的条目在 xinqing_hub/src/windows/settings/licenses.ts
 title = "关于"

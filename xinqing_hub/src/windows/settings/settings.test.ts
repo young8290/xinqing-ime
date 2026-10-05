@@ -18,13 +18,21 @@ const SCHEMA = [
   { key: 'ui.candidate.per_page', kind: 'int', options: null },
   { key: 'ui.candidate.layout', kind: 'enum', options: ['horizontal', 'vertical'] },
   { key: 'keys.toggle_mode_keys', kind: 'string_list', options: null },
+  { key: 'keys.switch_engine', kind: 'string', options: null },
+  { key: 'keys.toggle_punct', kind: 'string', options: null },
+  { key: 'keys.pin_candidate', kind: 'string', options: null },
   { key: 'input.emoji.enabled', kind: 'bool', options: null },
   { key: 'ui.font.scripts', kind: 'map', options: null },
 ]
 const CONFIG = {
   schema: { active: 'pinyin', available: ['pinyin', 'wubi86'] },
   ui: { candidate: { per_page: 7, layout: 'horizontal' }, font: { scripts: { han: 'YaHei' } } },
-  keys: { toggle_mode_keys: ['lshift'] },
+  keys: {
+    toggle_mode_keys: ['lshift'],
+    switch_engine: 'ctrl+shift+e',
+    toggle_punct: 'ctrl+.',
+    pin_candidate: 'ctrl+number',
+  },
   input: { emoji: { enabled: false } },
 }
 
@@ -128,6 +136,12 @@ describe('设置中心', () => {
       return w
     }
     const row = (w: Awaited<ReturnType<typeof openIme>>, key: string) => w.find(`[data-key="${key}"]`)
+    async function openGroup(w: Awaited<ReturnType<typeof openIme>>, prefix: string) {
+      const g = w.findAll('details.group').find((d) => d.find('.prefix').text() === prefix)!
+      ;(g.element as HTMLDetailsElement).open = true
+      g.element.dispatchEvent(new Event('toggle'))
+      await flushPromises()
+    }
 
     it('默认打开输入法；常用项有中文名称，输入方案用 schema.available 做下拉、显示方案名', async () => {
       const w = await openIme()
@@ -173,11 +187,13 @@ describe('设置中心', () => {
       w.unmount()
     })
 
-    it('字符串列表可以添加和删除，整份提交', async () => {
+    it('中英切换键只能从五个单键里选，显示中文名，整份提交', async () => {
       const w = await openIme()
       const r = row(w, 'keys.toggle_mode_keys')
-      await r.find('input.add').setValue('rshift')
-      await r.find('input.add').trigger('keydown', { key: 'Enter' })
+      expect(r.find('.chip').text()).toBe('左 Shift')
+      const choices = r.findAll('select option:not([disabled])').map((o) => o.text())
+      expect(choices).toEqual(['右 Shift', '左 Ctrl', '右 Ctrl', 'Caps Lock'])
+      await r.find('select').setValue('rshift')
       expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([
         { key: 'keys.toggle_mode_keys', value: ['lshift', 'rshift'] },
       ])
@@ -186,10 +202,22 @@ describe('设置中心', () => {
       w.unmount()
     })
 
+    it('其他字符串列表手动输入添加', async () => {
+      const w = await openIme()
+      await openGroup(w, 'schema')
+      const r = row(w, 'schema.available')
+      await r.find('input.add').setValue('stroke')
+      await r.find('input.add').trigger('keydown', { key: 'Enter' })
+      expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([
+        { key: 'schema.available', value: ['pinyin', 'wubi86', 'stroke'] },
+      ])
+      w.unmount()
+    })
+
     it('高级区按键名第一段分组，展开才渲染；map 类型只读显示 JSON', async () => {
       const w = await openIme()
       const groups = w.findAll('details.group')
-      expect(groups.map((g) => g.find('.prefix').text())).toEqual(['input', 'schema', 'ui'])
+      expect(groups.map((g) => g.find('.prefix').text())).toEqual(['input', 'keys', 'schema', 'ui'])
       expect(row(w, 'input.emoji.enabled').exists()).toBe(false)
       const input = groups[0]!.element as HTMLDetailsElement
       input.open = true
@@ -197,7 +225,7 @@ describe('设置中心', () => {
       await flushPromises()
       await row(w, 'input.emoji.enabled').find('input[type=checkbox]').setValue(true)
       expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([{ key: 'input.emoji.enabled', value: true }])
-      const ui = groups[2]!.element as HTMLDetailsElement
+      const ui = groups[3]!.element as HTMLDetailsElement
       ui.open = true
       ui.dispatchEvent(new Event('toggle'))
       await flushPromises()
@@ -269,6 +297,72 @@ describe('设置中心', () => {
       window.dispatchEvent(new Event('focus'))
       await flushPromises()
       expect(mocks.imeConfigGet).toHaveBeenCalledTimes(1)
+    })
+
+    describe('快捷键录制框（ADR 0016 第 5 条）', () => {
+      async function recorder() {
+        const w = await openIme()
+        await openGroup(w, 'keys')
+        const r = row(w, 'keys.switch_engine')
+        return { w, r, button: r.find('button.record') }
+      }
+      const press = (code: string, mods: Record<string, boolean> = {}) => ({
+        code,
+        ctrlKey: !!mods.ctrl,
+        altKey: !!mods.alt,
+        shiftKey: !!mods.shift,
+        metaKey: false,
+      })
+
+      it('快捷键有中文名称、按 Ctrl + Shift + E 的样子显示；点一下录制，按下组合键即保存', async () => {
+        const { r, button } = await recorder()
+        expect(r.find('label').text()).toBe('轮换输入方案')
+        expect(button.text()).toBe('Ctrl + Shift + E')
+        expect(button.attributes('aria-label')).toBe('修改“轮换输入方案”，现在是 Ctrl + Shift + E')
+        await button.trigger('click')
+        expect(button.attributes('aria-pressed')).toBe('true')
+        await button.trigger('keydown', press('ControlLeft', { ctrl: true }))
+        expect(button.text()).toBe('Ctrl + …')
+        await button.trigger('keydown', press('KeyK', { ctrl: true, alt: true }))
+        expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([
+          { key: 'keys.switch_engine', value: 'ctrl+alt+k' },
+        ])
+        expect(button.attributes('aria-pressed')).toBe('false')
+      })
+
+      it('和别的快捷键重复时提示、不保存（含 Ctrl+数字 候选模板）', async () => {
+        const { r, button } = await recorder()
+        await button.trigger('click')
+        await button.trigger('keydown', press('Period', { ctrl: true }))
+        expect(r.find('[role=alert]').text()).toBe('已经给了“中文 / 英文标点”，先把那边改掉吧')
+        await button.trigger('click')
+        await button.trigger('keydown', press('Digit3', { ctrl: true }))
+        expect(r.find('[role=alert]').text()).toContain('固定候选')
+        expect(mocks.imeConfigSet).not.toHaveBeenCalled()
+      })
+
+      it('会和打字冲突的不收；Esc 取消；单按退格、点“清除”都写入 none', async () => {
+        const { r, button } = await recorder()
+        await button.trigger('click')
+        await button.trigger('keydown', press('KeyK'))
+        expect(r.find('[role=alert]').text()).toBe('要带上 Ctrl、Alt 或 Win，免得和打字冲突')
+        await button.trigger('keydown', press('Escape'))
+        expect(button.attributes('aria-pressed')).toBe('false')
+        expect(mocks.imeConfigSet).not.toHaveBeenCalled()
+        await button.trigger('click')
+        await button.trigger('keydown', press('Backspace'))
+        expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([{ key: 'keys.switch_engine', value: 'none' }])
+        await r.find('button.clear').trigger('click')
+        expect(mocks.imeConfigSet).toHaveBeenCalledTimes(2)
+      })
+
+      it('录制中失去焦点就取消', async () => {
+        const { button } = await recorder()
+        await button.trigger('click')
+        await button.trigger('blur')
+        expect(button.attributes('aria-pressed')).toBe('false')
+        expect(button.text()).toBe('Ctrl + Shift + E')
+      })
     })
 
     it('输入法核心没运行：说明原因并给“重试”', async () => {
