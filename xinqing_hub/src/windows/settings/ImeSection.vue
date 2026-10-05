@@ -2,9 +2,10 @@
 // 设置中心 · 输入法（07 FR-SET-02、ADR 0016）：经 ime_schema / ime_config_get / ime_config_set 读写清风核心的配置。
 // 常用项有中文名称（imeForm.ts 的清单），其余按 schema 生成、按键名第一段分组放进“高级”，打开哪组才渲染哪组。
 // 修改即保存，核心跳过的项把原因显示在控件下方；需要重启才生效时显示横幅（FR-SET-01）。
-// 本版不订阅 config.changed：打开时和每次保存后重新取一次整份配置。
-import { computed, onMounted, reactive, ref } from 'vue'
-import { CommandError, commands, unwrap, type ImeField } from '@/api'
+// 跟着别处的改动刷新（ADR 0017）：收到 `ime_config:changed`、窗口重新获得焦点（核心自己的语言栏、菜单改配置不广播）、
+// 保存之后都重新取一次整份配置；取的过程中再来信号，只在结束后补取一次。
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { CommandError, commands, events, unwrap, type ImeConfigChange, type ImeField } from '@/api'
 import { errorText, t } from '@/i18n'
 import ImeFieldControl from './ImeFieldControl.vue'
 import { advancedGroups, commonFields, effectiveField, getPath } from './imeForm'
@@ -22,12 +23,18 @@ const saved = ref(false)
 /** 已经展开过的高级分组（展开时才渲染里面的控件） */
 const opened = reactive(new Set<string>())
 let savedTimer: ReturnType<typeof setTimeout> | undefined
+/** 正在取配置；期间又来了刷新信号时 `refetchAgain` 置位，取完再取一次 */
+let fetching = false
+let refetchAgain = false
+let unlisten: (() => void) | undefined
+let disposed = false
 
 const common = computed(() => commonFields(fields.value).map((f) => effectiveField(f, values.value)))
 const groups = computed(() => advancedGroups(fields.value))
 
-async function load(): Promise<void> {
-  phase.value = 'loading'
+/** 取 schema 和配置。`quiet`（后台触发的重新加载）时不切到“加载中”，原来的页面留到结果出来，不闪一下。 */
+async function load(quiet = false): Promise<void> {
+  if (!quiet) phase.value = 'loading'
   try {
     const [schema, config] = await Promise.all([
       unwrap(commands.imeSchema()),
@@ -46,6 +53,36 @@ async function load(): Promise<void> {
   }
 }
 
+/** 只重新取配置（核心可能把值规范化，或在别处被改过）。并发的信号合并成至多再取一次。 */
+async function refresh(): Promise<void> {
+  if (fetching) {
+    refetchAgain = true
+    return
+  }
+  fetching = true
+  try {
+    do {
+      refetchAgain = false
+      values.value = (await unwrap(commands.imeConfigGet())).values
+    } while (refetchAgain)
+  } catch {
+    // 刷新失败（例如核心刚退出）不打断页面：下次信号或下次获得焦点再取
+  } finally {
+    fetching = false
+  }
+}
+
+/** 别处可能改了配置：页面正常时只重取配置；核心刚连上、或页面停在“没运行 / 出错”时整页重新加载。 */
+function onExternalChange(change?: ImeConfigChange): void {
+  if (change?.needs_restart) needsRestart.value = true
+  if (phase.value === 'ready' && change?.reason !== 'connected') void refresh()
+  else if (phase.value !== 'loading') void load(true)
+}
+
+function onFocus(): void {
+  onExternalChange()
+}
+
 async function save(key: string, value: unknown): Promise<void> {
   try {
     const r = await unwrap(commands.imeConfigSet([{ key, value }]))
@@ -58,18 +95,37 @@ async function save(key: string, value: unknown): Promise<void> {
       clearTimeout(savedTimer)
       savedTimer = setTimeout(() => (saved.value = false), 2000)
     }
-    // 核心可能把值规范化（取整、改写），以它为准
-    values.value = (await unwrap(commands.imeConfigGet())).values
   } catch (e) {
     errors[key] = errorText(e)
+    return
   }
+  // 核心可能把值规范化（取整、改写），以它为准
+  await refresh()
 }
 
 function onToggle(prefix: string, e: Event): void {
   if ((e.target as HTMLDetailsElement).open) opened.add(prefix)
 }
 
-onMounted(load)
+onMounted(async () => {
+  window.addEventListener('focus', onFocus)
+  void load()
+  try {
+    const off = await events.imeConfigChanged.listen((e) => onExternalChange(e.payload))
+    // 订阅完成前组件已经卸载：立刻退订
+    if (disposed) off()
+    else unlisten = off
+  } catch {
+    // 浏览器预览里没有 Tauri 事件：只靠焦点和保存后的刷新
+  }
+})
+
+onUnmounted(() => {
+  disposed = true
+  window.removeEventListener('focus', onFocus)
+  unlisten?.()
+  clearTimeout(savedTimer)
+})
 </script>
 
 <template>
@@ -78,11 +134,11 @@ onMounted(load)
 
     <p v-if="phase === 'unavailable'" class="notice" role="status">
       {{ t('error.ime_unavailable') }}
-      <button class="compact" @click="load">{{ t('common.retry') }}</button>
+      <button class="compact" @click="load()">{{ t('common.retry') }}</button>
     </p>
     <p v-else-if="phase === 'error'" class="error" role="alert">
       {{ loadError }}
-      <button class="compact" @click="load">{{ t('common.retry') }}</button>
+      <button class="compact" @click="load()">{{ t('common.retry') }}</button>
     </p>
 
     <template v-else-if="phase === 'ready'">

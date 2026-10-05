@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 const mocks = vi.hoisted(() => ({
@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   imeSchema: vi.fn(),
   imeConfigGet: vi.fn(),
   imeConfigSet: vi.fn(),
+  /** 最近一次订阅 `ime_config:changed` 的回调 */
+  imeChanged: undefined as ((e: { payload: unknown }) => void) | undefined,
+  imeUnlisten: vi.fn(),
 }))
 const ok = (data: unknown) => Promise.resolve({ status: 'ok', data })
 const SCHEMA = [
@@ -34,11 +37,22 @@ vi.mock('@/api', async (orig) => ({
     imeConfigGet: mocks.imeConfigGet,
     imeConfigSet: mocks.imeConfigSet,
   },
-  events: { settingsChanged: { listen: async () => () => {} } },
+  events: {
+    settingsChanged: { listen: async () => () => {} },
+    imeConfigChanged: {
+      listen: async (cb: (e: { payload: unknown }) => void) => {
+        mocks.imeChanged = cb
+        return mocks.imeUnlisten
+      },
+    },
+  },
 }))
 vi.mock('@tauri-apps/api/app', () => ({ getVersion: mocks.getVersion }))
 
 const { default: App } = await import('./App.vue')
+
+// 每个用例结束卸载窗口：输入法页挂着窗口 focus 监听，留着会串到后面的用例
+enableAutoUnmount(afterEach)
 
 async function openAbout() {
   const w = mount(App)
@@ -59,6 +73,8 @@ describe('设置中心', () => {
     mocks.imeConfigSet
       .mockReset()
       .mockImplementation(() => ok({ needs_restart: false, applied: 1, skipped: [] }))
+    mocks.imeChanged = undefined
+    mocks.imeUnlisten.mockReset()
   })
 
   it('左侧分类按 FR-SET-01 命名，当前分类有 aria-current', async () => {
@@ -188,6 +204,71 @@ describe('设置中心', () => {
       expect(row(w, 'ui.font.scripts').find('pre').text()).toContain('YaHei')
       expect(row(w, 'ui.font.scripts').text()).toContain('只能查看')
       w.unmount()
+    })
+
+    it('收到 ime_config:changed 重新取配置；别处改了需要重启的项也显示横幅', async () => {
+      const w = await openIme()
+      mocks.imeConfigGet.mockImplementation(() =>
+        ok({ values: { ...CONFIG, ui: { ...CONFIG.ui, candidate: { per_page: 5, layout: 'vertical' } } } }),
+      )
+      mocks.imeChanged!({ payload: { reason: 'setItems', needs_restart: true } })
+      await flushPromises()
+      expect(mocks.imeConfigGet).toHaveBeenCalledTimes(2)
+      expect(mocks.imeSchema).toHaveBeenCalledTimes(1)
+      expect((row(w, 'ui.candidate.per_page').find('input').element as HTMLInputElement).value).toBe('5')
+      expect(w.find('.banner').exists()).toBe(true)
+      w.unmount()
+    })
+
+    it('窗口重新获得焦点时重新取配置（核心的语言栏、菜单改配置不广播）', async () => {
+      const w = await openIme()
+      window.dispatchEvent(new Event('focus'))
+      await flushPromises()
+      expect(mocks.imeConfigGet).toHaveBeenCalledTimes(2)
+      w.unmount()
+    })
+
+    it('取配置的过程中连来几次信号，结束后只补取一次', async () => {
+      const w = await openIme()
+      let release!: () => void
+      mocks.imeConfigGet.mockImplementationOnce(
+        () => new Promise((r) => (release = () => r({ status: 'ok', data: { values: CONFIG } }))),
+      )
+      const change = { payload: { reason: 'setItems', needs_restart: false } }
+      mocks.imeChanged!(change)
+      mocks.imeChanged!(change)
+      window.dispatchEvent(new Event('focus'))
+      release()
+      await flushPromises()
+      // 打开时 1 次 + 第一次信号 1 次 + 合并后补取 1 次
+      expect(mocks.imeConfigGet).toHaveBeenCalledTimes(3)
+      w.unmount()
+    })
+
+    it('核心没运行时停在说明页；核心启动后（connected）自动加载，不用点重试', async () => {
+      mocks.imeSchema.mockImplementation(() =>
+        Promise.resolve({
+          status: 'error',
+          error: { code: 'ime.unavailable', message_key: 'error.ime_unavailable' },
+        }),
+      )
+      const w = await openIme()
+      expect(w.find('[role=status]').exists()).toBe(true)
+      mocks.imeSchema.mockImplementation(() => ok(SCHEMA))
+      mocks.imeChanged!({ payload: { reason: 'connected', needs_restart: false } })
+      await flushPromises()
+      expect(row(w, 'schema.active').exists()).toBe(true)
+      expect(w.find('.banner').exists()).toBe(false)
+      w.unmount()
+    })
+
+    it('离开页面时退订事件、不再响应焦点', async () => {
+      const w = await openIme()
+      w.unmount()
+      expect(mocks.imeUnlisten).toHaveBeenCalledTimes(1)
+      window.dispatchEvent(new Event('focus'))
+      await flushPromises()
+      expect(mocks.imeConfigGet).toHaveBeenCalledTimes(1)
     })
 
     it('输入法核心没运行：说明原因并给“重试”', async () => {
