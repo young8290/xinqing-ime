@@ -79,7 +79,10 @@ export const commands = {
 	chatGetMessages: (sessionId: number) => typedError<ChatMessageItem[], UiError>(__TAURI_INVOKE("chat_get_messages", { sessionId })),
 	chatSearch: (query: string) => typedError<ChatSearchItem[], UiError>(__TAURI_INVOKE("chat_search", { query })),
 	memoryList: () => typedError<MemoryItem[], UiError>(__TAURI_INVOKE("memory_list")),
-	/**  记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。 */
+	/**
+	 *  记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。
+	 *  记忆是用户确认类数据，同步写（ADR 0020 第 4 条）。
+	 */
 	memoryAdd: (content: string) => typedError<number, UiError>(__TAURI_INVOKE("memory_add", { content })),
 	memoryUpdate: (id: number, content: string) => typedError<null, UiError>(__TAURI_INVOKE("memory_update", { id, content })),
 	memoryDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("memory_delete", { id })),
