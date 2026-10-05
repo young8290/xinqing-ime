@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
+use xinqing_hub_core::HUB_VERSION;
 use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::explain::Explanation;
@@ -19,6 +20,7 @@ use xinqing_hub_core::domain::rest::{RestAction, RestKind};
 use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
+use xinqing_hub_core::infra::store::export;
 use xinqing_hub_core::sense::SenseCmd;
 
 use crate::error::UiError;
@@ -39,6 +41,16 @@ pub(crate) fn emit_status(app: &AppHandle, snap: StatusSnapshot) {
 #[specta::specta]
 pub fn get_status(state: State<'_, AppState>) -> Result<StatusSnapshot, UiError> {
     Ok(state.status())
+}
+
+/// 导出用户数据（FR-DAT-03）。路径由前端文件选择器提供；导出完成后返回实际写入的路径。
+#[tauri::command]
+#[specta::specta]
+pub fn data_export(state: State<'_, AppState>, path: String) -> Result<String, UiError> {
+    let destination = std::path::PathBuf::from(&path);
+    export::export(&state.db(), &destination, HUB_VERSION, chrono::Local::now())
+        .map(|_| path)
+        .map_err(|e| UiError::internal("data.export", e))
 }
 
 /// 状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；
