@@ -110,14 +110,13 @@ impl RestPort for ShellPort {
             text: tip.into(),
             ms: TIP_MS,
         });
-        if let Err(e) = routine::record_rest(
-            &self.app.state::<AppState>().db(),
-            Local::now(),
-            true,
-            false,
-        ) {
-            eprintln!("写入每日汇总失败：{e}");
-        }
+        let now = Local::now();
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("daily_summary", move |db| {
+                routine::record_rest(db, now, true, false)
+            });
         let ev = RestDue {
             kind: due.kind,
             tired: due.tired,
@@ -128,23 +127,31 @@ impl RestPort for ShellPort {
     }
 
     fn log(&self, ts: i64, kind: RestKind, action: RestAction) {
-        let state = self.app.state::<AppState>();
-        let db = state.db();
-        if let Err(e) = db.reminder_insert(ts, kind.as_str(), action.as_str()) {
-            eprintln!("写入休息提醒记录失败：{e}");
-        }
-        if action == RestAction::Done
-            && let Some(local) = Local.timestamp_millis_opt(ts).single()
-            && let Err(e) = routine::record_rest(&db, local, false, kind == RestKind::Water)
-        {
-            eprintln!("写入每日汇总失败：{e}");
-        }
+        // 普通数据，排队批量提交（ADR 0020）；提醒记录与每日汇总在同一个任务里
+        let water = kind == RestKind::Water;
+        let local = (action == RestAction::Done)
+            .then(|| Local.timestamp_millis_opt(ts).single())
+            .flatten();
+        let (kind, action) = (kind.as_str(), action.as_str());
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("reminder_log", move |db| {
+                db.reminder_insert(ts, kind, action)?;
+                if let Some(local) = local {
+                    routine::record_rest(db, local, false, water)?;
+                }
+                Ok(())
+            });
     }
 
     fn active_minute(&self, local: DateTime<Local>) {
-        if let Err(e) = routine::record_active_minute(&self.app.state::<AppState>().db(), local) {
-            eprintln!("写入每日汇总失败：{e}");
-        }
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("daily_summary", move |db| {
+                routine::record_active_minute(db, local)
+            });
     }
 
     fn note(&self, msg: &str) {

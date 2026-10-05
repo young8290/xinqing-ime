@@ -1,6 +1,7 @@
 //! SQLite 存储（09 第 3 节）：WAL 模式、按版本号递增执行迁移、结构约束检查。
 //!
-//! 当前是同步实现；17 第 2.9 节的单写线程 `DbWriter` 在接入 Tauri 时包在外面。
+//! `Db` 是同步的单连接。外壳只开两个连接：写连接交给 [`DbWriter`]（17 第 2.9 节，ADR 0020），
+//! 读连接用 [`Db::open_reader`] 打开。
 
 use std::path::Path;
 
@@ -21,9 +22,14 @@ pub mod export;
 mod rest;
 mod schedule;
 mod summary;
+mod writer;
 pub use chat::{MessageRow, NewMessage, SessionRow};
 pub use comfort::ComfortRecord;
 pub use schedule::{ScheduleRow, TodoRow};
+pub use writer::{BATCH_DELAY, BATCH_MAX, DbWriter, WriteGuard};
+
+/// 别的连接正在写时最多等这么久，超时才报 `SQLITE_BUSY`。
+const BUSY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// `net_log` 只保留最近这么多条（09 D-20）。
 pub const NET_LOG_KEEP: i64 = 200;
@@ -64,7 +70,20 @@ impl Db {
         Self::init(Connection::open_in_memory()?)
     }
 
+    /// 只读连接：不跑迁移（写连接已经跑过）。debug 构建下设 `query_only`，漏走 `DbWriter` 的写入在开发时就会报错；
+    /// release 构建不设，避免漏网的写入在用户那里直接失败。
+    pub fn open_reader(path: &Path) -> Result<Self, StoreError> {
+        let conn = Connection::open(path)?;
+        conn.busy_timeout(BUSY_TIMEOUT)?;
+        conn.pragma_update(None, "foreign_keys", "ON")?;
+        if cfg!(debug_assertions) {
+            conn.pragma_update(None, "query_only", "ON")?;
+        }
+        Ok(Self { conn })
+    }
+
     fn init(conn: Connection) -> Result<Self, StoreError> {
+        conn.busy_timeout(BUSY_TIMEOUT)?;
         // 只对还没有表的新库生效，让 FR-DAT-02 清理后的增量 VACUUM 能回收空间（docs/adr/0013 第 6 条）
         conn.pragma_update(None, "auto_vacuum", "INCREMENTAL")?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
