@@ -42,6 +42,16 @@ python eval/tools/eval_letter.py --predictions letter.jsonl --version p-letter-v
 
 每组两条预测，ID 为 `L1#1` 到 `L5#2`。应生成周信的记录包含 `text` 和 `human_review`：`{"tone_ok":true,"no_unfounded_claims":true,"one_gentle_suggestion":true}`；L4 数据不足时应为 `{"id":"L4#1","suppressed":true,"text":null}`。脚本自动核对 V9 数字来源、禁用词与生成/抑制行为，人工审核字段由盲评人员填写。
 
+## 暖心话
+
+```powershell
+python eval/tools/eval_comfort.py --predictions comfort.jsonl --version p-comfort-v1
+```
+
+`eval/datasets/e_comfort.jsonl` 是 12 第 3 节的“6 种状态摘要 × 若干次生成，共 50 条”：每条只有 `summary`（字段与 `core::domain::comfort::Summary::to_json` 一致）和 `trigger`（`proactive` / `self_report`），**没有用户原话**——P-COMFORT 只收状态摘要。生成时把 `summary` 填进提示词的 `{summary_json}`，`{recent_texts}` 用同一 `summary` 前面几次生成的结果。
+
+预测每行 `{"id":"C001","text":"…","kind":"comfort","human_violation":false}`。脚本自动检查结构（V2）、6–30 个汉字（V3，汉字口径同 Rust `validate::han_count`）和禁用词（V4）；`human_violation` 由人工按 P-COMFORT 规则逐条判定，违规率门槛 < 5%（08 第 8 节）。
+
 ## 窗口特征与个人基线对拍（FR-STA-02/03）
 
 ```powershell

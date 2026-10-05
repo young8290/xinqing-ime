@@ -25,8 +25,26 @@ MAX_HAN = 30
 MIN_HAN = 6
 
 
+# 与 Rust validate::han_count、tools/check_templates.py 的 `[一-鿿]` 同一口径（08 第 5 节 V3）
+SUMMARY_STATES = {"hesitant", "low", "agitated", "tired"}
+TRIGGERS = {"proactive", "self_report"}
+
+
 def han_count(text: str) -> int:
-    return sum("\u3400" <= char <= "\u9fff" for char in text)
+    return sum("\u4e00" <= char <= "\u9fff" for char in text)
+
+
+def require_case(row: dict[str, Any]) -> None:
+    """数据集每条是一份状态摘要（12 第 3 节：6 种状态摘要 × 若干次生成）；P-COMFORT 不收用户原话。"""
+    row_id = row.get("id")
+    summary = row.get("summary")
+    if not isinstance(summary, dict) or "prompt" in row or "text" in row:
+        raise EvaluationError(f"{row_id}: 样例只能给状态摘要 summary，不能带用户原话")
+    if summary.get("state") not in SUMMARY_STATES or row.get("trigger") not in TRIGGERS:
+        raise EvaluationError(f"{row_id}: summary.state 或 trigger 不合法")
+    for key in ("duration_min", "session_min"):
+        if type(summary.get(key)) is not int or summary[key] < 0:
+            raise EvaluationError(f"{row_id}: summary.{key} 必须是非负整数")
 
 
 def require_bool(row: dict[str, Any], key: str, row_id: str) -> bool:
@@ -45,6 +63,8 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         raise EvaluationError("数据集每条样例都必须有非空字符串 id")
     if len(set(gold_ids)) != len(gold_ids):
         raise EvaluationError("数据集 id 不能重复")
+    for row in gold:
+        require_case(row)
     predictions = prediction_index(args.predictions, gold_ids)
     banned = load_banned_words(args.banned_words)
 

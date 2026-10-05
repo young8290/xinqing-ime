@@ -12,6 +12,21 @@ import eval_comfort
 class ComfortEvaluationTests(unittest.TestCase):
     def test_han_count_ignores_punctuation_and_ascii(self) -> None:
         self.assertEqual(eval_comfort.han_count("今天辛苦啦，rest!"), 5)
+        # 与 Rust 的 validate::han_count 同口径：扩展 A 区不算
+        self.assertEqual(eval_comfort.han_count("\u3400好"), 1)
+
+    def test_dataset_is_six_state_summaries_without_user_text(self) -> None:
+        dataset = Path(eval_comfort.DATASET_DIR) / "e_comfort.jsonl"
+        rows = [json.loads(line) for line in dataset.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(len(rows), 50)
+        for row in rows:
+            eval_comfort.require_case(row)
+        summaries = {json.dumps(row["summary"], sort_keys=True) for row in rows}
+        self.assertEqual(len(summaries), 6)
+
+    def test_rejects_case_with_user_text(self) -> None:
+        with self.assertRaises(eval_comfort.EvaluationError):
+            eval_comfort.require_case({"id": "X", "scene": "low", "prompt": "今天好累"})
 
     def test_run_accepts_fifty_clean_predictions(self) -> None:
         dataset = Path(eval_comfort.DATASET_DIR) / "e_comfort.jsonl"
