@@ -2,7 +2,7 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-04（B-04：基线持久化与重算）
+> 最后更新：2026-10-05（B-08 第一部分：休息提醒）
 
 ## 1. 任务状态
 
@@ -15,7 +15,7 @@
 | B-05 | 本地规则 R1–R6 | 完成（R1b 除外） | `domain/rules.rs`、`domain/features/typo.rs` | R1b 需要核心在 `comp` 里加 `invalid` 字段（ADR 0008 第 5 条），待 A 决定 |
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
 | B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
-| B-08 | 使用时长与四类休息提醒等（P0） | 未开始 | — | 计划 W7–W8 |
+| B-08 | 使用时长与四类休息提醒等（P0） | 第一部分完成（PR 合并后） | 判断 `domain/rest.rs`、服务 `rest.rs`、`infra/store/rest.rs`；外壳 `src-tauri/src/rest.rs`；小组件 `windows/widget/{useRest.ts,RestCard.vue}` | 见第 3.1 节：系统通知、专注时段、`daily_summary` 统计、设置界面 |
 | B-09 | 作息洞察统计 | 未开始 | — | 计划 W9 |
 | B-10 | 演示模式（clock 替换、演示数据库） | 未开始 | `infra/clock.rs` 已有 `Clock` / `ManualClock` 可用 | 计划 W10 |
 | B-11 | E-STATE 评测与报告 | 未开始 | — | 依赖 B-02 的录制数据；`xq-replay --json` 已能输出每个窗口的特征、状态和解释 |
@@ -52,6 +52,21 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 负面自评后晴晴立即回应（P-COMFORT 或本地模板）、“和晴晴聊聊”按钮 | FR-STA-10 第 2 条 | 不归 B：C 的暖心话订阅 `HubEvent::SelfReport`（`weather.is_negative()`）处理，不受冷却和每日上限限制 |
 | 研究模式的定时自评邀请（`source = esm`） | FR-DMO-04 | 未做（B-10 演示 / 研究模式时一起做）：`self_report_set` 目前固定写 `source = user` |
 
+## 3.1 B-08 休息提醒
+
+| 部分 | 需求 | 状态 |
+|---|---|---|
+| 使用时长：活跃分钟、≥2 分钟无操作断开连续使用 | FR-RST-01 | 完成：`RestEngine`。平时用 XQP 按键 / 组字 / 上屏；无痕、英文状态、没连上输入法时改为每 10 秒读系统空闲（Windows `GetLastInputInfo`，只有时间）；`rest.count_when_paused` 关掉则无痕期间不计 |
+| 护眼 20 分钟连续、喝水 60 分钟累计、活动 50 分钟连续、夜间（默认 23:30 起，连续 >10 分钟，每晚最多 2 次、间隔 ≥60 分钟） | FR-RST-02～05 | 完成；设置键 `rest.eye/water/move.enabled|interval`、`rest.night.enabled|start`（默认值与范围见 `settings.rs`） |
+| 时机：上屏后空闲 3 秒、其他 5 秒；组字中不弹；前台全屏不弹；同类每小时最多 1 次；同时到期按 夜间 > 活动 > 护眼 > 喝水，其余顺延 5 分钟 | FR-RST-06 | 完成 |
+| 显示：光标旁气泡（XQP `tip`，2.5 秒）+ 小组件卡片（已完成 / 5 分钟后 / 今天不再提醒，Esc = 5 分钟后）；护眼“已完成”先倒数 20 秒再致谢 | FR-RST-02、06 | 完成；推送 `rest:due`，按钮走 `rest_action` 命令 |
+| 疲惫时护眼提前（已连续 ≥10 分钟）并换文案 | FR-RST-07 | 完成：订阅 `MoodEvent::StateChanged` |
+| `reminder_log` 记录用户操作 | FR-RST-08 | 完成：只记点了哪个按钮，不记“显示过” |
+| 小组件隐藏时改用系统通知 | FR-NTF-01 | **未做**，随 D-09 接入；在此之前只有光标旁气泡 |
+| 专注时段 `rest.focus_period` | FR-RST-06 | **未做**：设置键注册表还没有自由文本类型 |
+| `daily_summary` 的 `rests_due` / `rests_done` / 喝水次数 | FR-RST-08 | **未做**，等 B-09 统计时一起做（`Db::reminder_counts` 已有） |
+| 设置界面里的 `rest.*` | FR-RST-09 | **未做**：统一设置窗口（D-08）暂缓，目前只能改库里的默认值 |
+
 ## 4. 关键决定与待评审
 
 - ADR 0008（状态识别规格的解释，7 条）：**已接受**（B、E 同意，产品书 V1.4 已同步；第 5 条 R1b 的协议字段等 A）。B 的意见：同意，尤其第 1 条（组字中停顿不切窗）不改的话 R2 永远不触发。
@@ -74,11 +89,13 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 - 外壳的 `Sensing` 保存一份基线拷贝（历史解释用），启动、04:00 重算和重置后都会同步。
 - 04:00 重算目前由感知任务按时钟判断；C 的 `scheduler` 就绪后可以改由它触发（ADR 0014 第 2 条）。
 - 重置时间存在 `settings` 表的内部键 `baseline.reset_ts`，不在设置键注册表里，登记在 `settings::INTERNAL_KEYS`（ADR 0014 第 5 条，C 已同意）。E 做导入（E-02）时只导 `KEYS` 里的设置键。
+- 夜间提醒的设置键用 `rest.night.start`（开始时刻，22:00–01:00 每半小时一档），10 第 6.2 节列的 `rest.<…>.interval` 不适用于夜间；产品书下次修订时同步。
+- 休息提醒每秒判断一次，设置每 10 秒重读，改完设置最多 10 秒生效。
 - 只有合成脚本，阈值（如 R6、解释里的 z 阈值）没有用真实数据校验过，B-02 录完后要用 `xq-replay --json` 复核。
 
 ## 6. 下一步（按优先级）
 
-1. B-08 休息提醒（P0，W7–W8）：使用时长计时、四类休息提醒、时机与勿扰、疲劳联动、统计；
+1. B-08 剩余：系统通知（随 D-09）、专注时段、`daily_summary` 统计；
 2. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`；
 3. B-03 剩余：特征计算与 Python 参考实现对拍。
 
@@ -91,3 +108,4 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-04 | B-07 第三部分：`submit_feedback`、`feedback` 表读写、启动时重放“不准” |
 | 2026-10-04 | B-07 第四部分：自评天气后端与 ADR 0011；处理 D 对 ADR 0010 的三点建议（`prob_pct`、先交解释再推送状态） |
 | 2026-10-04 | B-04：基线写读 `baseline` 表、启动和 04:00 重算、`baseline_reset` 命令与 ADR 0014；修复 #16 / #17 交叉合并后的前端字段名（#22） |
+| 2026-10-05 | B-08 第一部分：使用时长、四类休息提醒、时机与勿扰、疲劳联动、`reminder_log`、小组件提醒卡片 |
