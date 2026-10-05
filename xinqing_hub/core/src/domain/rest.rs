@@ -285,35 +285,37 @@ impl RestEngine {
         self.activity.continuous_min(now_ms)
     }
 
-    /// XQP 上行带来的输入活动。
-    pub fn on_input(&mut self, input: Input, local: DateTime<Local>) {
+    /// XQP 上行带来的输入活动。这一下记了一个新的活跃分钟时返回 `true`（作息统计用，FR-REV-03）。
+    pub fn on_input(&mut self, input: Input, local: DateTime<Local>) -> bool {
         let ms = local.timestamp_millis();
         self.last_input_ms = Some(ms);
         match input {
             Input::Key => {
                 self.after_commit = false;
-                self.active(local);
+                self.active(local)
             }
             Input::CompUpdate => {
                 self.composing = true;
                 self.after_commit = false;
+                false
             }
-            Input::CompEnd => self.composing = false,
+            Input::CompEnd => {
+                self.composing = false;
+                false
+            }
             Input::Commit => {
                 self.composing = false;
                 self.after_commit = true;
-                self.active(local);
+                self.active(local)
             }
         }
     }
 
-    /// 用系统空闲时间计时（每 10 秒一次）：空闲小于 10 秒就算这段时间在用电脑。
-    pub fn on_system_idle(&mut self, idle_ms: u64, local: DateTime<Local>) {
+    /// 用系统空闲时间计时（每 10 秒一次）：空闲小于 10 秒就算这段时间在用电脑。返回值同 [`Self::on_input`]。
+    pub fn on_system_idle(&mut self, idle_ms: u64, local: DateTime<Local>) -> bool {
         // 换了来源，之前记的组字状态不再可信
         self.composing = false;
-        if idle_ms < SYSTEM_IDLE_ACTIVE_MS {
-            self.active(local);
-        }
+        idle_ms < SYSTEM_IDLE_ACTIVE_MS && self.active(local)
     }
 
     /// 显示状态是否为 `tired`（FR-RST-07）。
@@ -321,10 +323,11 @@ impl RestEngine {
         self.tired = tired;
     }
 
-    fn active(&mut self, local: DateTime<Local>) {
+    /// 记一次输入活动；进入新的一分钟时返回 `true`。
+    fn active(&mut self, local: DateTime<Local>) -> bool {
         let ms = local.timestamp_millis();
         let Some(continued) = self.activity.mark(ms) else {
-            return;
+            return false;
         };
         let minute = local.hour() * 60 + local.minute();
         let night = in_night(minute, self.cfg.night_start_min);
@@ -342,6 +345,7 @@ impl RestEngine {
             (false, _) => 0,
         };
         self.last_in_night = night;
+        true
     }
 
     /// 某类提醒的条件是否满足（不看时机和频率）。`tired_early` 表示护眼是疲劳联动提前满足的。

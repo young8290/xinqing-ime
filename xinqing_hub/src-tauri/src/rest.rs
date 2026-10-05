@@ -6,10 +6,12 @@
 
 use std::sync::Arc;
 
+use chrono::{DateTime, Local, TimeZone};
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::sync::mpsc;
 use xinqing_hub_core::domain::rest::{Due, KindCfg, RestAction, RestConfig, RestKind, parse_hhmm};
+use xinqing_hub_core::domain::routine;
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::rest::{RestCmd, RestPort, RestService};
@@ -108,6 +110,14 @@ impl RestPort for ShellPort {
             text: tip.into(),
             ms: TIP_MS,
         });
+        if let Err(e) = routine::record_rest(
+            &self.app.state::<AppState>().db(),
+            Local::now(),
+            true,
+            false,
+        ) {
+            eprintln!("写入每日汇总失败：{e}");
+        }
         let ev = RestDue {
             kind: due.kind,
             tired: due.tired,
@@ -118,13 +128,22 @@ impl RestPort for ShellPort {
     }
 
     fn log(&self, ts: i64, kind: RestKind, action: RestAction) {
-        if let Err(e) =
-            self.app
-                .state::<AppState>()
-                .db()
-                .reminder_insert(ts, kind.as_str(), action.as_str())
-        {
+        let state = self.app.state::<AppState>();
+        let db = state.db();
+        if let Err(e) = db.reminder_insert(ts, kind.as_str(), action.as_str()) {
             eprintln!("写入休息提醒记录失败：{e}");
+        }
+        if action == RestAction::Done
+            && let Some(local) = Local.timestamp_millis_opt(ts).single()
+            && let Err(e) = routine::record_rest(&db, local, false, kind == RestKind::Water)
+        {
+            eprintln!("写入每日汇总失败：{e}");
+        }
+    }
+
+    fn active_minute(&self, local: DateTime<Local>) {
+        if let Err(e) = routine::record_active_minute(&self.app.state::<AppState>().db(), local) {
+            eprintln!("写入每日汇总失败：{e}");
         }
     }
 
