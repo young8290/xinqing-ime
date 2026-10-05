@@ -30,7 +30,7 @@ const groups = computed(() => {
     'today' | 'yesterday' | 'earlier',
     typeof chat.sessions.value
   >
-  for (const s of chat.sessions.value) out[dayGroup(s.last_ts ?? 0, now)].push(s)
+  for (const s of chat.sessions.value) out[dayGroup(s.last_ts, now)].push(s)
   return (['today', 'yesterday', 'earlier'] as const)
     .map((k) => ({ key: k, items: out[k] }))
     .filter((g) => g.items.length > 0)

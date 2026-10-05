@@ -125,7 +125,7 @@ export function useChat(now: () => number = Date.now) {
     await refreshSessions()
     // 打开窗口时接着最近的会话，除非已经过了 6 小时
     const latest = sessions.value[0]
-    if (latest && now() - (latest.last_ts ?? 0) <= NEW_SESSION_GAP_MS) await open(latest.id)
+    if (latest && now() - latest.last_ts <= NEW_SESSION_GAP_MS) await open(latest.id)
   }
 
   async function refreshSessions(): Promise<void> {

@@ -100,6 +100,7 @@ pub struct UsageRow {
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
 pub struct NetLogView {
     /// Unix 毫秒；前端用 number 展示即可，时间不会超过 JavaScript 安全整数范围。
+    #[specta(type = specta_typescript::Number)]
     pub ts: f64,
     pub api: String,
     pub model: Option<String>,

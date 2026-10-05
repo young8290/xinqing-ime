@@ -112,6 +112,7 @@ pub struct Recorded {
 pub struct SelfReportItem {
     pub id: u32,
     /// Unix 毫秒。用 f64 是因为前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的。
+    #[cfg_attr(feature = "specta", specta(type = specta_typescript::Number))]
     pub ts: f64,
     pub weather: SelfWeather,
     /// 只存本地（NFR-PRI-09）

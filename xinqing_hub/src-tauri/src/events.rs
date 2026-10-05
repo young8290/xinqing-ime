@@ -30,6 +30,7 @@ pub struct SettingsChanged {
 pub struct SelfReportChanged {
     pub weather: SelfWeather,
     /// Unix 毫秒（前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的）
+    #[specta(type = specta_typescript::Number)]
     pub until_ts: f64,
 }
 
@@ -72,6 +73,7 @@ pub struct RestDue {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "research:invite")]
 pub struct ResearchInvite {
+    #[specta(type = specta_typescript::Number)]
     pub answer_until_ts: f64,
 }
 

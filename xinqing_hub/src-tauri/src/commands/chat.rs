@@ -18,7 +18,9 @@ use crate::state::AppState;
 pub struct ChatSessionItem {
     pub id: u32,
     pub title: String,
+    #[specta(type = specta_typescript::Number)]
     pub created_ts: f64,
+    #[specta(type = specta_typescript::Number)]
     pub last_ts: f64,
     /// `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行）
     pub safe_mode: SafeMode,
@@ -32,6 +34,7 @@ pub struct ChatMessageItem {
     /// `user` / `assistant` / `system_notice`
     pub role: String,
     pub content: String,
+    #[specta(type = specta_typescript::Number)]
     pub ts: f64,
     /// 为真时显示 `AI 生成` 标签（FR-CHT-04 第 4 条）
     pub ai_generated: bool,
@@ -41,6 +44,7 @@ pub struct ChatMessageItem {
 pub struct MemoryItem {
     pub id: u32,
     pub content: String,
+    #[specta(type = specta_typescript::Number)]
     pub created_ts: f64,
 }
 
@@ -51,6 +55,7 @@ pub struct ChatSearchItem {
     pub title: String,
     pub role: String,
     pub content: String,
+    #[specta(type = specta_typescript::Number)]
     pub ts: f64,
 }
 
