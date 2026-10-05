@@ -216,6 +216,43 @@ describe('对话窗口', () => {
     expect(mocks.hide).toHaveBeenCalled()
   })
 
+  it('呼吸引导：焦点移到“结束”，Esc 只关引导、不隐藏窗口，焦点回到输入框（DS-A11Y-01）', async () => {
+    mocks.hide.mockClear()
+    const w = await mountChat()
+    await w.findAll('.shortcuts button')[2]!.trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.find('.breathing button').element)
+    await w.find('main').trigger('keydown', { key: 'Escape' })
+    expect(w.find('.breathing').exists()).toBe(false)
+    expect(mocks.hide).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(w.find('textarea').element)
+    w.unmount()
+  })
+
+  it('历史抽屉：打开时焦点进抽屉，Esc 关上后回到“历史”按钮', async () => {
+    mocks.sessions = [
+      { id: 1, title: '今天的', created_ts: NOW, last_ts: NOW, safe_mode: 'off', mode: 'normal' },
+    ]
+    const w = await mountChat()
+    await w.find('.bar .icon').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.find('.drawer .item').element)
+    await w.find('main').trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+    expect(w.find('.drawer').exists()).toBe(false)
+    expect(document.activeElement).toBe(w.find('.bar .icon').element)
+    w.unmount()
+  })
+
+  it('“晴晴正在输入…”带三个点的动画，读屏只读文字', async () => {
+    const w = await mountChat()
+    await type(w, '在吗')
+    const typing = w.find('.typing')
+    expect(typing.findAll('.dots span')).toHaveLength(3)
+    expect(typing.find('.dots').attributes('aria-hidden')).toBe('true')
+    w.unmount()
+  })
+
   describe('求助卡片（FR-SAF-02、FR-SAF-06）', () => {
     it('本地词表命中：立即显示卡片，号码可复制；“我现在是安全的”折叠成一行但不移除', async () => {
       mocks.chatSend.mockReturnValue(ok(sent({ safety: true })))
