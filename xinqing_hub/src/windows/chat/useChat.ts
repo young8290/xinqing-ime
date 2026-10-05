@@ -1,4 +1,5 @@
-// 对话窗口的状态（05 FR-CHT-02/04、FR-SAF-02/06）：会话列表、当前会话的消息、流式回复、求助卡片。
+// 对话窗口的状态（05 FR-CHT-02/04/06/07、FR-SAF-02/06）：会话列表、当前会话的消息、流式回复、求助卡片、
+// 快捷指令的对话方式、待确认的“记住”。
 // 回复经 chat:delta / chat:done / chat:error 推来；chat_send 返回 request_id 之前就可能有事件到达，先按 request_id 暂存。
 import { computed, onBeforeUnmount, ref } from 'vue'
 import type { UnlistenFn } from '@tauri-apps/api/event'
@@ -9,6 +10,7 @@ import {
   type ChatDone,
   type ChatErrorEvent,
   type ChatFailure,
+  type ChatMode,
   type ChatSent,
   type ChatSessionItem,
   type SafeMode,
@@ -18,6 +20,8 @@ import {
 export const NEW_SESSION_GAP_MS = 6 * 60 * 60 * 1000
 /** 单条消息最多 2000 字（FR-CHT-09）。 */
 export const MAX_INPUT = 2000
+/** 一件要记住的事最多 100 字（FR-CHT-07 第 2 条），按字计，不按 UTF-16 码元。 */
+export const MEMORY_CHARS = 100
 
 export type ChatLine = {
   /** 写库后的消息 id；正在生成的回复没有 */
@@ -52,6 +56,10 @@ export function useChat(now: () => number = Date.now) {
   const failure = ref<ChatFailure | null>(null)
   const pending = ref<Pending | null>(null)
   const busy = computed(() => pending.value !== null)
+  /** 快捷指令选的对话方式（ADR 0022）；还没有会话时先记在这里，随下一条消息带给后端 */
+  const mode = ref<ChatMode>('normal')
+  /** 等用户确认要记住的内容（FR-CHT-07 第 1 条）：对话里明确说了“记住”，或点了消息上的“让晴晴记住” */
+  const memoryAsk = ref<string | null>(null)
 
   // 先于 chat_send 返回到达的事件
   const early = new Map<number, Buffered[]>()
@@ -138,6 +146,8 @@ export function useChat(now: () => number = Date.now) {
     const s = sessions.value.find((x) => x.id === id)
     safeMode.value = triggered.has(id) ? 'on' : (s?.safe_mode ?? 'off')
     collapsed.value = safeMode.value === 'dismissed'
+    mode.value = s?.mode ?? 'normal'
+    memoryAsk.value = null
     failure.value = null
   }
 
@@ -147,6 +157,8 @@ export function useChat(now: () => number = Date.now) {
     lines.value = []
     safeMode.value = 'off'
     collapsed.value = false
+    mode.value = 'normal'
+    memoryAsk.value = null
     failure.value = null
   }
 
@@ -177,14 +189,18 @@ export function useChat(now: () => number = Date.now) {
     const userLine = lines.value[lines.value.length - 1]!
     try {
       await start(
-        unwrap(commands.chatSend(sessionId.value, body, null)).then((s) => {
-          userLine.id = s.user_message_id
-          if (s.new_session && sessionId.value !== null) {
-            // 上一条已超过 6 小时：后端开了新会话，界面也只留这一条
-            lines.value = lines.value.slice(-2)
-          }
-          return s
-        }),
+        // 选了吐槽 / 理一理时每条都带上：6 小时后自动新开的会话也沿用
+        unwrap(commands.chatSend(sessionId.value, body, mode.value === 'normal' ? null : mode.value)).then(
+          (s) => {
+            userLine.id = s.user_message_id
+            if (s.memory_candidate) memoryAsk.value = s.memory_candidate
+            if (s.new_session && sessionId.value !== null) {
+              // 上一条已超过 6 小时：后端开了新会话，界面也只留这一条
+              lines.value = lines.value.slice(-2)
+            }
+            return s
+          },
+        ),
       )
     } catch (e) {
       lines.value = lines.value.filter((l) => l !== userLine)
@@ -218,6 +234,29 @@ export function useChat(now: () => number = Date.now) {
     collapsed.value = true
   }
 
+  /** 快捷指令“我只是想吐槽”“帮我理一理”与“回到平常聊天”（FR-CHT-06）。有会话时立即生效，下一次回复起用。 */
+  async function setMode(next: ChatMode): Promise<void> {
+    if (sessionId.value !== null) await unwrap(commands.chatSetMode(sessionId.value, next))
+    mode.value = next
+  }
+
+  /** 消息上的“让晴晴记住”：同样先确认（FR-CHT-07 第 1 条）。 */
+  function askRemember(content: string): void {
+    memoryAsk.value = Array.from(content.trim()).slice(0, MEMORY_CHARS).join('')
+  }
+
+  /** 确认记住：写入“晴晴记住的事”。满 50 条等错误照常抛给界面显示。 */
+  async function confirmRemember(): Promise<void> {
+    const content = memoryAsk.value
+    if (!content) return
+    await unwrap(commands.memoryAdd(content))
+    memoryAsk.value = null
+  }
+
+  function declineRemember(): void {
+    memoryAsk.value = null
+  }
+
   async function remove(id: number): Promise<void> {
     await unwrap(commands.chatDelete(id))
     if (sessionId.value === id) newChat()
@@ -240,6 +279,8 @@ export function useChat(now: () => number = Date.now) {
     collapsed,
     failure,
     busy,
+    mode,
+    memoryAsk,
     init,
     open,
     newChat,
@@ -251,5 +292,9 @@ export function useChat(now: () => number = Date.now) {
     remove,
     removeAll,
     refreshSessions,
+    setMode,
+    askRemember,
+    confirmRemember,
+    declineRemember,
   }
 }

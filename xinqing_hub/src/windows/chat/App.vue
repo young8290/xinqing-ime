@@ -1,17 +1,21 @@
 <script setup lang="ts">
 // 对话窗口（05 FR-CHT-01/02/04/09，16 D-06）：顶部常驻 AI 说明，危机时固定求助卡片（FR-SAF-02），
 // 左侧抽屉是按日期分组的历史会话，回复逐字显示并带 `AI 生成` 标签，可停止、重试、复制。
-// 快捷指令（FR-CHT-06）：吐槽 / 理一理用 `chatSetMode` 或 `chatSend` 的 `mode` 切换会话的对话方式（ADR 0022），
-// 日记与呼吸是窗口本地动作，按钮随后续 PR 补上；记忆（FR-CHT-07）、历史搜索（FR-CHT-08）也是 P1。
+// 快捷指令（FR-CHT-06）：吐槽 / 理一理切换会话的对话方式（ADR 0022），呼吸是本地动画；“写成情绪日记”随 C-10 的日记再加。
+// 记忆（FR-CHT-07）：对话里明确说“记住”或点消息上的“让晴晴记住”，都先确认再写入。历史搜索的界面（FR-CHT-08）随设置页。
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { errorText, t } from '@/i18n'
+import BreathingGuide from './BreathingGuide.vue'
 import SafetyCard from './SafetyCard.vue'
 import { MAX_INPUT, dayGroup, useChat, type ChatLine } from './useChat'
 
 const chat = useChat()
 const draft = ref('')
 const notice = ref<string | null>(null)
+/** 不是错误的一句提示（“记住啦”），几秒后消失 */
+const info = ref<string | null>(null)
+const breathing = ref(false)
 const drawer = ref(false)
 const confirmAll = ref(false)
 const copiedId = ref<ChatLine | null>(null)
@@ -34,6 +38,13 @@ const failureText = computed(() =>
   chat.failure.value === 'daily_cap' ? t('chat.daily_cap') : chat.failure.value ? t('chat.stuck') : null,
 )
 const showSafety = computed(() => chat.safeMode.value !== 'off')
+const modeText = computed(() =>
+  chat.mode.value === 'vent'
+    ? t('chat.mode_vent')
+    : chat.mode.value === 'organize'
+      ? t('chat.mode_organize')
+      : null,
+)
 
 async function run(action: () => Promise<unknown>): Promise<void> {
   notice.value = null
@@ -98,6 +109,14 @@ async function copy(line: ChatLine): Promise<void> {
   if (!notice.value) copiedId.value = line
 }
 
+async function remember(): Promise<void> {
+  await run(chat.confirmRemember)
+  if (!notice.value) {
+    info.value = t('chat.remember_done')
+    setTimeout(() => (info.value = null), 3000)
+  }
+}
+
 async function removeAll(): Promise<void> {
   confirmAll.value = false
   drawer.value = false
@@ -144,6 +163,11 @@ async function removeAll(): Promise<void> {
             {{ copiedId === l ? t('chat.copied') : t('chat.copy') }}
           </button>
         </div>
+        <div v-else-if="l.role === 'user' && l.id !== null" class="meta">
+          <button class="link remember" @click="chat.askRemember(l.content)">
+            {{ t('chat.remember_this') }}
+          </button>
+        </div>
       </div>
       <div v-if="failureText" class="failure" role="status">
         <span>{{ failureText }}</span>
@@ -151,7 +175,39 @@ async function removeAll(): Promise<void> {
       </div>
     </div>
 
+    <div v-if="chat.memoryAsk.value" class="ask" role="dialog" :aria-label="t('chat.remember_ask')">
+      <p>{{ t('chat.remember_ask') }}</p>
+      <blockquote>{{ chat.memoryAsk.value }}</blockquote>
+      <button class="compact primary" @click="remember">{{ t('chat.remember_yes') }}</button>
+      <button class="compact" @click="chat.declineRemember">{{ t('chat.remember_no') }}</button>
+    </div>
+    <p v-if="info" class="info" role="status">{{ info }}</p>
     <p v-if="notice" class="error" role="alert">{{ notice }}</p>
+    <div v-if="modeText" class="mode" role="status">
+      <span>{{ modeText }}</span>
+      <button class="link" :disabled="chat.busy.value" @click="run(() => chat.setMode('normal'))">
+        {{ t('chat.mode_back') }}
+      </button>
+    </div>
+    <div class="shortcuts" role="group" :aria-label="t('chat.shortcuts')">
+      <button
+        class="compact"
+        :disabled="chat.busy.value || showSafety"
+        :aria-pressed="chat.mode.value === 'vent'"
+        @click="run(() => chat.setMode('vent'))"
+      >
+        {{ t('chat.shortcut_vent') }}
+      </button>
+      <button
+        class="compact"
+        :disabled="chat.busy.value || showSafety"
+        :aria-pressed="chat.mode.value === 'organize'"
+        @click="run(() => chat.setMode('organize'))"
+      >
+        {{ t('chat.shortcut_organize') }}
+      </button>
+      <button class="compact" @click="breathing = true">{{ t('chat.shortcut_breathe') }}</button>
+    </div>
     <form class="composer" @submit.prevent="submit">
       <textarea
         ref="inputEl"
@@ -169,6 +225,8 @@ async function removeAll(): Promise<void> {
         {{ t('chat.send') }}
       </button>
     </form>
+
+    <BreathingGuide v-if="breathing" @close="breathing = false" />
 
     <nav v-if="drawer" class="drawer" :aria-label="t('chat.history')">
       <p v-if="groups.length === 0" class="muted">{{ t('chat.history_empty') }}</p>
@@ -344,6 +402,57 @@ async function removeAll(): Promise<void> {
   margin: 0 var(--xq-sp-4);
   color: var(--xq-danger);
   font-size: var(--xq-fs-sm);
+}
+
+.info {
+  margin: 0 var(--xq-sp-4);
+  color: var(--xq-text-2);
+  font-size: var(--xq-fs-sm);
+}
+
+/* 记忆确认条（FR-CHT-07 第 1 条） */
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xq-sp-2);
+  align-items: center;
+  margin: 0 var(--xq-sp-4) var(--xq-sp-2);
+  padding: var(--xq-sp-2) var(--xq-sp-3);
+  border-radius: var(--xq-radius-card);
+  background: var(--xq-surface-2);
+  font-size: var(--xq-fs-sm);
+}
+
+.ask p {
+  margin: 0;
+}
+
+.ask blockquote {
+  width: 100%;
+  margin: 0;
+  color: var(--xq-text-2);
+  overflow-wrap: anywhere;
+}
+
+/* 快捷指令与当前对话方式（FR-CHT-06） */
+.mode {
+  display: flex;
+  gap: var(--xq-sp-2);
+  align-items: center;
+  margin: 0 var(--xq-sp-4);
+  color: var(--xq-text-2);
+  font-size: var(--xq-fs-xs);
+}
+
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xq-sp-1);
+  padding: var(--xq-sp-2) var(--xq-sp-4) 0;
+}
+
+.shortcuts [aria-pressed='true'] {
+  border-color: var(--xq-primary);
 }
 
 .composer {

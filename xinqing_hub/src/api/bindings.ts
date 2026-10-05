@@ -272,6 +272,8 @@ export type ChatSent = {
 	new_session: boolean,
 	/**  本地词表命中：立即显示求助卡片 */
 	safety: boolean,
+	/**  用户明确要求记住的内容：先问“要让晴晴记住这件事吗？”，确认后调 `memory_add`（FR-CHT-07 第 1 条） */
+	memory_candidate: string | null,
 };
 
 /**  左侧抽屉的一行（FR-CHT-02 第 3 条）。时间戳是 Unix 毫秒（前端绑定不导出 i64）。 */

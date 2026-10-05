@@ -2,7 +2,10 @@
 //! 提示词拼装、上下文截取、回复校验（V3 / V4 / V6）、今日状态摘要文字、危机双通道的合并。
 //! 服务（流式、写库、事件）在 `crate::chat`，实现上的取舍见 ADR 0018。
 
+use std::sync::LazyLock;
+
 use chrono::{DateTime, Local, Timelike};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use xqp::MoodState;
 
@@ -33,6 +36,33 @@ pub const MEMORY_ENTRY_CHARS: usize = 100;
 pub const SUMMARY_CHARS: usize = 200;
 /// Q-CRISIS 阈值（08 第 3 节，偏向召回）。
 pub const JEV_CRISIS_THRESHOLD: f64 = 0.5;
+
+/// 明确要求“记住”的说法：只在句首或标点之后、前面至多是“晴晴”“请你”“帮我”这类称呼和请求词时才算，
+/// “我记住了”“别记住”都不算（FR-CHT-07 第 1、4 条：只有用户明确要求才记，禁止自动提取）。
+static REMEMBER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        "(?:^|[，。！？,.!?；;\\s])(?:晴晴)?[，,\\s]*(?:请你|请|麻烦你|你)?(?:帮我|给我|要)?(?:记住|记一下|记下来|记下)(.*)$",
+    )
+    .unwrap()
+});
+
+/// 用户在对话里明确要求记住的内容（去掉“：”等连接符，最多 100 字），晴晴先拿去让用户确认，确认后才写入记忆。
+/// 没有明确要求、说的是“记住了吗”这类问句、或只说了“这个”时为 `None`。
+pub fn memory_request(text: &str) -> Option<String> {
+    let rest = REMEMBER.captures(text.trim())?.get(1)?.as_str();
+    let rest = rest
+        .trim_start_matches(|c: char| "：:，,、 ".contains(c))
+        .trim_end_matches(|c: char| "。！!~～ ".contains(c))
+        .trim();
+    let question = rest.ends_with(['吗', '?', '？', '呢']);
+    if rest.chars().count() < 2 || rest.starts_with('了') || question {
+        return None;
+    }
+    if matches!(rest, "这个" | "这些" | "这件事" | "这个吧" | "这句话") {
+        return None;
+    }
+    Some(rest.chars().take(MEMORY_ENTRY_CHARS).collect())
+}
 
 /// 会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0022）。
 /// “写成情绪日记”“陪我呼吸”是窗口里的本地动作，不经过这里。
@@ -518,6 +548,40 @@ mod tests {
             assert_eq!(ChatMode::from_db(m.as_db()), m);
         }
         assert_eq!(ChatMode::from_db("??"), ChatMode::Normal);
+    }
+
+    #[test]
+    fn memory_request_only_on_explicit_ask() {
+        assert_eq!(
+            memory_request("帮我记一下：下周三考英语"),
+            Some("下周三考英语".into())
+        );
+        assert_eq!(
+            memory_request("晴晴，记住我对芒果过敏。"),
+            Some("我对芒果过敏".into())
+        );
+        assert_eq!(
+            memory_request("今天好累。你记住，我养了一只猫叫团子"),
+            Some("我养了一只猫叫团子".into())
+        );
+        for no in [
+            "我记住了",
+            "别记住这个",
+            "你还记住我说的吗",
+            "帮我记住这个",
+            "要好好吃饭",
+            "今天考试没考好",
+            "记住了吗？",
+        ] {
+            assert_eq!(memory_request(no), None, "{no}");
+        }
+        assert_eq!(
+            memory_request(&format!("记住{}", "晴".repeat(150)))
+                .unwrap()
+                .chars()
+                .count(),
+            MEMORY_ENTRY_CHARS
+        );
     }
 
     #[test]
