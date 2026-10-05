@@ -8,7 +8,7 @@
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 完成（暂停 / 单步除外） | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`）；`--baseline`、`--start-at`：[xinqing-ime#46](https://github.com/young8290/xinqing-ime/pull/46)，ADR 0020 | 两个选项由调试构建的 Hub 读环境变量 `XQ_SIM_BASELINE`、`XQ_SIM_START_AT`（`src-tauri/src/sim.rs`），xq-sim 打印启动命令；不是完整的演示模式（×60、演示库随 B-10）；暂停 / 单步、Windows 管道客户端版 `--listen` 未做 |
+| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 完成（暂停 / 单步除外） | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`）；`--baseline`、`--start-at`：[xinqing-ime#46](https://github.com/young8290/xinqing-ime/pull/46)，ADR 0021 | 两个选项由调试构建的 Hub 读环境变量 `XQ_SIM_BASELINE`、`XQ_SIM_START_AT`（`src-tauri/src/sim.rs`），xq-sim 打印启动命令；不是完整的演示模式（×60、演示库随 B-10）；暂停 / 单步、Windows 管道客户端版 `--listen` 未做 |
 | B-02 | 录制 7 个 E-STATE 脚本与双人标注 | 未开始（需要人） | 剧本：`eval/datasets/e_state_scripts.md` | 要全员真人录制，Claude 做不了；剧本待两人评审。现在只有 3 个合成脚本（`tools/xq-sim/scripts/`，由 `gen_synthetic.py` 生成） |
 | B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008；Python 对拍：`eval/tools/features_ref.py` + `tests/features_parity.rs`（[xinqing-ime#45](https://github.com/young8290/xinqing-ime/pull/45)） | — |
 | B-04 | 个人基线、冷启动默认值 | 完成 | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；[xinqing-ime#25](https://github.com/young8290/xinqing-ime/pull/25)，ADR 0014 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准；7 天基线统计已与 Python 对拍（#45） |

@@ -35,7 +35,7 @@ pub struct Sensing {
     pub bus: broadcast::Sender<HubEvent>,
     /// 与感知任务同一份基线（启动和每次重算、重置后更新），重建历史状态的解释时用；模板加载失败时为 `None`。
     baseline: RwLock<Option<Baseline>>,
-    /// 调试构建设了 `XQ_SIM_BASELINE`：基线固定，不重算也不重置（ADR 0020）
+    /// 调试构建设了 `XQ_SIM_BASELINE`：基线固定，不重算也不重置（ADR 0021）
     pub fixed_baseline: bool,
 }
 

@@ -65,7 +65,7 @@ impl Baseline {
     }
 
     /// 回放用的固定基线（FR-DMO-01 `--baseline`）：把文件里的值当作个人基线，并越过冷启动，
-    /// 结果只取决于文件，不读写真实基线。`xq-replay` 与 Hub 的 `XQ_SIM_BASELINE` 共用（ADR 0020）。
+    /// 结果只取决于文件，不读写真实基线。`xq-replay` 与 Hub 的 `XQ_SIM_BASELINE` 共用（ADR 0021）。
     pub fn fixed(d: &BaselineDefault) -> Self {
         let mut b = Self::from_defaults(d);
         for (bucket, map) in [(Bucket::Day, &d.day), (Bucket::Night, &d.night)] {

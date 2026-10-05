@@ -1,4 +1,4 @@
-//! 回放可复现选项（07 FR-DMO-01 `--baseline`、`--start-at`）在 Hub 这一侧的入口（ADR 0020）。
+//! 回放可复现选项（07 FR-DMO-01 `--baseline`、`--start-at`）在 Hub 这一侧的入口（ADR 0021）。
 //!
 //! 只在调试构建里读两个环境变量，`xq-sim` 收到对应参数时会打印设好它们的 Hub 启动命令：
 //! - `XQ_SIM_BASELINE=<基线.toml>`：感知用这份固定基线（格式同 `baseline_default.toml`），

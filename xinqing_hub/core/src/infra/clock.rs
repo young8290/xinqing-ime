@@ -68,7 +68,7 @@ impl Clock for ManualClock {
 }
 
 /// 系统时间加一个固定偏移，照常走动。Hub 调试构建的 `XQ_SIM_START_AT`（FR-DMO-01
-/// `--start-at`）用它把“现在”拨到指定时刻，各服务共用同一份（ADR 0020）。
+/// `--start-at`）用它把“现在”拨到指定时刻，各服务共用同一份（ADR 0021）。
 #[derive(Debug, Clone, Copy)]
 pub struct OffsetClock {
     offset: Duration,

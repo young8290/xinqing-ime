@@ -21,11 +21,11 @@ struct Args {
     #[arg(long)]
     script: Option<PathBuf>,
     /// 固定基线 TOML（格式同 baseline_default.toml）。由 Hub 读取：xq-sim 校验后打印设好
-    /// `XQ_SIM_BASELINE` 的 Hub 启动命令（ADR 0020）
+    /// `XQ_SIM_BASELINE` 的 Hub 启动命令（ADR 0021）
     #[arg(long)]
     baseline: Option<PathBuf>,
     /// 模拟的起始本地时刻 HH:MM。由 Hub 读取：打印设好 `XQ_SIM_START_AT` 的 Hub 启动命令
-    /// （ADR 0020）。XQP 的 ts 是相对时间，Hub 以收到第一条消息的时刻为起点，平移 ts 没有作用
+    /// （ADR 0021）。XQP 的 ts 是相对时间，Hub 以收到第一条消息的时刻为起点，平移 ts 没有作用
     #[arg(long)]
     start_at: Option<String>,
     /// 倍速（1 / 5 / 20 …）；0 表示不等待，尽快发完
@@ -178,7 +178,7 @@ fn check_start_at(value: &str) -> Result<()> {
     Ok(())
 }
 
-/// `--baseline` / `--start-at` 要由 Hub 读取（ADR 0020）：校验参数，打印调试构建 Hub 的启动方式。
+/// `--baseline` / `--start-at` 要由 Hub 读取（ADR 0021）：校验参数，打印调试构建 Hub 的启动方式。
 async fn hub_env_hint(args: &Args) -> Result<()> {
     let mut vars = Vec::new();
     if let Some(path) = &args.baseline {
