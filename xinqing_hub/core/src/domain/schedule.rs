@@ -60,17 +60,17 @@ pub enum ExtractError {
     /// V2：日期或时刻不是合法的日历值
     #[error("AI 抽取结果日期或时间不合法")]
     DateTime,
-    /// V3：标题为空（超长的截断，ADR 0023）
+    /// V3：标题为空（超长的截断，ADR 0024）
     #[error("AI 抽取结果标题为空")]
     Title,
-    /// V4：标题或地点里有原句没有的禁用词（ADR 0023）
+    /// V4：标题或地点里有原句没有的禁用词（ADR 0024）
     #[error("AI 抽取结果含禁用词")]
     Banned,
 }
 
-/// 日程标题上限，超出截断（FR-SCH-03 第 3 条、08 第 5 节 V3，ADR 0023）。
+/// 日程标题上限，超出截断（FR-SCH-03 第 3 条、08 第 5 节 V3，ADR 0024）。
 const SCHEDULE_TITLE_MAX: usize = 12;
-/// 待办标题上限，超出截断（FR-SCH-12、08 第 5 节 V3，ADR 0023）。
+/// 待办标题上限，超出截断（FR-SCH-12、08 第 5 节 V3，ADR 0024）。
 const TODO_TITLE_MAX: usize = 16;
 /// 地点上限：产品书没有规定，超过这个长度多半是模型把整句抄了进来（FR-SCH-04 补充规则 7）。
 const LOCATION_MAX: usize = 40;
@@ -116,7 +116,7 @@ fn parse_output<T: serde::de::DeserializeOwned>(raw: &str) -> Result<T, ExtractE
     serde_json::from_value(value).map_err(|_| ExtractError::Shape)
 }
 
-/// V3：去掉首尾空白后不能为空，超过 `max` 个字截断（FR-SCH-03 第 3 条，ADR 0023）。
+/// V3：去掉首尾空白后不能为空，超过 `max` 个字截断（FR-SCH-03 第 3 条，ADR 0024）。
 fn checked_title(title: Option<String>, max: usize) -> Result<String, ExtractError> {
     let title = title.as_deref().map(str::trim).unwrap_or_default();
     if title.is_empty() {
@@ -130,7 +130,7 @@ fn checked_title(title: Option<String>, max: usize) -> Result<String, ExtractErr
         .to_owned())
 }
 
-/// V4：标题和地点取自用户原句，原句里本来就有的词（“按时吃药”）不拦，只拦模型自己带进来的（ADR 0023）。
+/// V4：标题和地点取自用户原句，原句里本来就有的词（“按时吃药”）不拦，只拦模型自己带进来的（ADR 0024）。
 fn check_banned(fields: &[&str], sentence: &str, banned: &BannedWords) -> Result<(), ExtractError> {
     if fields
         .iter()
@@ -832,7 +832,7 @@ mod tests {
 
     #[test]
     fn titles_are_truncated_and_banned_words_only_count_when_model_adds_them() {
-        // 超长截断（FR-SCH-03 第 3 条，ADR 0023）
+        // 超长截断（FR-SCH-03 第 3 条，ADR 0024）
         let draft = schedule(serde_json::json!({ "title": "一二三四五六七八九十一二三" }))
             .unwrap()
             .unwrap();

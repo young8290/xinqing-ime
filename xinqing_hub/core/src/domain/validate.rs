@@ -100,7 +100,7 @@ impl BannedWords {
     }
 
     /// 只找 `source` 里没有的禁用词或正则：从用户原句里抽出来的字段（日程标题等）用，
-    /// 用户自己说的词照常保留，模型带进来的才算命中（ADR 0023）。
+    /// 用户自己说的词照常保留，模型带进来的才算命中（ADR 0024）。
     pub fn find_new(&self, text: &str, source: &str, scene: Scene) -> Option<String> {
         let (t, src) = (normalize(text), normalize(source));
         for w in &self.words {
