@@ -82,6 +82,7 @@ export const events = {
 	careReduced: makeEvent<CareReduced>("care:reduced"),
 	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
+	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
 	restDue: makeEvent<RestDue>("rest:due"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
@@ -220,6 +221,21 @@ export type GatewayHealthChanged = GatewayHealth;
 export type ImeConfig = {
 	values: unknown,
 };
+
+/**  输入法配置变了（核心的 `config.changed`，或外壳刚连上事件通道）。界面据此重新取一次配置。 */
+export type ImeConfigChange = {
+	/**  核心给的原因：`setItems` / `applyPatch` / `reload`；外壳刚连上（核心启动或重启）时是 `connected` */
+	reason: string,
+	/**  有改动需要重启输入法才生效（FR-SET-01 的重启横幅） */
+	needs_restart: boolean,
+};
+
+/**
+ *  `ime_config:changed`：输入法配置变了（ADR 0017），设置中心的“输入法”分类重新取一次 `ime_config_get`。
+ *  来自核心的 `config.changed`（`setItems` / `applyPatch` / `reload`），或外壳刚连上事件通道（`connected`）。
+ *  核心自己的语言栏、菜单改的配置不广播，所以设置窗口重新获得焦点时也要取一次。
+ */
+export type ImeConfigChanged = ImeConfigChange;
 
 /**  `ime_schema` 的一项：已登记的输入法配置键。 */
 export type ImeField = {

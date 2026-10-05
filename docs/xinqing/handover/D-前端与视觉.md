@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（D-08 第二部分：设置中心“输入法”分类）
+> 最后更新：2026-10-05（D-08 契约：输入法配置变更事件，ADR 0017）
 
 ## 1. 任务状态
 
@@ -16,7 +16,7 @@
 | D-05 | 首次引导与同意 | 大部分完成 | `windows/onboarding/`（FR-ONB-01～04，有测试） | FR-ONB-05（AI 地址与密钥、“测试连接”、小组件位置、关怀频率、晴晴打招呼）未做，“测试连接”依赖 C 的网关（xinqing-ime#7） |
 | D-06 | 对话窗口（流式、标识、求助卡片 UI） | 占位 | `windows/chat/`（只有常驻 AI 说明） | 全部；依赖 C 的对话命令与流式事件 |
 | D-07 | 情绪看板 | 占位 | `windows/dashboard/`（只显示当前天气） | 全部（P1，计划 W9）；ECharts 未引入 |
-| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（本 PR：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set` | 下一步：`config.changed` 订阅、快捷键录制框随后；其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
+| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约 PR（本 PR）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed` | 下一步：设置页接 `ime_config:changed` 与窗口焦点刷新（合并重复刷新、别处改了需要重启时显示横幅）、快捷键录制框随后；其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
 | D-09 | 系统通知、无障碍与高对比度、DPI 走查 | 部分 | 令牌里已有 `forced-colors` 高对比度和 `prefers-reduced-motion`；不可见时暂停动画（`mount.ts` + `base.css`） | 系统通知（FR-NTF-01）、150% 文本大小与 100%–200% DPI 走查都没做 |
 
 ## 2. 代码地图（D 负责的部分）
@@ -52,6 +52,7 @@ xinqing_hub/
 │     └─ licenses.ts            开源许可条目；新增随包分发的组件 / 字体 / 素材 / 图标库时在这里加
 ├─ core/src/infra/imeconf.rs   wind-rpc 客户端（读写输入法配置，ADR 0016）
 ├─ src-tauri/src/commands/ime.rs  ime_schema / ime_config_get / ime_config_set
+├─ src-tauri/src/ime_events.rs  常驻线程读 wind-rpc 事件通道，转成 ime_config:changed（ADR 0017）
 └─ src-tauri/
    ├─ capabilities/              default.json（各窗口共用）、widget.json（只给小组件：挪动、缩放、显示、置顶）
    ├─ src/fullscreen.rs          前台全屏时自动隐藏小组件（判断逻辑 AutoHide 平台无关，探测只在 Windows）
@@ -89,6 +90,7 @@ xinqing_hub/
 - **右键菜单用系统原生菜单**（`@tauri-apps/api/menu` 的 `Menu.popup`），不在网页里画：小组件窗口只有 320 × 168，菜单项补齐后有 8 项，网页菜单画不下；原生菜单还自带讲述人与高对比度支持（DS-A11Y-02/04）。代价是菜单外观不走设计令牌。07 没规定菜单样式，不算偏离产品书，未写 ADR。
 - **小组件位置存在 WebView 的 localStorage**，没有进 Hub 数据库：它是本机界面偏好，不是用户数据，也不需要随导出导入走；放进 `settings` 表要新增设置键（C 的契约）。以后要让“删除全部数据”也清掉它，再挪进数据库。
 - **ADR 0016（输入法设置的读写与表单生成，D 提议）**：心晴不带清风的设置程序（托盘“设置”打开的是 Hub），而 wind-rpc 的 `config.schema` 只有键名、类型和枚举值、没有中文名称和范围，所以“输入法”分类改为常用项手写名称、其余按 schema 放进“高级”；客户端不依赖清风的 crate，协议版本号由测试核对。待 A、C 评审，接受后改产品书 07 FR-SET-02、10 第 5.1 节、17 第 3.4 节。
+- **ADR 0017（输入法配置变更事件，D 提议）**：外壳常驻一个线程连 `xinqing_rpc{后缀}_events`（后缀在 `_events` 之前，和控制通道相反），把 `config.changed` 转成 `ime_config:changed {reason, needs_restart}`；每次连上先推一条 `connected`，核心没运行时 1～30 秒退避重连。核心自己的语言栏 / 菜单写配置不广播，所以设置窗口获得焦点时也要重新取。待 A、C 评审，接受后改产品书 10 第 5.2 节、07 FR-SET-02。
 - **ADR 0012（AI 服务配置，C 提议）D 的评审意见：同意**（写在 ADR 的“评审”一节）。E 要求 release 只收 `https://`，落地时 `error.ai_config_invalid` 文案要同改；建议 `ai_config_get` 带上两侧健康状态，FR-SET-08 页面要用。
 - **ADR 0010（状态解释的信号挑选与拼句）D 的评审意见：同意**（B 在 xinqing-ime#11 请 D 看界面拼句）。结构化的
   `Explanation { state, prob, signals[{kind, value}], source, cold_start }` 够界面用：`kind` 的序列化名就是
@@ -114,7 +116,7 @@ xinqing_hub/
 
 1. D-03 剩余：“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；引导页用上 logo；
 2. D-05：FR-ONB-05，等 C 的网关 PR（xinqing-ime#7）合并后接“测试连接”；
-3. D-08：`config.changed` 订阅（输入法里改了设置，设置中心跟着变）、快捷键录制框；其余分类按各自后端补；
+3. D-08：ADR 0017 合并后设置页接 `ime_config:changed` 和窗口焦点刷新；然后快捷键录制框；其余分类按各自后端补；
 4. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
 
 ## 7. 修订记录
@@ -130,3 +132,4 @@ xinqing_hub/
 | 2026-10-04 | D-02 第五部分：“我现在…”自评面板、状态行“你说的”（接 B 的 `self_report_*`） |
 | 2026-10-05 | D-08 契约：ADR 0016、wind-rpc 客户端与 `ime_*` 三个命令 |
 | 2026-10-05 | D-08 第二部分：设置中心“输入法”分类（常用项 + 高级区，修改即保存） |
+| 2026-10-05 | D-08 契约：ADR 0017、wind-rpc 事件通道读线程与 `ime_config:changed` 事件 |

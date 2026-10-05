@@ -8,6 +8,7 @@ use xinqing_hub_core::domain::rest::RestKind;
 use xinqing_hub_core::domain::self_report::SelfWeather;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::gateway::GatewayHealth;
+use xinqing_hub_core::infra::imeconf::ImeConfigChange;
 
 /// `status:changed`：载荷同 `get_status`。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -64,3 +65,10 @@ pub struct RestDue {
     pub kind: RestKind,
     pub tired: bool,
 }
+
+/// `ime_config:changed`：输入法配置变了（ADR 0017），设置中心的“输入法”分类重新取一次 `ime_config_get`。
+/// 来自核心的 `config.changed`（`setItems` / `applyPatch` / `reload`），或外壳刚连上事件通道（`connected`）。
+/// 核心自己的语言栏、菜单改的配置不广播，所以设置窗口重新获得焦点时也要取一次。
+#[derive(Debug, Clone, Serialize, Type, Event)]
+#[tauri_specta(event_name = "ime_config:changed")]
+pub struct ImeConfigChanged(pub ImeConfigChange);
