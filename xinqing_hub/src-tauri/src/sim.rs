@@ -58,11 +58,18 @@ pub fn fixed_baseline() -> Option<Baseline> {
     let path = PathBuf::from(var(BASELINE_ENV)?);
     match read_toml::<BaselineDefault>(&path) {
         Ok(d) => {
-            eprintln!("{BASELINE_ENV}：使用固定基线 v{} {}", d.version, path.display());
+            eprintln!(
+                "{BASELINE_ENV}：使用固定基线 v{} {}",
+                d.version,
+                path.display()
+            );
             Some(Baseline::fixed(&d))
         }
         Err(e) => {
-            eprintln!("{BASELINE_ENV}={} 读取失败，回放结果不可复现：{e}", path.display());
+            eprintln!(
+                "{BASELINE_ENV}={} 读取失败，回放结果不可复现：{e}",
+                path.display()
+            );
             None
         }
     }

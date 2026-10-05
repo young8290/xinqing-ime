@@ -187,7 +187,11 @@ async fn hub_env_hint(args: &Args) -> Result<()> {
         eprintln!(
             "xq-sim：基线 v{}（{}）{}",
             baseline.version,
-            if baseline.calibrated { "已校准" } else { "未校准" },
+            if baseline.calibrated {
+                "已校准"
+            } else {
+                "未校准"
+            },
             abs.display()
         );
         vars.push(("XQ_SIM_BASELINE", abs.display().to_string()));
@@ -203,7 +207,10 @@ async fn hub_env_hint(args: &Args) -> Result<()> {
         vars.push(("XQ_XQP_TCP", addr.clone()));
     }
     eprintln!("xq-sim：这些选项由 Hub 读取，请用调试构建的 Hub 并设置环境变量后启动：");
-    let ps: Vec<String> = vars.iter().map(|(k, v)| format!("$env:{k}='{v}'")).collect();
+    let ps: Vec<String> = vars
+        .iter()
+        .map(|(k, v)| format!("$env:{k}='{v}'"))
+        .collect();
     eprintln!("  PowerShell：{}; pnpm tauri dev", ps.join("; "));
     let sh: Vec<String> = vars.iter().map(|(k, v)| format!("{k}='{v}'")).collect();
     eprintln!("  sh：{} pnpm tauri dev", sh.join(" "));
