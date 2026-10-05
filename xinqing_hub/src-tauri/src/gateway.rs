@@ -13,12 +13,14 @@ use futures::stream::BoxStream;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::sync::{mpsc, watch};
+use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::infra::gateway::{
     AiError, AiGateway, CompleteRequest, CompleteResponse, Delta, GatewayHealth, JudgeRequest,
     JudgeResponse, NetLogEntry,
 };
+use xinqing_hub_core::infra::store::Db;
 use xinqing_hub_gateway::{AiSecrets, GatewayConfig, HttpGateway, MaskedSecrets};
 
 use crate::commands::emit_status;
@@ -74,6 +76,14 @@ impl Ai {
 
     pub fn gateway(&self) -> Arc<HttpGateway> {
         self.read().gateway.clone()
+    }
+
+    /// 设置 `ai.cap.*` 的每日上限交给当前网关（FR-AIG-07，ADR 0019 第 4 条）。换网关时上限随预算一起接过去。
+    pub fn apply_caps(&self, db: &Db) {
+        let gw = self.gateway();
+        for (kind, cap) in settings::caps(db) {
+            gw.set_cap(kind, cap);
+        }
     }
 
     /// 设置页展示用：来源、地址、模型和密钥末 4 位。
@@ -179,6 +189,7 @@ fn build(
 pub fn start(app: &AppHandle, data_dir: &std::path::Path) -> Arc<Ai> {
     let (log_tx, mut log_rx) = mpsc::unbounded_channel();
     let ai = Arc::new(Ai::new(SecretStore::new(data_dir), log_tx));
+    ai.apply_caps(&app.state::<AppState>().db());
 
     let log_app = app.clone();
     tauri::async_runtime::spawn(async move {
