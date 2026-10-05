@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（D-08：设置中心“关怀”分类，FR-SET-05）
+> 最后更新：2026-10-05（D-08：设置中心“隐私”部分，FR-SET-09）
 
 ## 1. 任务状态
 
@@ -16,7 +16,7 @@
 | D-05 | 首次引导与同意 | 完成 | `windows/onboarding/`：FR-ONB-01～04；FR-ONB-05（xinqing-ime#64 已合并）——`AiStep.vue`（Jev 与大模型的地址和密钥，已保存的只显示末 4 位、留空不改，“测试连接”先保存再逐个模型测，可跳过进离线模式）、`PrefsStep.vue`（小组件放哪个角、`care.level`、四种休息提醒开关，改了就存）；完成后小组件由晴晴打招呼（`shared/firstRun.ts`） | 引导页不让改大模型的模型列表（沿用已有的或用默认），完整的放设置页“AI 服务”（FR-SET-08）；Jev 没有测试接口，只做说明 |
 | D-06 | 对话窗口（流式、标识、求助卡片 UI） | 第一版完成 | `windows/chat/`：`useChat.ts`（会话、流式事件、先到事件暂存）、`App.vue`（AI 说明、历史抽屉、气泡与 `AI 生成` 标签、复制、停止 / 重试）、`SafetyCard.vue`（求助卡片，折叠成一行不可移除）；与 C-07/C-08 同一个 PR，ADR 0018 | 快捷指令（吐槽 / 理一理 / 呼吸，`BreathingGuide.vue`）与“记住”确认条、消息上的“让晴晴记住”已由 C 补上（[xinqing-ime#57](https://github.com/young8290/xinqing-ime/pull/57)），样式 D 已走查（文字按钮的点击目标、`AI 生成` 标签按 DS-COPY-05、输入中三个点、Esc 先关呼吸引导、抽屉与引导的焦点、高对比度下气泡有边框）；“写成情绪日记”随 C-10；历史搜索（P1）；窗口置顶切换与全局快捷键 `Ctrl+Alt+Q`（求助卡片上的学校心理中心电话已接设置 `safety.school_phone`，填了就显示并可复制） |
 | D-07 | 情绪看板 | 占位 | `windows/dashboard/`（只显示当前天气） | 全部（P1，计划 W9）；ECharts 未引入 |
-| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“关怀”（本 PR：关怀频率、说话风格带示例句、同意 ④ 可撤回、安静时段、勿扰应用、学校心理中心电话、晴晴记住的事可改可删；输入先按后端同样的规则校验，说清哪里不对）、“AI 服务”（xinqing-ime#66 已合并：地址与密钥只显示末 4 位、大模型优先级可拖动或按钮排序、测试连接、每日调用上限与今日用量）、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；“输入法”页接这个事件和窗口焦点刷新（xinqing-ime#39 已合并）；本 PR：快捷键录制框、中英切换键改为五选一 | 下一步：其余分类（FR-SET-03、04、06、07、10）按各自后端逐个补；“关怀”里的晚间小结、周信开关等设置键登记（C）；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
+| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“关怀”（xinqing-ime#67 已合并：关怀频率、说话风格带示例句、同意 ④ 可撤回、安静时段、勿扰应用、学校心理中心电话、晴晴记住的事可改可删；输入先按后端同样的规则校验，说清哪里不对）、“AI 服务”（xinqing-ime#66 已合并：地址与密钥只显示末 4 位、大模型优先级可拖动或按钮排序、测试连接、每日调用上限与今日用量）、“隐私与关于”（本 PR 补上“隐私”：与引导页同一张告知表、六项同意逐项撤回（撤回 ① 先确认，撤回会发给第三方的项如实说明）、最近 20 次出网记录（用途中文名、字段名、结果）、导出我的数据（系统“另存为”对话框 → `data_export`）；“关于”早已有）。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；“输入法”页接这个事件和窗口焦点刷新（xinqing-ime#39 已合并）；本 PR：快捷键录制框、中英切换键改为五选一 | 下一步：其余分类（FR-SET-03、04、06、07、10）按各自后端逐个补；“关怀”里的晚间小结、周信开关等设置键登记（C）；“隐私”还差删除全部数据（FR-DAT-04）、导入（FR-DAT-07）、隐私说明全文，等 E 的命令和文本；开源许可的完整依赖清单要用工具生成 |
 | D-09 | 系统通知、无障碍与高对比度、DPI 走查 | 部分 | 令牌里已有 `forced-colors` 高对比度和 `prefers-reduced-motion`；不可见时暂停动画（`mount.ts` + `base.css`） | 系统通知（FR-NTF-01）、150% 文本大小与 100%–200% DPI 走查都没做 |
 
 ## 2. 代码地图（D 负责的部分）
@@ -47,6 +47,8 @@ xinqing_hub/
 │     ├─ AiStep.vue             AI 服务：地址与密钥、测试连接、可跳过（ADR 0012）
 │     └─ PrefsStep.vue          偏好：小组件的角、关怀频率、休息提醒
 │  └─ shared/aiConfig.ts        AI 服务表单 ↔ secrets_set 入参（引导页与设置页共用）
+│  └─ shared/NoticeTable.vue    告知表（FR-ONB-03），引导页与设置“隐私”共用
+│  └─ shared/consent.ts         同意项编号 ①～⑥、哪些会发给第三方（撤回时要说明）
 │  └─ shared/firstRun.ts        引导交给小组件的偏好：放哪个角、要不要打招呼（localStorage）
 │  └─ settings/
 │     ├─ App.vue                左侧分类（FR-SET-01 的顺序），默认“输入法”，#about 直接打开“隐私与关于”
@@ -60,7 +62,8 @@ xinqing_hub/
 │     ├─ CareSection.vue        关怀：频率、说话风格、同意 ④、安静时段、勿扰应用、学校电话、晴晴记住的事（FR-SET-05）
 │     ├─ care.ts                关怀页的输入校验（与后端 SettingItem::accepts、memory_entry 同一套规则）
 │     ├─ AiSection.vue          AI 服务：地址与密钥、大模型优先级、测试连接、每日上限与今日用量（FR-SET-08）
-│     ├─ AboutSection.vue       隐私与关于（目前只有“关于”）
+│     ├─ AboutSection.vue       隐私与关于：上面放 PrivacySection，下面是“关于”
+│     ├─ PrivacySection.vue     隐私：告知表、同意与撤回、最近出网记录、导出我的数据（FR-SET-09）
 │     └─ licenses.ts            开源许可条目；新增随包分发的组件 / 字体 / 素材 / 图标库时在这里加
 ├─ core/src/infra/imeconf.rs   wind-rpc 客户端（读写输入法配置，ADR 0016）
 ├─ src-tauri/src/commands/ime.rs  ime_schema / ime_config_get / ime_config_set
@@ -119,6 +122,9 @@ xinqing_hub/
   `note.format` 那种单行格式只给回放和评测用，建议 ADR 第 5 条写明“界面可以按自己的版式排”；② `StatusSnapshot.prob`
   是 0–1 小数，`Explanation.prob` 是 0–100 整数，同一个量两种单位，加 `state_explain` 命令时最好统一（或至少在字段名上区分）；
   ③ 实时解释最好带上它对应的窗口或时间，界面拿到后能确认它和当前快照是同一次切换，避免悬停时显示上一个状态的解释。（界面暂时用“解释的状态 = 快照的状态”判断，同一状态两次切换之间分不出来。）
+- **系统“另存为”对话框用官方插件 `tauri-plugin-dialog`**（`@tauri-apps/plugin-dialog`）：`data_export(path)` 要前端给保存路径（E 的 xinqing-ime#47）。
+  权限只给设置窗口、只开 `dialog:allow-save`（`src-tauri/capabilities/settings.json`）；对话框只把用户选的路径交回前端，读写文件仍在 Rust 端。
+  以后“导入”要选文件时再加 `dialog:allow-open`。插件属 Tauri 项目，许可同 Tauri（“关于”页已列）。不涉及 `bindings.ts` 等契约，未写 ADR。
 - **小标签 24 × 72**：07 只规定了宽 24 px，高度是这里定的（够露出 20 px 的小精灵）。24 px 宽低于 DS-A11Y-03 的 32 px 点击目标，但小标签不需要点击——鼠标移入或键盘聚焦就展开，所以没有按 32 px 做。如果评审认为要守 32 px，07 的 24 px 也要一起改。
 
 ## 5. 已知问题
@@ -131,6 +137,8 @@ xinqing_hub/
 - `AppState::db_rebuilt`（数据库损坏后已重建）还没有在一句话区提示（文案 `error.db_rebuilt`），等消息优先级队列一起做。
 - 快捷键录制框在 Hub 窗口里录：输入法自己的快捷键（例如 `Ctrl+Shift+E` 轮换方案）可能先被核心吃掉，录不到；`Win` 组合多数被系统占用。都要在 Windows 真机上走一遍。
 - “输入法”分类：wind-rpc 的 schema 没有数值范围和说明文字，高级区只显示键名；方案名来自 ui_copy 的 `[ime.schema]`，核心新增方案时显示原 id，需要补文案。没在真机上连过清风核心。
+- 设置“隐私”：撤回 ① 时 09 FR-DAT-05 要“询问是否同时删除已有的情绪数据”，还没有删除情绪数据的命令（E-01），目前只确认一次再撤回；
+  删除全部数据（FR-DAT-04）、导入（FR-DAT-07）、隐私说明全文（E-06）都还没有，页面底部写了“还在准备中”。
 - 设置“关怀”缺晚间小结（FR-REV-01）和周信（FR-REV-02）的开关：设置键注册表还没登记这两项（C 的契约），登记后加在“说话风格”下面。
 - “关怀”页的输入校验（`settings/care.ts`）抄了后端 `SettingItem::accepts` 的规则，后端只回笼统的 `settings.out_of_range`；后端规则改了要同步改这里（后端仍会拒绝，只是提示变笼统）。
 - 安静时段用 `<input type="time">`，显示 12 / 24 小时制跟系统区域设置走；存进去的始终是 `HH:MM`。
@@ -139,9 +147,9 @@ xinqing_hub/
 ## 6. 下一步（按优先级）
 
 1. D-03 剩余：“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；引导页用上 logo；
-2. D-08：设置页“隐私”（FR-SET-09：出网记录 `ai_net_log_recent`、导出、撤回同意）——后端都有了；
-3. D-08：其余分类（FR-SET-03、04、06、07、10）按各自后端补；
-4. D-07：情绪看板（`get_routine` 已有）；
+2. D-07：情绪看板（`get_routine` 已有）；
+3. D-08：其余分类（FR-SET-03、04、06、07、10）按各自后端补；“隐私”的删除 / 导入随 E 的命令补上；
+4. D-09：系统通知（FR-NTF-01）与 DPI / 文本大小走查；
 5. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
 
 ## 7. 修订记录
@@ -168,3 +176,4 @@ xinqing_hub/
 | 2026-10-05 | D-05：首次引导补上 FR-ONB-05（AI 服务、偏好、完成后晴晴打招呼） |
 | 2026-10-05 | D-08：设置中心“AI 服务”分类（FR-SET-08）；AI 服务表单文案与逻辑由引导页、设置页共用 |
 | 2026-10-05 | D-08：设置中心“关怀”分类（FR-SET-05）；求助卡片显示设置里的学校心理中心电话 |
+| 2026-10-05 | D-08：设置“隐私”部分（FR-SET-09）：告知表、同意与撤回、出网记录、导出；引入 tauri-plugin-dialog |
