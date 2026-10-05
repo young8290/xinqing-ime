@@ -42,6 +42,20 @@ python eval/tools/eval_letter.py --predictions letter.jsonl --version p-letter-v
 
 每组两条预测，ID 为 `L1#1` 到 `L5#2`。应生成周信的记录包含 `text` 和 `human_review`：`{"tone_ok":true,"no_unfounded_claims":true,"one_gentle_suggestion":true}`；L4 数据不足时应为 `{"id":"L4#1","suppressed":true,"text":null}`。脚本自动核对 V9 数字来源、禁用词与生成/抑制行为，人工审核字段由盲评人员填写。
 
+## 窗口特征与个人基线对拍（FR-STA-02/03）
+
+```powershell
+python eval/tools/features_ref.py --write
+```
+
+`features_ref.py` 按产品书 04 FR-STA-01～03 和 ADR 0008 独立实现了窗口切分、特征计算、R1 打错字、连续输入时长、冷启动 z 分数，以及按白天 / 夜间分桶的基线中位数 / MAD（某桶某特征少于 30 个样本时不出个人值）。它不调用 Hub 代码，只用标准库。运行后生成三个文件：
+
+- `eval/datasets/e_features_cases.jsonl`：10 组固定事件序列，每组覆盖 FR-STA-01/02 的一类规则（上屏后切窗、停顿切窗、组字中停顿、打了又删、翻页选词、R1、FR-SEN-08 双来源、小窗口合并、焦点 / 输入法停用 / 30 秒上限、深夜与连续输入时长）；
+- `eval/datasets/e_features.golden.json`：上面 10 组加上 `tools/xq-sim/scripts` 的 3 个合成脚本的逐窗口特征；
+- `eval/datasets/e_baseline.golden.json`：确定性生成的 7 天窗口样本，以及期望的基线统计。
+
+Rust 侧由 `xinqing_hub/core/tests/features_parity.rs` 逐窗口、逐特征对比（误差 1e-9），CI 的 contracts 任务会重新生成这三个文件，并与仓库里的版本 diff。改了切窗或特征规则时，两边要一起改，再重新生成。
+
 ## 退出码
 
 - `0`：输入有效且所有可量化门槛及人工审核项均通过。

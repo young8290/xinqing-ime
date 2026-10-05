@@ -4,7 +4,7 @@
 - 依赖：只依赖 `xqp` 和通用库，**禁止**依赖 tauri / windows（NFR-MNT-03，见 docs/adr/0007）。可选特性 `specta` 只给外壳导出 TypeScript 类型用。
 - 配置：读取 `hub_templates/` 中的 baseline_default、app_categories、explain、crisis_lexicon、banned_words、comfort、prompts/comfort.md。
 - 数据：`migrations/0001_init.sql`、`0002_comfort_trigger.sql`（`comfort_log.trigger`，ADR 0015）；`window_features.features_json` 写入前检查只含数值和 null。
-- 测试：`cargo test -p xinqing-hub-core`；`tests/crisis_parity.rs` 与 Python 参考实现对拍，`tests/replay_scripts.rs` 用合成脚本做端到端回归（TC-STA-06 口径），`tests/xqp_live.rs` 让进程内的假核心按真实节奏回放同样的脚本，核对握手、重连和实时识别结果与离线回放一致。
+- 测试：`cargo test -p xinqing-hub-core`；`tests/crisis_parity.rs` 与 Python 参考实现对拍，`tests/features_parity.rs` 的窗口切分、特征和基线统计与 `eval/tools/features_ref.py` 对拍，`tests/replay_scripts.rs` 用合成脚本做端到端回归（TC-STA-06 口径），`tests/xqp_live.rs` 让进程内的假核心按真实节奏回放同样的脚本，核对握手、重连和实时识别结果与离线回放一致。
 - 回放工具：`cargo run -p xinqing-hub-core --bin xq-replay -- <脚本> [--mock-jev] [--start-at 23:40] [--baseline 文件] [--json]`；切换窗口的下一行（JSON 里是 `explain` 字段）是状态解释。
 - 隐私检查：窗口只存时间戳和类别，不存文字；进程名只用于分类，不落库、不出网；Q-STATE 请求按字段白名单过滤，文本字段先脱敏。
 - 日程/待办：`domain::schedule::ScheduleRecognizer` 按 `schedule_patterns.toml` 做本地逐句初筛；`infra::store::Db` 提供结构化日程与待办写入、24 小时哈希去重、忽略时清空内容及待确认项清理。初筛候选原句只存在内存，不能写库。
