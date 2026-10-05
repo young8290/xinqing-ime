@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   safetyDismiss: vi.fn(),
   chatSetMode: vi.fn(),
   memoryAdd: vi.fn(),
+  /** 设置“关怀”里填的学校心理中心电话 */
+  schoolPhone: '',
   hide: vi.fn(),
   writeText: vi.fn(),
   delta: null as null | Listener<ChatDelta>,
@@ -47,12 +49,15 @@ vi.mock('@/api', async (orig) => ({
     safetyDismiss: mocks.safetyDismiss,
     chatSetMode: mocks.chatSetMode,
     memoryAdd: mocks.memoryAdd,
+    settingsGet: (key: string) =>
+      Promise.resolve({ status: 'ok', data: key === 'safety.school_phone' ? mocks.schoolPhone : 'system' }),
   },
   events: {
     chatDelta: { listen: listen('delta') },
     chatDone: { listen: listen('done') },
     chatError: { listen: listen('error') },
     safetyTriggered: { listen: listen('safety') },
+    settingsChanged: { listen: async () => () => {} },
   },
 }))
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ hide: mocks.hide }) }))
@@ -97,6 +102,7 @@ describe('对话窗口', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     mocks.sessions = []
     mocks.messages = {}
+    mocks.schoolPhone = ''
     for (const f of [mocks.chatSend, mocks.chatRetry, mocks.chatStop, mocks.chatCopy, mocks.chatDeleteAll])
       f.mockReset().mockReturnValue(ok())
     mocks.chatSend.mockReturnValue(ok(sent()))
@@ -267,6 +273,22 @@ describe('对话窗口', () => {
       await w.findAll('.actions button')[0]!.trigger('click')
       expect(w.find('[role=alert]').exists()).toBe(false)
       expect(w.find('.safety.collapsed').text()).toContain(t('safety.collapsed'))
+    })
+
+    it('设置里填了学校心理中心电话：卡片上显示这个号码，也能一键复制（FR-SAF-03）', async () => {
+      mocks.schoolPhone = '0571-8888 1234'
+      mocks.chatSend.mockReturnValue(ok(sent({ safety: true })))
+      const w = await mountChat()
+      await type(w, '我真的不想活了')
+      await flushPromises()
+      const card = w.find('[role=alert]')
+      expect(card.text()).toContain('学校心理中心：0571-8888 1234')
+      expect(card.text()).not.toContain(t('safety.school_phone_empty'))
+      const buttons = card.findAll('.numbers button')
+      expect(buttons).toHaveLength(4)
+      await buttons[3]!.trigger('click')
+      await flushPromises()
+      expect(mocks.writeText).toHaveBeenCalledWith('0571-8888 1234')
     })
 
     it('Jev 后到的 safety:triggered 也会显示卡片', async () => {

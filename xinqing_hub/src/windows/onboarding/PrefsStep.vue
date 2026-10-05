@@ -64,7 +64,7 @@ const restOn = (r: (typeof REST)[number]) => settings.values[`rest.${r}.enabled`
           :checked="careLevel() === c"
           @change="set('care.level', c)"
         />
-        <span>{{ t(`onboarding.prefs.care_${c}`) }}</span>
+        <span>{{ t(`care_level.${c}`) }}</span>
       </label>
     </fieldset>
 
