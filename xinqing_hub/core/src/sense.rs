@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::{Instant, MissedTickBehavior};
-use xqp::{Down, MoodState, OpenTarget, RewriteFailReason, Scope, Up};
+use xqp::{ByeReason, Down, MoodState, OpenTarget, RewriteFailReason, Scope, Up};
 
 use crate::bus::{HubEvent, MoodEvent};
 use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
@@ -41,6 +41,8 @@ pub trait SensePort: Send + Sync {
     fn save_window(&self, rec: &WindowRecord<'_>);
     /// 运行日志。只会传入连接状态、计数这类不含用户数据的内容（NFR-LOG）。
     fn note(&self, msg: &str);
+    /// 输入法总开关关闭时通知外壳退出 Hub。
+    fn request_exit(&self) {}
     /// 显示状态切换了，附上本次的状态解释（FR-STA-09），外壳缓存到下一次切换，供 `state_explain` 返回。
     fn explained(&self, _e: &Explanation) {}
     /// 到了每天 04:00：用最近 7 天的窗口重算基线并写库（FR-STA-03 第 4 条），返回结果；失败时返回 `None`，
@@ -190,6 +192,9 @@ impl Sense {
                     StatusSnapshot::set(&mut s.connected, false)
                         | StatusSnapshot::set(&mut s.paused, paused)
                 });
+                if matches!(d, crate::infra::xqp::Disconnect::Bye(ByeReason::Disabled)) {
+                    self.port.request_exit();
+                }
             }
             LinkEvent::Up(up) => self.on_up(up, now),
         }
@@ -479,6 +484,7 @@ mod tests {
         notes: Mutex<Vec<String>>,
         explained: Mutex<Vec<Explanation>>,
         recompute: Mutex<Option<BaselineStats>>,
+        exit_requests: Mutex<u32>,
     }
 
     impl SensePort for FakePort {
@@ -495,6 +501,9 @@ mod tests {
         }
         fn note(&self, msg: &str) {
             self.notes.lock().unwrap().push(msg.to_string());
+        }
+        fn request_exit(&self) {
+            *self.exit_requests.lock().unwrap() += 1;
         }
         fn explained(&self, e: &Explanation) {
             self.explained.lock().unwrap().push(e.clone());
@@ -623,6 +632,22 @@ mod tests {
         assert!(!r.status().connected);
         let notes = r.port.notes.lock().unwrap();
         assert!(notes.iter().any(|n| n.contains("idle")));
+    }
+
+    #[test]
+    fn disabled_bye_requests_hub_exit_but_shutdown_does_not() {
+        let mut r = rig();
+        r.sense.on_link(
+            LinkEvent::Disconnected(Disconnect::Bye(ByeReason::Shutdown)),
+            r.t0,
+        );
+        assert_eq!(*r.port.exit_requests.lock().unwrap(), 0);
+
+        r.sense.on_link(
+            LinkEvent::Disconnected(Disconnect::Bye(ByeReason::Disabled)),
+            r.t0,
+        );
+        assert_eq!(*r.port.exit_requests.lock().unwrap(), 1);
     }
 
     #[test]
