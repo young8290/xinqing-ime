@@ -117,3 +117,9 @@ jobs:
           diff -u eval/datasets/e_crisis.golden.json "$RUNNER_TEMP/golden.json"
           python3 eval/tools/check_crisis.py --golden "$RUNNER_TEMP/golden_ext.json" hub_templates/crisis_lexicon.toml eval/datasets/e_crisis_ext.jsonl
           diff -u eval/datasets/e_crisis_ext.golden.json "$RUNNER_TEMP/golden_ext.json"
+      - name: 特征与基线的 Python 参考实现和对拍文件一致
+        run: |
+          python3 eval/tools/features_ref.py --out "$RUNNER_TEMP/features"
+          for f in e_features_cases.jsonl e_features.golden.json e_baseline.golden.json; do
+            diff -u "eval/datasets/$f" "$RUNNER_TEMP/features/$f"
+          done

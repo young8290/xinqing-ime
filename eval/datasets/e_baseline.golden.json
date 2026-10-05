@@ -1,0 +1,4996 @@
+{
+ "samples": [
+  {
+   "day": 0,
+   "hour": 16,
+   "kpm": 203.349,
+   "iki_med": 219.424,
+   "iki_iqr": 142.046,
+   "bs_rate": 0.07792,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 199.733,
+   "iki_med": 157.578,
+   "iki_iqr": 146.526,
+   "bs_rate": 0.04769,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 14,
+   "kpm": 142.607,
+   "iki_med": 164.282,
+   "iki_iqr": 150.792,
+   "bs_rate": 0.08415,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 10,
+   "kpm": 184.34,
+   "iki_med": 224.872,
+   "iki_iqr": 126.26,
+   "bs_rate": 0.09775,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 8,
+   "kpm": 222.928,
+   "iki_med": 112.106,
+   "iki_iqr": 167.261,
+   "bs_rate": 0.09943,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 17,
+   "kpm": 199.068,
+   "iki_med": 158.579,
+   "iki_iqr": 154.599,
+   "bs_rate": 0.05854,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 20,
+   "kpm": 208.056,
+   "iki_med": 157.579,
+   "iki_iqr": 120.249,
+   "bs_rate": 0.05779,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 17,
+   "kpm": 196.852,
+   "iki_med": 223.655,
+   "iki_iqr": 200.5,
+   "bs_rate": 0.09619,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 18,
+   "kpm": 224.205,
+   "iki_med": 204.282,
+   "iki_iqr": 168.778,
+   "bs_rate": 0.05161,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 231.155,
+   "iki_med": 187.582,
+   "iki_iqr": 152.221,
+   "bs_rate": 0.02915,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 211.212,
+   "iki_med": 202.193,
+   "iki_iqr": 172.895,
+   "bs_rate": 0.01024,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 12,
+   "kpm": 172.574,
+   "iki_med": 272.083,
+   "iki_iqr": 125.615,
+   "bs_rate": 0.126,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 10,
+   "kpm": 277.034,
+   "iki_med": 207.005,
+   "iki_iqr": 143.453,
+   "bs_rate": 0.07884,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 10,
+   "kpm": 220.264,
+   "iki_med": 195.46,
+   "iki_iqr": 145.415,
+   "bs_rate": 0.05795,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 11,
+   "kpm": 209.898,
+   "iki_med": 229.66,
+   "iki_iqr": 107.138,
+   "bs_rate": 0.02942,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 18,
+   "kpm": 260.717,
+   "iki_med": 167.85,
+   "iki_iqr": 96.755,
+   "bs_rate": 0.05971,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 8,
+   "kpm": 144.312,
+   "iki_med": 149.855,
+   "iki_iqr": 130.889,
+   "bs_rate": 0.05193,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 21,
+   "kpm": 201.234,
+   "iki_med": 229.414,
+   "iki_iqr": 171.612,
+   "bs_rate": 0.07456,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 17,
+   "kpm": 222.742,
+   "iki_med": 166.23,
+   "iki_iqr": 100.457,
+   "bs_rate": 0.08422,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 20,
+   "kpm": 252.95,
+   "iki_med": 200.694,
+   "iki_iqr": 183.995,
+   "bs_rate": 0.07901,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 10,
+   "kpm": 219.857,
+   "iki_med": 142.289,
+   "iki_iqr": 149.997,
+   "bs_rate": 0.1123,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 13,
+   "kpm": 174.768,
+   "iki_med": 202.898,
+   "iki_iqr": 152.213,
+   "bs_rate": 0.10287,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 10,
+   "kpm": 233.758,
+   "iki_med": 178.815,
+   "iki_iqr": 175.293,
+   "bs_rate": 0.13199,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 20,
+   "kpm": 177.984,
+   "iki_med": 210.786,
+   "iki_iqr": 115.586,
+   "bs_rate": 0.09917,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 18,
+   "kpm": 183.943,
+   "iki_med": 231.449,
+   "iki_iqr": 138.798,
+   "bs_rate": 0.07844,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 14,
+   "kpm": 246.992,
+   "iki_med": 169.121,
+   "iki_iqr": 101.211,
+   "bs_rate": 0.1437,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 19,
+   "kpm": 224.391,
+   "iki_med": 200.79,
+   "iki_iqr": 182.71,
+   "bs_rate": 0.09481,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 14,
+   "kpm": 197.392,
+   "iki_med": 257.753,
+   "iki_iqr": 199.985,
+   "bs_rate": 0.10174,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 11,
+   "kpm": 190.115,
+   "iki_med": 170.331,
+   "iki_iqr": 105.429,
+   "bs_rate": 0.08953,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 16,
+   "kpm": 249.938,
+   "iki_med": 245.939,
+   "iki_iqr": 87.687,
+   "bs_rate": 0.09157,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 13,
+   "kpm": 219.246,
+   "iki_med": 198.574,
+   "iki_iqr": 166.468,
+   "bs_rate": 0.11759,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 12,
+   "kpm": 208.342,
+   "iki_med": 174.348,
+   "iki_iqr": 110.556,
+   "bs_rate": 0.08124,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 21,
+   "kpm": 214.028,
+   "iki_med": 142.164,
+   "iki_iqr": 103.57,
+   "bs_rate": 0.01728,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 12,
+   "kpm": 197.481,
+   "iki_med": 244.044,
+   "iki_iqr": 180.686,
+   "bs_rate": 0.12854,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 11,
+   "kpm": 242.451,
+   "iki_med": 228.358,
+   "iki_iqr": 147.474,
+   "bs_rate": 0.07898,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 16,
+   "kpm": 158.951,
+   "iki_med": 203.028,
+   "iki_iqr": 152.968,
+   "bs_rate": 0.11509,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 19,
+   "kpm": 194.714,
+   "iki_med": 167.733,
+   "iki_iqr": 115.748,
+   "bs_rate": 0.07965,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 11,
+   "kpm": 200.198,
+   "iki_med": 166.691,
+   "iki_iqr": 159.365,
+   "bs_rate": 0.05953,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 8,
+   "kpm": 266.519,
+   "iki_med": 140.995,
+   "iki_iqr": 124.206,
+   "bs_rate": 0.08749,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 12,
+   "kpm": 128.989,
+   "iki_med": 183.542,
+   "iki_iqr": 151.189,
+   "bs_rate": 0.05984,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 19,
+   "kpm": 223.885,
+   "iki_med": 151.41,
+   "iki_iqr": 190.292,
+   "bs_rate": 0.1056,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 266.665,
+   "iki_med": 254.365,
+   "iki_iqr": 115.628,
+   "bs_rate": 0.13596,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 13,
+   "kpm": 185.17,
+   "iki_med": 234.669,
+   "iki_iqr": 195.307,
+   "bs_rate": 0.0914,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 18,
+   "kpm": 198.99,
+   "iki_med": 153.62,
+   "iki_iqr": 131.541,
+   "bs_rate": 0.10877,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 20,
+   "kpm": 202.624,
+   "iki_med": 272.548,
+   "iki_iqr": 176.742,
+   "bs_rate": 0.09573,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 13,
+   "kpm": 214.525,
+   "iki_med": 172.158,
+   "iki_iqr": 217.555,
+   "bs_rate": 0.07063,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 11,
+   "kpm": 234.619,
+   "iki_med": 174.296,
+   "iki_iqr": 161.749,
+   "bs_rate": 0.0322,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 11,
+   "kpm": 217.078,
+   "iki_med": 242.145,
+   "iki_iqr": 144.986,
+   "bs_rate": 0.10887,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 15,
+   "kpm": 175.318,
+   "iki_med": 193.574,
+   "iki_iqr": 93.362,
+   "bs_rate": 0.08477,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 21,
+   "kpm": 258.908,
+   "iki_med": 148.486,
+   "iki_iqr": 170.074,
+   "bs_rate": 0.06936,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 20,
+   "kpm": 232.939,
+   "iki_med": 184.549,
+   "iki_iqr": 102.107,
+   "bs_rate": 0.03092,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 12,
+   "kpm": 225.096,
+   "iki_med": 142.801,
+   "iki_iqr": 111.274,
+   "bs_rate": 0.0652,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 8,
+   "kpm": 232.863,
+   "iki_med": 204.293,
+   "iki_iqr": 117.795,
+   "bs_rate": 0.09786,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 16,
+   "kpm": 195.398,
+   "iki_med": 185.868,
+   "iki_iqr": 71.697,
+   "bs_rate": 0.07355,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 210.011,
+   "iki_med": 186.054,
+   "iki_iqr": 152.227,
+   "bs_rate": 0.06401,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 15,
+   "kpm": 231.368,
+   "iki_med": 151.3,
+   "iki_iqr": 169.476,
+   "bs_rate": 0.0464,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 120.092,
+   "iki_med": 211.645,
+   "iki_iqr": 137.407,
+   "bs_rate": 0.06245,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 228.574,
+   "iki_med": 264.722,
+   "iki_iqr": 147.647,
+   "bs_rate": 0.1049,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 8,
+   "kpm": 268.3,
+   "iki_med": 190.555,
+   "iki_iqr": 182.331,
+   "bs_rate": 0.08371,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 9,
+   "kpm": 225.036,
+   "iki_med": 246.714,
+   "iki_iqr": 169.852,
+   "bs_rate": 0.0241,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 14,
+   "kpm": 200.663,
+   "iki_med": 183.825,
+   "iki_iqr": 115.561,
+   "bs_rate": 0.09113,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 15,
+   "kpm": 169.903,
+   "iki_med": 233.823,
+   "iki_iqr": 190.466,
+   "bs_rate": 0.09831,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 14,
+   "kpm": 218.825,
+   "iki_med": 177.657,
+   "iki_iqr": 113.517,
+   "bs_rate": 0.12687,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 13,
+   "kpm": 255.945,
+   "iki_med": 260.19,
+   "iki_iqr": 111.771,
+   "bs_rate": 0.08831,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 8,
+   "kpm": 215.771,
+   "iki_med": 223.402,
+   "iki_iqr": 199.713,
+   "bs_rate": 0.0465,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 20,
+   "kpm": 144.149,
+   "iki_med": 214.437,
+   "iki_iqr": 132.497,
+   "bs_rate": 0.0953,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 16,
+   "kpm": 187.698,
+   "iki_med": 157.469,
+   "iki_iqr": 174.383,
+   "bs_rate": 0.11834,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 16,
+   "kpm": 201.704,
+   "iki_med": 221.723,
+   "iki_iqr": 122.097,
+   "bs_rate": 0.09133,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 23,
+   "kpm": 191.533,
+   "iki_med": 186.985,
+   "iki_iqr": 128.805,
+   "bs_rate": 0.11458,
+   "dwell_med": null
+  },
+  {
+   "day": 0,
+   "hour": 23,
+   "kpm": 152.091,
+   "iki_med": 167.828,
+   "iki_iqr": 121.686,
+   "bs_rate": 0.08683,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 279.266,
+   "iki_med": 234.333,
+   "iki_iqr": 176.028,
+   "bs_rate": 0.13595,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 12,
+   "kpm": 228.755,
+   "iki_med": 192.583,
+   "iki_iqr": 87.226,
+   "bs_rate": 0.06904,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 10,
+   "kpm": 248.757,
+   "iki_med": 155.617,
+   "iki_iqr": 204.645,
+   "bs_rate": 0.12141,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 13,
+   "kpm": 130.916,
+   "iki_med": 179.54,
+   "iki_iqr": 132.785,
+   "bs_rate": 0.09316,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 183.158,
+   "iki_med": 180.001,
+   "iki_iqr": 149.435,
+   "bs_rate": 0.08147,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 210.241,
+   "iki_med": 158.28,
+   "iki_iqr": 215.047,
+   "bs_rate": 0.02076,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 16,
+   "kpm": 246.337,
+   "iki_med": 240.578,
+   "iki_iqr": 205.652,
+   "bs_rate": 0.05927,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 16,
+   "kpm": 157.793,
+   "iki_med": 238.817,
+   "iki_iqr": 163.161,
+   "bs_rate": 0.06914,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 18,
+   "kpm": 170.906,
+   "iki_med": 221.055,
+   "iki_iqr": 123.244,
+   "bs_rate": 0.05495,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 13,
+   "kpm": 311.341,
+   "iki_med": 233.486,
+   "iki_iqr": 188.106,
+   "bs_rate": 0.04694,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 21,
+   "kpm": 226.574,
+   "iki_med": 187.511,
+   "iki_iqr": 187.021,
+   "bs_rate": 0.08985,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 20,
+   "kpm": 217.777,
+   "iki_med": 239.204,
+   "iki_iqr": 118.537,
+   "bs_rate": 0.078,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 20,
+   "kpm": 150.794,
+   "iki_med": 256.651,
+   "iki_iqr": 175.013,
+   "bs_rate": 0.10633,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 17,
+   "kpm": 201.196,
+   "iki_med": 223.297,
+   "iki_iqr": 173.118,
+   "bs_rate": 0.06103,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 209.127,
+   "iki_med": 161.218,
+   "iki_iqr": 102.612,
+   "bs_rate": 0.08052,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 17,
+   "kpm": 208.571,
+   "iki_med": 189.71,
+   "iki_iqr": 168.961,
+   "bs_rate": 0.02464,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 10,
+   "kpm": 223.618,
+   "iki_med": 251.513,
+   "iki_iqr": 57.974,
+   "bs_rate": 0.09941,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 268.658,
+   "iki_med": 262.089,
+   "iki_iqr": 179.778,
+   "bs_rate": 0.08323,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 20,
+   "kpm": 204.749,
+   "iki_med": 120.614,
+   "iki_iqr": 124.614,
+   "bs_rate": 0.0792,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 10,
+   "kpm": 190.829,
+   "iki_med": 248.264,
+   "iki_iqr": 158.473,
+   "bs_rate": 0.05483,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 14,
+   "kpm": 206.364,
+   "iki_med": 227.618,
+   "iki_iqr": 168.744,
+   "bs_rate": 0.09087,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 9,
+   "kpm": 217.139,
+   "iki_med": 237.378,
+   "iki_iqr": 166.557,
+   "bs_rate": 0.06442,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 19,
+   "kpm": 265.829,
+   "iki_med": 167.821,
+   "iki_iqr": 182.694,
+   "bs_rate": 0.03703,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 14,
+   "kpm": 177.17,
+   "iki_med": 180.184,
+   "iki_iqr": 141.694,
+   "bs_rate": 0.09986,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 12,
+   "kpm": 220.482,
+   "iki_med": 223.772,
+   "iki_iqr": 171.347,
+   "bs_rate": 0.1066,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 14,
+   "kpm": 255.287,
+   "iki_med": 215.913,
+   "iki_iqr": 92.515,
+   "bs_rate": 0.06185,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 9,
+   "kpm": 168.626,
+   "iki_med": 211.592,
+   "iki_iqr": 157.557,
+   "bs_rate": 0.06706,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 14,
+   "kpm": 156.471,
+   "iki_med": 211.433,
+   "iki_iqr": 140.464,
+   "bs_rate": 0.06868,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 234.32,
+   "iki_med": 203.285,
+   "iki_iqr": 118.642,
+   "bs_rate": 0.13291,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 17,
+   "kpm": 205.749,
+   "iki_med": 228.764,
+   "iki_iqr": 152.5,
+   "bs_rate": 0.10875,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 13,
+   "kpm": 219.668,
+   "iki_med": 189.038,
+   "iki_iqr": 133.443,
+   "bs_rate": 0.08151,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 8,
+   "kpm": 190.694,
+   "iki_med": 213.774,
+   "iki_iqr": 86.875,
+   "bs_rate": 0.13425,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 193.928,
+   "iki_med": 206.252,
+   "iki_iqr": 164.649,
+   "bs_rate": 0.08053,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 19,
+   "kpm": 232.857,
+   "iki_med": 227.825,
+   "iki_iqr": 93.375,
+   "bs_rate": 0.09938,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 20,
+   "kpm": 244.26,
+   "iki_med": 240.556,
+   "iki_iqr": 157.213,
+   "bs_rate": 0.08834,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 13,
+   "kpm": 224.651,
+   "iki_med": 216.273,
+   "iki_iqr": 162.74,
+   "bs_rate": 0.07674,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 9,
+   "kpm": 193.893,
+   "iki_med": 191.57,
+   "iki_iqr": 186.663,
+   "bs_rate": 0.06064,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 12,
+   "kpm": 292.739,
+   "iki_med": 204.493,
+   "iki_iqr": 205.859,
+   "bs_rate": 0.08355,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 16,
+   "kpm": 237.704,
+   "iki_med": 201.309,
+   "iki_iqr": 153.938,
+   "bs_rate": 0.09887,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 21,
+   "kpm": 164.215,
+   "iki_med": 228.739,
+   "iki_iqr": 187.945,
+   "bs_rate": 0.05295,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 17,
+   "kpm": 230.6,
+   "iki_med": 188.798,
+   "iki_iqr": 102.1,
+   "bs_rate": 0.08325,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 12,
+   "kpm": 222.62,
+   "iki_med": 205.44,
+   "iki_iqr": 100.917,
+   "bs_rate": 0.04864,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 17,
+   "kpm": 239.024,
+   "iki_med": 199.105,
+   "iki_iqr": 68.984,
+   "bs_rate": 0.12602,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 15,
+   "kpm": 198.616,
+   "iki_med": 244.762,
+   "iki_iqr": 181.279,
+   "bs_rate": 0.09456,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 18,
+   "kpm": 151.498,
+   "iki_med": 158.027,
+   "iki_iqr": 143.309,
+   "bs_rate": 0.04837,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 16,
+   "kpm": 169.688,
+   "iki_med": 204.677,
+   "iki_iqr": 125.374,
+   "bs_rate": 0.0843,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 20,
+   "kpm": 255.947,
+   "iki_med": 266.897,
+   "iki_iqr": 180.608,
+   "bs_rate": 0.12231,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 9,
+   "kpm": 226.454,
+   "iki_med": 235.083,
+   "iki_iqr": 133.77,
+   "bs_rate": 0.09578,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 211.31,
+   "iki_med": 216.31,
+   "iki_iqr": 95.311,
+   "bs_rate": 0.14634,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 201.714,
+   "iki_med": 277.166,
+   "iki_iqr": 162.276,
+   "bs_rate": 0.15255,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 8,
+   "kpm": 208.206,
+   "iki_med": 192.553,
+   "iki_iqr": 202.663,
+   "bs_rate": 0.10774,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 15,
+   "kpm": 239.567,
+   "iki_med": 165.871,
+   "iki_iqr": 176.581,
+   "bs_rate": 0.07158,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 13,
+   "kpm": 289.199,
+   "iki_med": 154.832,
+   "iki_iqr": 125.44,
+   "bs_rate": 0.08308,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 8,
+   "kpm": 171.053,
+   "iki_med": 254.348,
+   "iki_iqr": 137.403,
+   "bs_rate": 0.07646,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 244.379,
+   "iki_med": 246.089,
+   "iki_iqr": 148.693,
+   "bs_rate": 0.07217,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 15,
+   "kpm": 176.57,
+   "iki_med": 189.786,
+   "iki_iqr": 78.419,
+   "bs_rate": 0.14409,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 15,
+   "kpm": 178.353,
+   "iki_med": 212.978,
+   "iki_iqr": 82.102,
+   "bs_rate": 0.08526,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 14,
+   "kpm": 202.52,
+   "iki_med": 195.464,
+   "iki_iqr": 126.608,
+   "bs_rate": 0.0305,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 8,
+   "kpm": 233.451,
+   "iki_med": 192.618,
+   "iki_iqr": 160.676,
+   "bs_rate": 0.0756,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 19,
+   "kpm": 236.084,
+   "iki_med": 257.328,
+   "iki_iqr": 167.138,
+   "bs_rate": 0.09573,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 11,
+   "kpm": 208.085,
+   "iki_med": 121.812,
+   "iki_iqr": 198.802,
+   "bs_rate": 0.06806,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 22,
+   "kpm": 205.831,
+   "iki_med": 154.144,
+   "iki_iqr": 181.44,
+   "bs_rate": 0.00222,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 0,
+   "kpm": 208.416,
+   "iki_med": 208.815,
+   "iki_iqr": 172.026,
+   "bs_rate": 0.11031,
+   "dwell_med": null
+  },
+  {
+   "day": 1,
+   "hour": 23,
+   "kpm": 262.145,
+   "iki_med": 221.103,
+   "iki_iqr": 135.239,
+   "bs_rate": 0.09228,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 19,
+   "kpm": 189.494,
+   "iki_med": 157.365,
+   "iki_iqr": 97.696,
+   "bs_rate": 0.07656,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 218.008,
+   "iki_med": 219.185,
+   "iki_iqr": 188.852,
+   "bs_rate": 0.08524,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 184.799,
+   "iki_med": 138.521,
+   "iki_iqr": 170.46,
+   "bs_rate": 0.06197,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 176.232,
+   "iki_med": 126.877,
+   "iki_iqr": 141.846,
+   "bs_rate": 0.05038,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 196.355,
+   "iki_med": 94.838,
+   "iki_iqr": 208.222,
+   "bs_rate": 0.05283,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 278.394,
+   "iki_med": 176.062,
+   "iki_iqr": 277.938,
+   "bs_rate": 0.04681,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 224.013,
+   "iki_med": 248.069,
+   "iki_iqr": 193.655,
+   "bs_rate": 0.03104,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 16,
+   "kpm": 206.495,
+   "iki_med": 247.841,
+   "iki_iqr": 169.996,
+   "bs_rate": 0.05095,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 215.292,
+   "iki_med": 200.633,
+   "iki_iqr": 191.182,
+   "bs_rate": 0.08578,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 196.372,
+   "iki_med": 185.798,
+   "iki_iqr": 105.641,
+   "bs_rate": 0.06243,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 194.081,
+   "iki_med": 187.883,
+   "iki_iqr": 147.526,
+   "bs_rate": 0.01502,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 10,
+   "kpm": 208.633,
+   "iki_med": 223.794,
+   "iki_iqr": 150.868,
+   "bs_rate": 0.06038,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 10,
+   "kpm": 163.588,
+   "iki_med": 198.801,
+   "iki_iqr": 219.832,
+   "bs_rate": 0.08052,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 158.618,
+   "iki_med": 274.581,
+   "iki_iqr": 123.976,
+   "bs_rate": 0.07482,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 174.853,
+   "iki_med": 130.896,
+   "iki_iqr": 149.557,
+   "bs_rate": 0.1452,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 264.699,
+   "iki_med": 187.526,
+   "iki_iqr": 151.951,
+   "bs_rate": 0.09786,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 221.26,
+   "iki_med": 232.538,
+   "iki_iqr": 137.456,
+   "bs_rate": 0.09605,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 16,
+   "kpm": 241.418,
+   "iki_med": 234.174,
+   "iki_iqr": 170.764,
+   "bs_rate": 0.12254,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 171.067,
+   "iki_med": 205.543,
+   "iki_iqr": 146.615,
+   "bs_rate": 0.12304,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 19,
+   "kpm": 243.402,
+   "iki_med": 227.676,
+   "iki_iqr": 50.911,
+   "bs_rate": 0.05575,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 257.41,
+   "iki_med": 191.314,
+   "iki_iqr": 86.37,
+   "bs_rate": 0.07661,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 18,
+   "kpm": 197.608,
+   "iki_med": 175.882,
+   "iki_iqr": 147.533,
+   "bs_rate": 0.1066,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 203.456,
+   "iki_med": 233.054,
+   "iki_iqr": 163.366,
+   "bs_rate": 0.05772,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 217.544,
+   "iki_med": 218.124,
+   "iki_iqr": 192.618,
+   "bs_rate": 0.13665,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 147.51,
+   "iki_med": 140.92,
+   "iki_iqr": 100.368,
+   "bs_rate": 0.09412,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 19,
+   "kpm": 230.226,
+   "iki_med": 191.259,
+   "iki_iqr": 175.284,
+   "bs_rate": 0.08175,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 189.14,
+   "iki_med": 132.155,
+   "iki_iqr": 132.06,
+   "bs_rate": 0.07077,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 193.45,
+   "iki_med": 195.639,
+   "iki_iqr": 68.644,
+   "bs_rate": 0.10419,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 229.157,
+   "iki_med": 243.812,
+   "iki_iqr": 178.88,
+   "bs_rate": 0.06455,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 197.815,
+   "iki_med": 234.823,
+   "iki_iqr": 195.7,
+   "bs_rate": 0.09919,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 221.822,
+   "iki_med": 208.98,
+   "iki_iqr": 82.577,
+   "bs_rate": 0.05412,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 265.799,
+   "iki_med": 216.703,
+   "iki_iqr": 138.746,
+   "bs_rate": 0.06309,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 222.529,
+   "iki_med": 229.574,
+   "iki_iqr": 150.781,
+   "bs_rate": 0.09761,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 251.032,
+   "iki_med": 223.188,
+   "iki_iqr": 176.642,
+   "bs_rate": 0.12945,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 162.514,
+   "iki_med": 165.019,
+   "iki_iqr": 69.869,
+   "bs_rate": 0.03734,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 169.172,
+   "iki_med": 196.798,
+   "iki_iqr": 152.673,
+   "bs_rate": 0.06785,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 217.989,
+   "iki_med": 177.861,
+   "iki_iqr": 201.417,
+   "bs_rate": 0.0602,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 227.808,
+   "iki_med": 182.818,
+   "iki_iqr": 109.558,
+   "bs_rate": 0.06663,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 257.876,
+   "iki_med": 179.966,
+   "iki_iqr": 214.096,
+   "bs_rate": 0.07579,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 217.515,
+   "iki_med": 172.77,
+   "iki_iqr": 88.317,
+   "bs_rate": 0.06652,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 14,
+   "kpm": 200.045,
+   "iki_med": 246.903,
+   "iki_iqr": 169.564,
+   "bs_rate": 0.09157,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 14,
+   "kpm": 205.226,
+   "iki_med": 216.83,
+   "iki_iqr": 179.618,
+   "bs_rate": 0.08875,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 199.149,
+   "iki_med": 203.023,
+   "iki_iqr": 130.921,
+   "bs_rate": 0.0801,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 225.543,
+   "iki_med": 276.82,
+   "iki_iqr": 154.413,
+   "bs_rate": 0.04813,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 158.527,
+   "iki_med": 194.326,
+   "iki_iqr": 220.822,
+   "bs_rate": 0.05567,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 187.019,
+   "iki_med": 205.97,
+   "iki_iqr": 192.395,
+   "bs_rate": 0.11449,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 256.203,
+   "iki_med": 138.549,
+   "iki_iqr": 153.668,
+   "bs_rate": 0.08447,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 195.312,
+   "iki_med": 224.154,
+   "iki_iqr": 181.003,
+   "bs_rate": 0.02841,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 234.788,
+   "iki_med": 225.159,
+   "iki_iqr": 103.176,
+   "bs_rate": 0.09109,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 19,
+   "kpm": 221.993,
+   "iki_med": 189.745,
+   "iki_iqr": 142.835,
+   "bs_rate": 0.06295,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 169.149,
+   "iki_med": 158.287,
+   "iki_iqr": 218.926,
+   "bs_rate": 0.08344,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 16,
+   "kpm": 197.801,
+   "iki_med": 199.577,
+   "iki_iqr": 143.279,
+   "bs_rate": 0.05488,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 246.532,
+   "iki_med": 218.461,
+   "iki_iqr": 159.516,
+   "bs_rate": 0.06676,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 162.531,
+   "iki_med": 239.852,
+   "iki_iqr": 184.541,
+   "bs_rate": 0.06465,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 18,
+   "kpm": 283.708,
+   "iki_med": 230.991,
+   "iki_iqr": 242.353,
+   "bs_rate": 0.11041,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 251.009,
+   "iki_med": 248.185,
+   "iki_iqr": 155.766,
+   "bs_rate": 0.03161,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 232.218,
+   "iki_med": 210.473,
+   "iki_iqr": 175.47,
+   "bs_rate": 0.0786,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 229.744,
+   "iki_med": 213.125,
+   "iki_iqr": 124.448,
+   "bs_rate": 0.0738,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 245.139,
+   "iki_med": 172.397,
+   "iki_iqr": 140.69,
+   "bs_rate": 0.05064,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 251.141,
+   "iki_med": 203.19,
+   "iki_iqr": 201.348,
+   "bs_rate": 0.07801,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 236.385,
+   "iki_med": 203.345,
+   "iki_iqr": 201.407,
+   "bs_rate": 0.03436,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 239.497,
+   "iki_med": 192.738,
+   "iki_iqr": 139.159,
+   "bs_rate": 0.07032,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 258.821,
+   "iki_med": 101.77,
+   "iki_iqr": 57.778,
+   "bs_rate": 0.09471,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 198.765,
+   "iki_med": 182.068,
+   "iki_iqr": 198.911,
+   "bs_rate": 0.06504,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 182.195,
+   "iki_med": 295.347,
+   "iki_iqr": 175.706,
+   "bs_rate": 0.04822,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 198.919,
+   "iki_med": 190.277,
+   "iki_iqr": 212.181,
+   "bs_rate": 0.08034,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 8,
+   "kpm": 236.986,
+   "iki_med": 127.821,
+   "iki_iqr": 112.097,
+   "bs_rate": 0.03893,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 184.261,
+   "iki_med": 188.073,
+   "iki_iqr": 123.008,
+   "bs_rate": 0.09572,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 12,
+   "kpm": 143.31,
+   "iki_med": 124.878,
+   "iki_iqr": 82.033,
+   "bs_rate": 0.03784,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 229.222,
+   "iki_med": 194.764,
+   "iki_iqr": 193.543,
+   "bs_rate": 0.10626,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 185.615,
+   "iki_med": 177.603,
+   "iki_iqr": 104.707,
+   "bs_rate": 0.07768,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 180.335,
+   "iki_med": 214.262,
+   "iki_iqr": 123.543,
+   "bs_rate": 0.08762,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 15,
+   "kpm": 228.301,
+   "iki_med": 246.489,
+   "iki_iqr": 241.079,
+   "bs_rate": 0.1048,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 193.39,
+   "iki_med": 295.94,
+   "iki_iqr": 154.37,
+   "bs_rate": 0.10369,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 19,
+   "kpm": 209.227,
+   "iki_med": 180.84,
+   "iki_iqr": 151.685,
+   "bs_rate": 0.059,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 18,
+   "kpm": 208.868,
+   "iki_med": 210.07,
+   "iki_iqr": 125.062,
+   "bs_rate": 0.11021,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 197.519,
+   "iki_med": 223.744,
+   "iki_iqr": 135.1,
+   "bs_rate": 0.07038,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 215.108,
+   "iki_med": 174.506,
+   "iki_iqr": 179.319,
+   "bs_rate": 0.06561,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 170.285,
+   "iki_med": 182.719,
+   "iki_iqr": 118.173,
+   "bs_rate": 0.07454,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 14,
+   "kpm": 268.593,
+   "iki_med": 258.974,
+   "iki_iqr": 209.265,
+   "bs_rate": 0.07791,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 20,
+   "kpm": 201.729,
+   "iki_med": 174.361,
+   "iki_iqr": 224.059,
+   "bs_rate": 0.05296,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 18,
+   "kpm": 189.168,
+   "iki_med": 243.627,
+   "iki_iqr": 214.201,
+   "bs_rate": 0.13161,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 240.037,
+   "iki_med": 175.741,
+   "iki_iqr": 123.873,
+   "bs_rate": 0.03354,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 17,
+   "kpm": 206.987,
+   "iki_med": 265.937,
+   "iki_iqr": 86.829,
+   "bs_rate": 0.05153,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 9,
+   "kpm": 190.332,
+   "iki_med": 205.878,
+   "iki_iqr": 98.391,
+   "bs_rate": 0.06995,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 11,
+   "kpm": 232.286,
+   "iki_med": 243.391,
+   "iki_iqr": 182.469,
+   "bs_rate": 0.02412,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 16,
+   "kpm": 249.093,
+   "iki_med": 134.385,
+   "iki_iqr": 180.111,
+   "bs_rate": 0.07958,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 21,
+   "kpm": 189.721,
+   "iki_med": 152.233,
+   "iki_iqr": 162.201,
+   "bs_rate": 0.09763,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 19,
+   "kpm": 157.798,
+   "iki_med": 115.675,
+   "iki_iqr": 183.614,
+   "bs_rate": 0.09411,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 13,
+   "kpm": 231.729,
+   "iki_med": 221.867,
+   "iki_iqr": 112.458,
+   "bs_rate": 0.05939,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 0,
+   "kpm": 236.953,
+   "iki_med": 199.014,
+   "iki_iqr": 127.52,
+   "bs_rate": 0.06393,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 22,
+   "kpm": 268.18,
+   "iki_med": 175.98,
+   "iki_iqr": 129.877,
+   "bs_rate": 0.10259,
+   "dwell_med": null
+  },
+  {
+   "day": 2,
+   "hour": 23,
+   "kpm": 225.988,
+   "iki_med": 203.273,
+   "iki_iqr": 116.238,
+   "bs_rate": 0.06872,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 13,
+   "kpm": 171.596,
+   "iki_med": 216.845,
+   "iki_iqr": 102.274,
+   "bs_rate": 0.07537,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 18,
+   "kpm": 191.082,
+   "iki_med": 144.349,
+   "iki_iqr": 126.899,
+   "bs_rate": 0.03256,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 8,
+   "kpm": 254.656,
+   "iki_med": 210.779,
+   "iki_iqr": 91.485,
+   "bs_rate": 0.08161,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 238.977,
+   "iki_med": 198.428,
+   "iki_iqr": 92.711,
+   "bs_rate": 0.08385,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 10,
+   "kpm": 212.327,
+   "iki_med": 222.106,
+   "iki_iqr": 110.953,
+   "bs_rate": 0.11661,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 21,
+   "kpm": 198.259,
+   "iki_med": 282.381,
+   "iki_iqr": 146.542,
+   "bs_rate": 0.074,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 14,
+   "kpm": 243.969,
+   "iki_med": 158.993,
+   "iki_iqr": 169.648,
+   "bs_rate": 0.09539,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 14,
+   "kpm": 266.673,
+   "iki_med": 243.629,
+   "iki_iqr": 148.82,
+   "bs_rate": 0.05729,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 275.914,
+   "iki_med": 259.797,
+   "iki_iqr": 276.214,
+   "bs_rate": 0.05727,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 9,
+   "kpm": 253.121,
+   "iki_med": 209.071,
+   "iki_iqr": 227.538,
+   "bs_rate": 0.07166,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 199.398,
+   "iki_med": 211.668,
+   "iki_iqr": 82.491,
+   "bs_rate": 0.15801,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 18,
+   "kpm": 247.707,
+   "iki_med": 169.463,
+   "iki_iqr": 101.325,
+   "bs_rate": 0.05412,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 19,
+   "kpm": 194.302,
+   "iki_med": 173.728,
+   "iki_iqr": 191.638,
+   "bs_rate": 0.13201,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 9,
+   "kpm": 217.832,
+   "iki_med": 220.72,
+   "iki_iqr": 101.817,
+   "bs_rate": 0.07793,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 196.204,
+   "iki_med": 225.22,
+   "iki_iqr": 142.422,
+   "bs_rate": 0.10954,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 238.767,
+   "iki_med": 247.78,
+   "iki_iqr": 139.085,
+   "bs_rate": 0.08808,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 21,
+   "kpm": 205.096,
+   "iki_med": 176.16,
+   "iki_iqr": 150.566,
+   "bs_rate": 0.07379,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 9,
+   "kpm": 209.371,
+   "iki_med": 199.854,
+   "iki_iqr": 123.385,
+   "bs_rate": 0.13742,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 10,
+   "kpm": 215.269,
+   "iki_med": 215.926,
+   "iki_iqr": 155.648,
+   "bs_rate": 0.02186,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 12,
+   "kpm": 173.091,
+   "iki_med": 179.487,
+   "iki_iqr": 4.834,
+   "bs_rate": 0.01586,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 10,
+   "kpm": 182.54,
+   "iki_med": 219.606,
+   "iki_iqr": 130.241,
+   "bs_rate": 0.10029,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 13,
+   "kpm": 186.3,
+   "iki_med": 201.264,
+   "iki_iqr": 181.604,
+   "bs_rate": 0.0578,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 21,
+   "kpm": 226.311,
+   "iki_med": 212.349,
+   "iki_iqr": 203.742,
+   "bs_rate": 0.13166,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 8,
+   "kpm": 213.317,
+   "iki_med": 216.06,
+   "iki_iqr": 107.049,
+   "bs_rate": 0.05167,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 11,
+   "kpm": 194.305,
+   "iki_med": 264.73,
+   "iki_iqr": 162.841,
+   "bs_rate": 0.04514,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 18,
+   "kpm": 285.919,
+   "iki_med": 203.144,
+   "iki_iqr": 151.599,
+   "bs_rate": 0.10481,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 12,
+   "kpm": 238.604,
+   "iki_med": 226.285,
+   "iki_iqr": 152.619,
+   "bs_rate": 0.05046,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 205.635,
+   "iki_med": 127.531,
+   "iki_iqr": 187.465,
+   "bs_rate": 0.07619,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 143.581,
+   "iki_med": 162.386,
+   "iki_iqr": 70.556,
+   "bs_rate": 0.1088,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 15,
+   "kpm": 264.748,
+   "iki_med": 239.656,
+   "iki_iqr": 136.978,
+   "bs_rate": 0.11654,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 10,
+   "kpm": 190.916,
+   "iki_med": 217.382,
+   "iki_iqr": 132.759,
+   "bs_rate": 0.12121,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 246.236,
+   "iki_med": 226.258,
+   "iki_iqr": 147.216,
+   "bs_rate": 0.0837,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 253.592,
+   "iki_med": 214.168,
+   "iki_iqr": 152.547,
+   "bs_rate": 0.0494,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 18,
+   "kpm": 184.263,
+   "iki_med": 151.755,
+   "iki_iqr": 138.861,
+   "bs_rate": 0.08154,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 141.21,
+   "iki_med": 166.965,
+   "iki_iqr": 142.571,
+   "bs_rate": 0.1277,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 20,
+   "kpm": 156.332,
+   "iki_med": 192.323,
+   "iki_iqr": 149.787,
+   "bs_rate": 0.00327,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 296.662,
+   "iki_med": 220.692,
+   "iki_iqr": 171.777,
+   "bs_rate": 0.04658,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 11,
+   "kpm": 198.272,
+   "iki_med": 188.825,
+   "iki_iqr": 105.055,
+   "bs_rate": 0.06845,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 8,
+   "kpm": 227.676,
+   "iki_med": 191.381,
+   "iki_iqr": 191.057,
+   "bs_rate": 0.08111,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 11,
+   "kpm": 195.394,
+   "iki_med": 186.897,
+   "iki_iqr": 120.006,
+   "bs_rate": 0.08302,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 9,
+   "kpm": 306.445,
+   "iki_med": 198.893,
+   "iki_iqr": 194.587,
+   "bs_rate": 0.07332,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 20,
+   "kpm": 191.14,
+   "iki_med": 190.35,
+   "iki_iqr": 178.037,
+   "bs_rate": 0.12664,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 9,
+   "kpm": 161.347,
+   "iki_med": 135.229,
+   "iki_iqr": 202.038,
+   "bs_rate": 0.05142,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 15,
+   "kpm": 170.384,
+   "iki_med": 259.135,
+   "iki_iqr": 141.696,
+   "bs_rate": 0.08489,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 19,
+   "kpm": 285.972,
+   "iki_med": 234.782,
+   "iki_iqr": 146.369,
+   "bs_rate": 0.08204,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 274.729,
+   "iki_med": 194.798,
+   "iki_iqr": 179.151,
+   "bs_rate": 0.11552,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 18,
+   "kpm": 231.601,
+   "iki_med": 188.874,
+   "iki_iqr": 143.924,
+   "bs_rate": 0.05928,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 21,
+   "kpm": 191.119,
+   "iki_med": 203.755,
+   "iki_iqr": 152.009,
+   "bs_rate": 0.072,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 14,
+   "kpm": 196.815,
+   "iki_med": 137.48,
+   "iki_iqr": 150.17,
+   "bs_rate": 0.05866,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 14,
+   "kpm": 170.308,
+   "iki_med": 209.88,
+   "iki_iqr": 158.294,
+   "bs_rate": 0.08222,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 19,
+   "kpm": 223.686,
+   "iki_med": 278.846,
+   "iki_iqr": 200.535,
+   "bs_rate": 0.0769,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 195.177,
+   "iki_med": 181.674,
+   "iki_iqr": 182.577,
+   "bs_rate": 0.05026,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 16,
+   "kpm": 257.11,
+   "iki_med": 222.137,
+   "iki_iqr": 94.89,
+   "bs_rate": 0.11113,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 8,
+   "kpm": 228.139,
+   "iki_med": 208.819,
+   "iki_iqr": 130.989,
+   "bs_rate": 0.11599,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 19,
+   "kpm": 268.741,
+   "iki_med": 244.229,
+   "iki_iqr": 183.656,
+   "bs_rate": 0.12471,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 20,
+   "kpm": 249.612,
+   "iki_med": 193.349,
+   "iki_iqr": 122.038,
+   "bs_rate": 0.14998,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 273.711,
+   "iki_med": 261.049,
+   "iki_iqr": 73.876,
+   "bs_rate": 0.08664,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 14,
+   "kpm": 223.022,
+   "iki_med": 206.216,
+   "iki_iqr": 111.6,
+   "bs_rate": 0.09599,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 13,
+   "kpm": 178.736,
+   "iki_med": 176.581,
+   "iki_iqr": 122.074,
+   "bs_rate": 0.04507,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 10,
+   "kpm": 224.448,
+   "iki_med": 165.93,
+   "iki_iqr": 165.675,
+   "bs_rate": 0.02576,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 20,
+   "kpm": 158.011,
+   "iki_med": 199.025,
+   "iki_iqr": 188.277,
+   "bs_rate": 0.12525,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 21,
+   "kpm": 205.494,
+   "iki_med": 170.659,
+   "iki_iqr": 124.047,
+   "bs_rate": 0.06181,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 11,
+   "kpm": 204.686,
+   "iki_med": 244.004,
+   "iki_iqr": 173.942,
+   "bs_rate": 0.0994,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 215.889,
+   "iki_med": 234.623,
+   "iki_iqr": 194.049,
+   "bs_rate": 0.0647,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 201.893,
+   "iki_med": 238.623,
+   "iki_iqr": 151.399,
+   "bs_rate": 0.10786,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 13,
+   "kpm": 246.152,
+   "iki_med": 176.057,
+   "iki_iqr": 164.862,
+   "bs_rate": 0.10833,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 15,
+   "kpm": 228.718,
+   "iki_med": 219.85,
+   "iki_iqr": 137.26,
+   "bs_rate": 0.13783,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 17,
+   "kpm": 185.272,
+   "iki_med": 197.941,
+   "iki_iqr": 166.585,
+   "bs_rate": 0.11113,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 20,
+   "kpm": 139.221,
+   "iki_med": 240.124,
+   "iki_iqr": 138.976,
+   "bs_rate": 0.09569,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 11,
+   "kpm": 227.44,
+   "iki_med": 207.777,
+   "iki_iqr": 153.122,
+   "bs_rate": 0.07965,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 23,
+   "kpm": 268.592,
+   "iki_med": 239.254,
+   "iki_iqr": 114.134,
+   "bs_rate": 0.07886,
+   "dwell_med": null
+  },
+  {
+   "day": 3,
+   "hour": 1,
+   "kpm": 196.129,
+   "iki_med": 188.246,
+   "iki_iqr": 151.324,
+   "bs_rate": 0.10592,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 16,
+   "kpm": 228.491,
+   "iki_med": 222.946,
+   "iki_iqr": 159.723,
+   "bs_rate": 0.1398,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 17,
+   "kpm": 177.357,
+   "iki_med": 234.855,
+   "iki_iqr": 154.199,
+   "bs_rate": 0.09509,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 202.463,
+   "iki_med": 212.686,
+   "iki_iqr": 83.911,
+   "bs_rate": 0.04792,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 168.265,
+   "iki_med": 168.298,
+   "iki_iqr": 156.204,
+   "bs_rate": 0.07389,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 183.127,
+   "iki_med": 240.727,
+   "iki_iqr": 186.156,
+   "bs_rate": 0.09692,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 17,
+   "kpm": 158.771,
+   "iki_med": 221.688,
+   "iki_iqr": 184.389,
+   "bs_rate": 0.0853,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 19,
+   "kpm": 184.876,
+   "iki_med": 242.221,
+   "iki_iqr": 35.366,
+   "bs_rate": 0.10768,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 16,
+   "kpm": 175.993,
+   "iki_med": 210.496,
+   "iki_iqr": 110.827,
+   "bs_rate": 0.08062,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 21,
+   "kpm": 188.739,
+   "iki_med": 167.026,
+   "iki_iqr": 213.196,
+   "bs_rate": 0.06659,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 21,
+   "kpm": 141.395,
+   "iki_med": 153.789,
+   "iki_iqr": 221.773,
+   "bs_rate": 0.04262,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 15,
+   "kpm": 222.82,
+   "iki_med": 222.771,
+   "iki_iqr": 208.611,
+   "bs_rate": 0.13966,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 128.557,
+   "iki_med": 215.94,
+   "iki_iqr": 27.84,
+   "bs_rate": 0.08028,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 13,
+   "kpm": 213.091,
+   "iki_med": 212.163,
+   "iki_iqr": 154.86,
+   "bs_rate": 0.08471,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 21,
+   "kpm": 263.02,
+   "iki_med": 172.705,
+   "iki_iqr": 204.623,
+   "bs_rate": 0.09334,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 18,
+   "kpm": 147.228,
+   "iki_med": 124.125,
+   "iki_iqr": 173.191,
+   "bs_rate": 0.06991,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 250.215,
+   "iki_med": 191.376,
+   "iki_iqr": 190.987,
+   "bs_rate": 0.06949,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 17,
+   "kpm": 149.578,
+   "iki_med": 148.976,
+   "iki_iqr": 178.46,
+   "bs_rate": 0.05353,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 12,
+   "kpm": 278.031,
+   "iki_med": 167.25,
+   "iki_iqr": 80.368,
+   "bs_rate": 0.06803,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 15,
+   "kpm": 137.284,
+   "iki_med": 170.351,
+   "iki_iqr": 153.121,
+   "bs_rate": 0.10251,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 284.844,
+   "iki_med": 174.882,
+   "iki_iqr": 149.572,
+   "bs_rate": 0.07637,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 10,
+   "kpm": 205.035,
+   "iki_med": 152.582,
+   "iki_iqr": 165.532,
+   "bs_rate": 0.09076,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 147.722,
+   "iki_med": 191.915,
+   "iki_iqr": 186.445,
+   "bs_rate": 0.05633,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 19,
+   "kpm": 202.045,
+   "iki_med": 225.715,
+   "iki_iqr": 199.413,
+   "bs_rate": 0.06789,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 198.391,
+   "iki_med": 205.403,
+   "iki_iqr": 134.563,
+   "bs_rate": 0.06485,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 196.066,
+   "iki_med": 148.132,
+   "iki_iqr": 119.905,
+   "bs_rate": 0.09135,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 17,
+   "kpm": 260.931,
+   "iki_med": 256.779,
+   "iki_iqr": 117.35,
+   "bs_rate": 0.09212,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 13,
+   "kpm": 252.242,
+   "iki_med": 202.49,
+   "iki_iqr": 134.069,
+   "bs_rate": 0.08834,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 14,
+   "kpm": 219.027,
+   "iki_med": 164.967,
+   "iki_iqr": 124.504,
+   "bs_rate": 0.09674,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 14,
+   "kpm": 183.066,
+   "iki_med": 227.29,
+   "iki_iqr": 153.421,
+   "bs_rate": 0.06723,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 9,
+   "kpm": 218.762,
+   "iki_med": 237.741,
+   "iki_iqr": 105.942,
+   "bs_rate": 0.05686,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 14,
+   "kpm": 178.585,
+   "iki_med": 177.231,
+   "iki_iqr": 146.189,
+   "bs_rate": 0.05744,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 233.211,
+   "iki_med": 243.66,
+   "iki_iqr": 116.532,
+   "bs_rate": 0.09613,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 240.967,
+   "iki_med": 169.574,
+   "iki_iqr": 159.187,
+   "bs_rate": 0.09273,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 18,
+   "kpm": 223.381,
+   "iki_med": 234.94,
+   "iki_iqr": 222.992,
+   "bs_rate": 0.08285,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 21,
+   "kpm": 210.571,
+   "iki_med": 245.788,
+   "iki_iqr": 142.248,
+   "bs_rate": 0.0327,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 186.328,
+   "iki_med": 182.125,
+   "iki_iqr": 138.584,
+   "bs_rate": 0.06422,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 16,
+   "kpm": 163.523,
+   "iki_med": 136.868,
+   "iki_iqr": 109.081,
+   "bs_rate": 0.05401,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 177.211,
+   "iki_med": 167.807,
+   "iki_iqr": 183.175,
+   "bs_rate": 0.05296,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 189.013,
+   "iki_med": 200.695,
+   "iki_iqr": 160.34,
+   "bs_rate": 0.10769,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 9,
+   "kpm": 246.136,
+   "iki_med": 245.732,
+   "iki_iqr": 137.623,
+   "bs_rate": 0.06609,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 12,
+   "kpm": 199.847,
+   "iki_med": 179.601,
+   "iki_iqr": 155.809,
+   "bs_rate": 0.11583,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 21,
+   "kpm": 161.894,
+   "iki_med": 213.88,
+   "iki_iqr": 126.477,
+   "bs_rate": 0.05503,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 18,
+   "kpm": 240.517,
+   "iki_med": 190.4,
+   "iki_iqr": 185.727,
+   "bs_rate": 0.05047,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 203.353,
+   "iki_med": 146.173,
+   "iki_iqr": 107.519,
+   "bs_rate": 0.13221,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 14,
+   "kpm": 212.21,
+   "iki_med": 192.142,
+   "iki_iqr": 86.478,
+   "bs_rate": 0.07824,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 16,
+   "kpm": 320.335,
+   "iki_med": 261.074,
+   "iki_iqr": 160.459,
+   "bs_rate": 0.07835,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 13,
+   "kpm": 214.723,
+   "iki_med": 238.824,
+   "iki_iqr": 102.061,
+   "bs_rate": 0.12251,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 18,
+   "kpm": 223.079,
+   "iki_med": 181.015,
+   "iki_iqr": 141.376,
+   "bs_rate": 0.07709,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 264.993,
+   "iki_med": 267.566,
+   "iki_iqr": 113.765,
+   "bs_rate": 0.1168,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 219.687,
+   "iki_med": 134.748,
+   "iki_iqr": 123.02,
+   "bs_rate": 0.08373,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 19,
+   "kpm": 257.827,
+   "iki_med": 205.923,
+   "iki_iqr": 126.89,
+   "bs_rate": 0.0335,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 163.168,
+   "iki_med": 283.882,
+   "iki_iqr": 151.378,
+   "bs_rate": 0.04321,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 10,
+   "kpm": 216.767,
+   "iki_med": 161.157,
+   "iki_iqr": 167.691,
+   "bs_rate": 0.04627,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 12,
+   "kpm": 196.636,
+   "iki_med": 182.703,
+   "iki_iqr": 72.061,
+   "bs_rate": 0.1284,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 12,
+   "kpm": 213.652,
+   "iki_med": 219.283,
+   "iki_iqr": 147.689,
+   "bs_rate": 0.12555,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 10,
+   "kpm": 252.411,
+   "iki_med": 229.486,
+   "iki_iqr": 149.103,
+   "bs_rate": 0.14417,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 219.441,
+   "iki_med": 280.039,
+   "iki_iqr": 209.695,
+   "bs_rate": 0.12008,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 18,
+   "kpm": 148.047,
+   "iki_med": 224.147,
+   "iki_iqr": 138.264,
+   "bs_rate": 0.06466,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 9,
+   "kpm": 231.168,
+   "iki_med": 232.938,
+   "iki_iqr": 147.443,
+   "bs_rate": 0.05189,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 10,
+   "kpm": 219.383,
+   "iki_med": 195.496,
+   "iki_iqr": 207.303,
+   "bs_rate": 0.09501,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 13,
+   "kpm": 238.775,
+   "iki_med": 164.544,
+   "iki_iqr": 162.927,
+   "bs_rate": 0.01369,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 18,
+   "kpm": 241.737,
+   "iki_med": 186.883,
+   "iki_iqr": 123.217,
+   "bs_rate": 0.03334,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 19,
+   "kpm": 192.891,
+   "iki_med": 166.486,
+   "iki_iqr": 142.356,
+   "bs_rate": 0.08466,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 15,
+   "kpm": 211.451,
+   "iki_med": 209.464,
+   "iki_iqr": 227.42,
+   "bs_rate": 0.05215,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 19,
+   "kpm": 211.299,
+   "iki_med": 206.803,
+   "iki_iqr": 186.39,
+   "bs_rate": 0.14651,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 14,
+   "kpm": 236.745,
+   "iki_med": 174.996,
+   "iki_iqr": 148.183,
+   "bs_rate": 0.09549,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 8,
+   "kpm": 181.941,
+   "iki_med": 171.138,
+   "iki_iqr": 156.009,
+   "bs_rate": 0.08616,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 17,
+   "kpm": 207.197,
+   "iki_med": 205.456,
+   "iki_iqr": 214.557,
+   "bs_rate": 0.09339,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 10,
+   "kpm": 127.362,
+   "iki_med": 255.957,
+   "iki_iqr": 156.135,
+   "bs_rate": 0.08965,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 256.392,
+   "iki_med": 223.05,
+   "iki_iqr": 124.152,
+   "bs_rate": 0.07999,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 19,
+   "kpm": 176.93,
+   "iki_med": 186.122,
+   "iki_iqr": 222.798,
+   "bs_rate": 0.10283,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 230.996,
+   "iki_med": 178.856,
+   "iki_iqr": 90.025,
+   "bs_rate": 0.09182,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 11,
+   "kpm": 203.325,
+   "iki_med": 234.107,
+   "iki_iqr": 144.766,
+   "bs_rate": 0.04611,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 14,
+   "kpm": 266.528,
+   "iki_med": 131.954,
+   "iki_iqr": 228.288,
+   "bs_rate": 0.089,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 20,
+   "kpm": 284.711,
+   "iki_med": 187.153,
+   "iki_iqr": 99.221,
+   "bs_rate": 0.05645,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 21,
+   "kpm": 161.733,
+   "iki_med": 201.087,
+   "iki_iqr": 146.14,
+   "bs_rate": 0.00367,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 9,
+   "kpm": 227.129,
+   "iki_med": 196.945,
+   "iki_iqr": 99.695,
+   "bs_rate": 0.12377,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 0,
+   "kpm": 257.765,
+   "iki_med": 174.132,
+   "iki_iqr": 114.448,
+   "bs_rate": 0.09901,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 0,
+   "kpm": 147.257,
+   "iki_med": 224.795,
+   "iki_iqr": 181.927,
+   "bs_rate": 0.07042,
+   "dwell_med": null
+  },
+  {
+   "day": 4,
+   "hour": 22,
+   "kpm": 223.476,
+   "iki_med": 215.748,
+   "iki_iqr": 150.648,
+   "bs_rate": 0.01105,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 21,
+   "kpm": 210.958,
+   "iki_med": 255.111,
+   "iki_iqr": 132.439,
+   "bs_rate": 0.07707,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 231.649,
+   "iki_med": 201.331,
+   "iki_iqr": 80.879,
+   "bs_rate": 0.0781,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 16,
+   "kpm": 160.511,
+   "iki_med": 163.782,
+   "iki_iqr": 182.383,
+   "bs_rate": 0.04962,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 246.108,
+   "iki_med": 184.025,
+   "iki_iqr": 145.267,
+   "bs_rate": 0.09645,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 106.358,
+   "iki_med": 154.851,
+   "iki_iqr": 155.95,
+   "bs_rate": 0.05436,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 180.919,
+   "iki_med": 214.309,
+   "iki_iqr": 187.617,
+   "bs_rate": 0.08341,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 148.199,
+   "iki_med": 189.212,
+   "iki_iqr": 151.168,
+   "bs_rate": 0.06258,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 8,
+   "kpm": 197.875,
+   "iki_med": 179.8,
+   "iki_iqr": 141.017,
+   "bs_rate": 0.08764,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 18,
+   "kpm": 201.813,
+   "iki_med": 172.819,
+   "iki_iqr": 90.148,
+   "bs_rate": 0.08084,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 17,
+   "kpm": 161.218,
+   "iki_med": 157.377,
+   "iki_iqr": 112.161,
+   "bs_rate": 0.12259,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 16,
+   "kpm": 184.802,
+   "iki_med": 171.596,
+   "iki_iqr": 173.054,
+   "bs_rate": 0.05536,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 16,
+   "kpm": 250.723,
+   "iki_med": 225.868,
+   "iki_iqr": 157.261,
+   "bs_rate": 0.09539,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 206.669,
+   "iki_med": 145.626,
+   "iki_iqr": 175.411,
+   "bs_rate": 0.05776,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 17,
+   "kpm": 299.889,
+   "iki_med": 213.204,
+   "iki_iqr": 141.732,
+   "bs_rate": 0.07931,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 14,
+   "kpm": 213.188,
+   "iki_med": 180.481,
+   "iki_iqr": 175.701,
+   "bs_rate": 0.09979,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 16,
+   "kpm": 185.974,
+   "iki_med": 201.691,
+   "iki_iqr": 159.821,
+   "bs_rate": 0.09586,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 17,
+   "kpm": 140.851,
+   "iki_med": 325.015,
+   "iki_iqr": 164.009,
+   "bs_rate": 0.10549,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 228.071,
+   "iki_med": 274.096,
+   "iki_iqr": 134.93,
+   "bs_rate": 0.06439,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 21,
+   "kpm": 228.804,
+   "iki_med": 224.638,
+   "iki_iqr": 104.154,
+   "bs_rate": 0.07091,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 18,
+   "kpm": 232.318,
+   "iki_med": 147.358,
+   "iki_iqr": 136.061,
+   "bs_rate": 0.07665,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 232.113,
+   "iki_med": 188.974,
+   "iki_iqr": 193.118,
+   "bs_rate": 0.15653,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 129.717,
+   "iki_med": 193.715,
+   "iki_iqr": 139.213,
+   "bs_rate": 0.06073,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 240.509,
+   "iki_med": 178.24,
+   "iki_iqr": 110.491,
+   "bs_rate": 0.105,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 229.992,
+   "iki_med": 219.54,
+   "iki_iqr": 109.661,
+   "bs_rate": 0.01573,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 18,
+   "kpm": 222.35,
+   "iki_med": 174.318,
+   "iki_iqr": 181.034,
+   "bs_rate": 0.05445,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 14,
+   "kpm": 158.067,
+   "iki_med": 206.96,
+   "iki_iqr": 92.162,
+   "bs_rate": 0.1025,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 17,
+   "kpm": 119.419,
+   "iki_med": 158.904,
+   "iki_iqr": 133.92,
+   "bs_rate": 0.03649,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 164.375,
+   "iki_med": 227.733,
+   "iki_iqr": 60.889,
+   "bs_rate": 0.1074,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 191.05,
+   "iki_med": 226.858,
+   "iki_iqr": 150.189,
+   "bs_rate": 0.1679,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 231.028,
+   "iki_med": 242.246,
+   "iki_iqr": 152.791,
+   "bs_rate": 0.06417,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 9,
+   "kpm": 215.441,
+   "iki_med": 176.219,
+   "iki_iqr": 155.007,
+   "bs_rate": 0.05864,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 186.153,
+   "iki_med": 141.351,
+   "iki_iqr": 145.31,
+   "bs_rate": 0.07881,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 239.685,
+   "iki_med": 198.479,
+   "iki_iqr": 156.357,
+   "bs_rate": 0.09799,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 231.853,
+   "iki_med": 213.576,
+   "iki_iqr": 186.351,
+   "bs_rate": 0.0722,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 224.239,
+   "iki_med": 197.613,
+   "iki_iqr": 112.821,
+   "bs_rate": 0.07431,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 9,
+   "kpm": 166.864,
+   "iki_med": 155.937,
+   "iki_iqr": 194.55,
+   "bs_rate": 0.11402,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 197.757,
+   "iki_med": 141.027,
+   "iki_iqr": 135.379,
+   "bs_rate": 0.03435,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 171.001,
+   "iki_med": 186.007,
+   "iki_iqr": 149.054,
+   "bs_rate": 0.10597,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 21,
+   "kpm": 261.476,
+   "iki_med": 144.722,
+   "iki_iqr": 74.404,
+   "bs_rate": 0.10374,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 230.24,
+   "iki_med": 180.538,
+   "iki_iqr": 117.642,
+   "bs_rate": 0.08562,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 169.895,
+   "iki_med": 224.787,
+   "iki_iqr": 230.214,
+   "bs_rate": 0.07816,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 208.288,
+   "iki_med": 293.125,
+   "iki_iqr": 147.661,
+   "bs_rate": 0.09755,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 242.342,
+   "iki_med": 172.338,
+   "iki_iqr": 164.055,
+   "bs_rate": 0.09171,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 175.175,
+   "iki_med": 199.133,
+   "iki_iqr": 155.289,
+   "bs_rate": 0.07125,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 220.043,
+   "iki_med": 217.186,
+   "iki_iqr": 209.857,
+   "bs_rate": 0.04062,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 9,
+   "kpm": 245.756,
+   "iki_med": 222.26,
+   "iki_iqr": 155.936,
+   "bs_rate": 0.0346,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 161.186,
+   "iki_med": 213.704,
+   "iki_iqr": 171.022,
+   "bs_rate": 0.11257,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 189.94,
+   "iki_med": 215.614,
+   "iki_iqr": 184.742,
+   "bs_rate": 0.06104,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 252.42,
+   "iki_med": 167.853,
+   "iki_iqr": 85.222,
+   "bs_rate": 0.07559,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 18,
+   "kpm": 171.612,
+   "iki_med": 214.204,
+   "iki_iqr": 168.258,
+   "bs_rate": 0.07828,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 17,
+   "kpm": 220.75,
+   "iki_med": 254.1,
+   "iki_iqr": 184.123,
+   "bs_rate": 0.0277,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 195.383,
+   "iki_med": 176.514,
+   "iki_iqr": 132.93,
+   "bs_rate": 0.07671,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 16,
+   "kpm": 210.019,
+   "iki_med": 198.288,
+   "iki_iqr": 163.898,
+   "bs_rate": 0.07422,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 21,
+   "kpm": 285.697,
+   "iki_med": 186.704,
+   "iki_iqr": 160.058,
+   "bs_rate": 0.0937,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 239.52,
+   "iki_med": 239.312,
+   "iki_iqr": 71.513,
+   "bs_rate": 0.10837,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 8,
+   "kpm": 217.846,
+   "iki_med": 241.555,
+   "iki_iqr": 156.653,
+   "bs_rate": 0.01766,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 208.746,
+   "iki_med": 184.878,
+   "iki_iqr": 126.521,
+   "bs_rate": 0.05019,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 250.267,
+   "iki_med": 201.581,
+   "iki_iqr": 164.378,
+   "bs_rate": 0.06087,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 156.982,
+   "iki_med": 243.082,
+   "iki_iqr": 161.531,
+   "bs_rate": 0.06341,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 274.579,
+   "iki_med": 179.503,
+   "iki_iqr": 208.365,
+   "bs_rate": 0.06174,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 8,
+   "kpm": 203.825,
+   "iki_med": 203.305,
+   "iki_iqr": 131.238,
+   "bs_rate": 0.05209,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 202.095,
+   "iki_med": 217.091,
+   "iki_iqr": 164.42,
+   "bs_rate": 0.07185,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 9,
+   "kpm": 301.514,
+   "iki_med": 182.953,
+   "iki_iqr": 80.463,
+   "bs_rate": 0.0372,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 19,
+   "kpm": 173.983,
+   "iki_med": 230.847,
+   "iki_iqr": 183.314,
+   "bs_rate": 0.08317,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 189.081,
+   "iki_med": 193.379,
+   "iki_iqr": 107.828,
+   "bs_rate": 0.07262,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 225.134,
+   "iki_med": 155.61,
+   "iki_iqr": 168.043,
+   "bs_rate": 0.07811,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 227.184,
+   "iki_med": 229.013,
+   "iki_iqr": 217.022,
+   "bs_rate": 0.07958,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 245.389,
+   "iki_med": 168.074,
+   "iki_iqr": 162.709,
+   "bs_rate": 0.11996,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 8,
+   "kpm": 231.857,
+   "iki_med": 145.498,
+   "iki_iqr": 122.903,
+   "bs_rate": 0.08263,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 13,
+   "kpm": 154.244,
+   "iki_med": 155.098,
+   "iki_iqr": 172.156,
+   "bs_rate": 0.10528,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 19,
+   "kpm": 271.711,
+   "iki_med": 202.859,
+   "iki_iqr": 121.031,
+   "bs_rate": 0.06994,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 162.047,
+   "iki_med": 168.692,
+   "iki_iqr": 98.923,
+   "bs_rate": 0.02865,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 215.615,
+   "iki_med": 181.799,
+   "iki_iqr": 128.931,
+   "bs_rate": 0.10237,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 196.226,
+   "iki_med": 260.913,
+   "iki_iqr": 158.487,
+   "bs_rate": 0.06434,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 10,
+   "kpm": 168.558,
+   "iki_med": 157.262,
+   "iki_iqr": 158.316,
+   "bs_rate": 0.10781,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 247.453,
+   "iki_med": 219.17,
+   "iki_iqr": 221.841,
+   "bs_rate": 0.10152,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 9,
+   "kpm": 246.826,
+   "iki_med": 205.098,
+   "iki_iqr": 182.576,
+   "bs_rate": 0.09085,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 285.118,
+   "iki_med": 189.246,
+   "iki_iqr": 200.406,
+   "bs_rate": 0.06775,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 14,
+   "kpm": 195.718,
+   "iki_med": 186.753,
+   "iki_iqr": 80.435,
+   "bs_rate": 0.07086,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 12,
+   "kpm": 187.251,
+   "iki_med": 220.541,
+   "iki_iqr": 103.132,
+   "bs_rate": 0.08559,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 20,
+   "kpm": 222.817,
+   "iki_med": 214.88,
+   "iki_iqr": 111.371,
+   "bs_rate": 0.07254,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 11,
+   "kpm": 210.473,
+   "iki_med": 209.851,
+   "iki_iqr": 120.581,
+   "bs_rate": 0.11516,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 15,
+   "kpm": 166.876,
+   "iki_med": 163.001,
+   "iki_iqr": 107.817,
+   "bs_rate": 0.0479,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 17,
+   "kpm": 169.518,
+   "iki_med": 209.117,
+   "iki_iqr": 145.437,
+   "bs_rate": 0.03721,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 1,
+   "kpm": 245.551,
+   "iki_med": 144.398,
+   "iki_iqr": 121.976,
+   "bs_rate": 0.11717,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 1,
+   "kpm": 262.605,
+   "iki_med": 158.081,
+   "iki_iqr": 177.28,
+   "bs_rate": 0.1048,
+   "dwell_med": null
+  },
+  {
+   "day": 5,
+   "hour": 1,
+   "kpm": 134.293,
+   "iki_med": 168.572,
+   "iki_iqr": 199.859,
+   "bs_rate": 0.07147,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 198.82,
+   "iki_med": 211.873,
+   "iki_iqr": 43.161,
+   "bs_rate": 0.03841,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 12,
+   "kpm": 174.687,
+   "iki_med": 163.354,
+   "iki_iqr": 92.667,
+   "bs_rate": 0.11911,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 8,
+   "kpm": 272.846,
+   "iki_med": 169.113,
+   "iki_iqr": 194.685,
+   "bs_rate": 0.05452,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 21,
+   "kpm": 293.056,
+   "iki_med": 183.897,
+   "iki_iqr": 115.78,
+   "bs_rate": 0.0593,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 21,
+   "kpm": 202.007,
+   "iki_med": 248.453,
+   "iki_iqr": 133.287,
+   "bs_rate": 0.03216,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 236.129,
+   "iki_med": 127.328,
+   "iki_iqr": 142.375,
+   "bs_rate": 0.10988,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 239.564,
+   "iki_med": 241.712,
+   "iki_iqr": 127.128,
+   "bs_rate": 0.09712,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 20,
+   "kpm": 221.123,
+   "iki_med": 275.653,
+   "iki_iqr": 182.978,
+   "bs_rate": 0.08739,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 14,
+   "kpm": 194.11,
+   "iki_med": 234.779,
+   "iki_iqr": 193.117,
+   "bs_rate": 0.10309,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 21,
+   "kpm": 293.543,
+   "iki_med": 229.386,
+   "iki_iqr": 124.716,
+   "bs_rate": 0.09393,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 203.541,
+   "iki_med": 200.43,
+   "iki_iqr": 74.424,
+   "bs_rate": 0.0873,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 194.618,
+   "iki_med": 146.071,
+   "iki_iqr": 172.404,
+   "bs_rate": 0.02447,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 245.286,
+   "iki_med": 200.687,
+   "iki_iqr": 114.162,
+   "bs_rate": 0.07103,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 219.782,
+   "iki_med": 214.762,
+   "iki_iqr": 155.403,
+   "bs_rate": 0.14036,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 12,
+   "kpm": 101.228,
+   "iki_med": 160.264,
+   "iki_iqr": 88.5,
+   "bs_rate": 0.08115,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 19,
+   "kpm": 203.016,
+   "iki_med": 178.7,
+   "iki_iqr": 169.011,
+   "bs_rate": 0.09768,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 237.316,
+   "iki_med": 215.666,
+   "iki_iqr": 197.047,
+   "bs_rate": 0.06627,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 196.241,
+   "iki_med": 214.073,
+   "iki_iqr": 185.061,
+   "bs_rate": 0.09208,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 194.103,
+   "iki_med": 193.138,
+   "iki_iqr": 96.105,
+   "bs_rate": 0.06392,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 14,
+   "kpm": 210.42,
+   "iki_med": 237.932,
+   "iki_iqr": 86.177,
+   "bs_rate": 0.09647,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 21,
+   "kpm": 242.752,
+   "iki_med": 224.813,
+   "iki_iqr": 35.932,
+   "bs_rate": 0.11405,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 20,
+   "kpm": 247.326,
+   "iki_med": 203.899,
+   "iki_iqr": 83.054,
+   "bs_rate": 0.10278,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 14,
+   "kpm": 208.161,
+   "iki_med": 220.461,
+   "iki_iqr": 162.227,
+   "bs_rate": 0.03242,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 200.326,
+   "iki_med": 242.942,
+   "iki_iqr": 73.88,
+   "bs_rate": 0.08293,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 16,
+   "kpm": 241.311,
+   "iki_med": 197.753,
+   "iki_iqr": 178.664,
+   "bs_rate": 0.0767,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 209.373,
+   "iki_med": 198.598,
+   "iki_iqr": 108.74,
+   "bs_rate": 0.068,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 8,
+   "kpm": 230.044,
+   "iki_med": 159.401,
+   "iki_iqr": 182.372,
+   "bs_rate": 0.05091,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 198.051,
+   "iki_med": 230.995,
+   "iki_iqr": 160.591,
+   "bs_rate": 0.09688,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 12,
+   "kpm": 224.872,
+   "iki_med": 240.177,
+   "iki_iqr": 158.9,
+   "bs_rate": 0.09398,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 12,
+   "kpm": 177.549,
+   "iki_med": 183.546,
+   "iki_iqr": 127.348,
+   "bs_rate": 0.08855,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 12,
+   "kpm": 224.406,
+   "iki_med": 121.741,
+   "iki_iqr": 137.725,
+   "bs_rate": 0.04575,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 16,
+   "kpm": 158.478,
+   "iki_med": 198.926,
+   "iki_iqr": 105.564,
+   "bs_rate": 0.05747,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 21,
+   "kpm": 246.754,
+   "iki_med": 169.202,
+   "iki_iqr": 163.333,
+   "bs_rate": 0.12272,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 185.413,
+   "iki_med": 224.073,
+   "iki_iqr": 189.963,
+   "bs_rate": 0.04858,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 10,
+   "kpm": 231.653,
+   "iki_med": 215.134,
+   "iki_iqr": 117.986,
+   "bs_rate": 0.13897,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 16,
+   "kpm": 201.958,
+   "iki_med": 207.728,
+   "iki_iqr": 138.637,
+   "bs_rate": 0.0928,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 8,
+   "kpm": 152.328,
+   "iki_med": 241.866,
+   "iki_iqr": 185.156,
+   "bs_rate": 0.11812,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 200.609,
+   "iki_med": 151.79,
+   "iki_iqr": 114.167,
+   "bs_rate": 0.10811,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 197.24,
+   "iki_med": 211.824,
+   "iki_iqr": 199.501,
+   "bs_rate": 0.08075,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 19,
+   "kpm": 269.547,
+   "iki_med": 200.561,
+   "iki_iqr": 164.674,
+   "bs_rate": 0.04728,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 216.884,
+   "iki_med": 253.025,
+   "iki_iqr": 148.07,
+   "bs_rate": 0.10404,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 20,
+   "kpm": 184.075,
+   "iki_med": 158.882,
+   "iki_iqr": 159.206,
+   "bs_rate": 0.09968,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 21,
+   "kpm": 203.388,
+   "iki_med": 228.766,
+   "iki_iqr": 157.606,
+   "bs_rate": 0.06411,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 243.094,
+   "iki_med": 223.511,
+   "iki_iqr": 156.793,
+   "bs_rate": 0.07203,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 224.553,
+   "iki_med": 224.147,
+   "iki_iqr": 186.513,
+   "bs_rate": 0.04992,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 11,
+   "kpm": 273.28,
+   "iki_med": 181.604,
+   "iki_iqr": 194.785,
+   "bs_rate": 0.13388,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 226.118,
+   "iki_med": 223.263,
+   "iki_iqr": 147.972,
+   "bs_rate": 0.11564,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 260.059,
+   "iki_med": 198.224,
+   "iki_iqr": 104.99,
+   "bs_rate": 0.09257,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 190.749,
+   "iki_med": 226.317,
+   "iki_iqr": 117.211,
+   "bs_rate": 0.04762,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 12,
+   "kpm": 203.326,
+   "iki_med": 169.68,
+   "iki_iqr": 182.692,
+   "bs_rate": 0.08227,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 19,
+   "kpm": 220.134,
+   "iki_med": 241.988,
+   "iki_iqr": 128.618,
+   "bs_rate": 0.06894,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 218.802,
+   "iki_med": 249.391,
+   "iki_iqr": 137.603,
+   "bs_rate": 0.0852,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 11,
+   "kpm": 247.434,
+   "iki_med": 240.903,
+   "iki_iqr": 143.923,
+   "bs_rate": 0.11863,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 178.338,
+   "iki_med": 138.061,
+   "iki_iqr": 167.499,
+   "bs_rate": 0.05534,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 11,
+   "kpm": 191.77,
+   "iki_med": 221.252,
+   "iki_iqr": 90.309,
+   "bs_rate": 0.06992,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 19,
+   "kpm": 142.388,
+   "iki_med": 230.831,
+   "iki_iqr": 121.712,
+   "bs_rate": 0.14261,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 202.198,
+   "iki_med": 239.827,
+   "iki_iqr": 221.007,
+   "bs_rate": 0.06012,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 16,
+   "kpm": 181.834,
+   "iki_med": 193.237,
+   "iki_iqr": 165.606,
+   "bs_rate": 0.08813,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 17,
+   "kpm": 315.373,
+   "iki_med": 206.674,
+   "iki_iqr": 106.953,
+   "bs_rate": 0.08982,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 20,
+   "kpm": 147.383,
+   "iki_med": 167.535,
+   "iki_iqr": 187.238,
+   "bs_rate": 0.07649,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 210.142,
+   "iki_med": 231.843,
+   "iki_iqr": 156.692,
+   "bs_rate": 0.04221,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 144.613,
+   "iki_med": 135.236,
+   "iki_iqr": 200.666,
+   "bs_rate": 0.09359,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 8,
+   "kpm": 139.842,
+   "iki_med": 157.024,
+   "iki_iqr": 127.239,
+   "bs_rate": 0.07047,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 8,
+   "kpm": 224.14,
+   "iki_med": 183.71,
+   "iki_iqr": 152.141,
+   "bs_rate": 0.09433,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 146.127,
+   "iki_med": 218.975,
+   "iki_iqr": 135.667,
+   "bs_rate": 0.06625,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 16,
+   "kpm": 223.537,
+   "iki_med": 143.294,
+   "iki_iqr": 230.188,
+   "bs_rate": 0.05396,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 10,
+   "kpm": 224.298,
+   "iki_med": 247.663,
+   "iki_iqr": 207.485,
+   "bs_rate": 0.06145,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 18,
+   "kpm": 240.236,
+   "iki_med": 177.795,
+   "iki_iqr": 96.391,
+   "bs_rate": 0.10628,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 19,
+   "kpm": 199.673,
+   "iki_med": 196.882,
+   "iki_iqr": 105.503,
+   "bs_rate": 0.07688,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 19,
+   "kpm": 239.998,
+   "iki_med": 252.003,
+   "iki_iqr": 131.731,
+   "bs_rate": 0.08022,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 195.187,
+   "iki_med": 234.309,
+   "iki_iqr": 179.589,
+   "bs_rate": 0.11517,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 13,
+   "kpm": 166.809,
+   "iki_med": 184.805,
+   "iki_iqr": 117.756,
+   "bs_rate": 0.11417,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 18,
+   "kpm": 219.225,
+   "iki_med": 196.313,
+   "iki_iqr": 143.295,
+   "bs_rate": 0.10299,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 201.997,
+   "iki_med": 173.246,
+   "iki_iqr": 192.552,
+   "bs_rate": 0.08334,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 20,
+   "kpm": 216.998,
+   "iki_med": 226.118,
+   "iki_iqr": 104.816,
+   "bs_rate": 0.05064,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 15,
+   "kpm": 218.497,
+   "iki_med": 191.431,
+   "iki_iqr": 195.071,
+   "bs_rate": 0.05676,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 14,
+   "kpm": 282.512,
+   "iki_med": 206.422,
+   "iki_iqr": 141.976,
+   "bs_rate": 0.09417,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 14,
+   "kpm": 171.413,
+   "iki_med": 205.949,
+   "iki_iqr": 94.417,
+   "bs_rate": 0.12113,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 16,
+   "kpm": 290.949,
+   "iki_med": 187.227,
+   "iki_iqr": 157.983,
+   "bs_rate": 0.02716,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 20,
+   "kpm": 173.969,
+   "iki_med": 183.268,
+   "iki_iqr": 116.184,
+   "bs_rate": 0.11004,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 9,
+   "kpm": 202.359,
+   "iki_med": 196.652,
+   "iki_iqr": 213.251,
+   "bs_rate": 0.04565,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 8,
+   "kpm": 211.509,
+   "iki_med": 204.851,
+   "iki_iqr": 150.752,
+   "bs_rate": 0.12343,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 22,
+   "kpm": 244.266,
+   "iki_med": 247.386,
+   "iki_iqr": 134.101,
+   "bs_rate": 0.02161,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 22,
+   "kpm": 221.688,
+   "iki_med": 172.798,
+   "iki_iqr": 118.596,
+   "bs_rate": 0.04652,
+   "dwell_med": null
+  },
+  {
+   "day": 6,
+   "hour": 22,
+   "kpm": 193.323,
+   "iki_med": 179.081,
+   "iki_iqr": 163.271,
+   "bs_rate": 0.09182,
+   "dwell_med": null
+  }
+ ],
+ "expected": {
+  "windows": 551,
+  "rows": [
+   {
+    "bucket": "day",
+    "feature": "bs_rate",
+    "med": 0.07982,
+    "mad": 0.019405,
+    "n": 532
+   },
+   {
+    "bucket": "day",
+    "feature": "iki_iqr",
+    "med": 150.3775,
+    "mad": 27.87100000000001,
+    "n": 532
+   },
+   {
+    "bucket": "day",
+    "feature": "iki_med",
+    "med": 201.942,
+    "mad": 24.358999999999995,
+    "n": 532
+   },
+   {
+    "bucket": "day",
+    "feature": "kpm",
+    "med": 210.3305,
+    "mad": 22.756500000000003,
+    "n": 532
+   }
+  ]
+ }
+}
