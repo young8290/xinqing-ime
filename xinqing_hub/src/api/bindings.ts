@@ -88,6 +88,11 @@ export const commands = {
 	chatListSessions: () => typedError<ChatSessionItem[], UiError>(__TAURI_INVOKE("chat_list_sessions")),
 	/**  一个会话的消息，从旧到新。 */
 	chatGetMessages: (sessionId: number) => typedError<ChatMessageItem[], UiError>(__TAURI_INVOKE("chat_get_messages", { sessionId })),
+	/**
+	 *  切换会话的对话方式（FR-CHT-06“我只是想吐槽”“帮我理一理”，回到平常用 `normal`），下一次回复起生效。
+	 *  还没有会话时不调这个，在 `chat_send` 里带上 `mode`。“写成情绪日记”“陪我呼吸”是窗口的本地动作。
+	 */
+	chatSetMode: (sessionId: number, mode: ChatMode) => typedError<null, UiError>(__TAURI_INVOKE("chat_set_mode", { sessionId, mode })),
 	chatSearch: (query: string) => typedError<ChatSearchItem[], UiError>(__TAURI_INVOKE("chat_search", { query })),
 	memoryList: () => typedError<MemoryItem[], UiError>(__TAURI_INVOKE("memory_list")),
 	/**
@@ -99,9 +104,16 @@ export const commands = {
 	memoryDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("memory_delete", { id })),
 	/**
 	 *  发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
+	 *  `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0022）。
 	 *  异步命令：回复在 tokio 运行时里的后台任务中生成。
 	 */
-	chatSend: (sessionId: number | null, text: string) => typedError<ChatSent, UiError>(__TAURI_INVOKE("chat_send", { sessionId, text })),
+	chatSend: (sessionId: number | null, text: string, mode: 
+/**  平常的对话 */
+"normal" | 
+/**  💬 我只是想吐槽：本会话只倾听，只共情和复述，不给建议 */
+"vent" | 
+/**  🧭 帮我理一理：引导说清“发生了什么 / 我的感受 / 我能做的一小步” */
+"organize" | null) => typedError<ChatSent, UiError>(__TAURI_INVOKE("chat_send", { sessionId, text, mode })),
 	/**  “重试”：为会话最后一条用户消息重新生成回复（FR-CHT-04 第 2 条）。 */
 	chatRetry: (sessionId: number) => typedError<ChatSent, UiError>(__TAURI_INVOKE("chat_retry", { sessionId })),
 	/**  “停止生成”（FR-CHT-04 第 3 条）。已生成的部分照常保存，经 `chat:done`（`stopped = true`）推送。 */
@@ -228,6 +240,18 @@ export type ChatMessageItem = {
 	ai_generated: boolean,
 };
 
+/**
+ *  会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0022）。
+ *  “写成情绪日记”“陪我呼吸”是窗口里的本地动作，不经过这里。
+ */
+export type ChatMode = 
+/**  平常的对话 */
+"normal" | 
+/**  💬 我只是想吐槽：本会话只倾听，只共情和复述，不给建议 */
+"vent" | 
+/**  🧭 帮我理一理：引导说清“发生了什么 / 我的感受 / 我能做的一小步” */
+"organize";
+
 export type ChatSearchItem = {
 	id: number,
 	session_id: number,
@@ -256,6 +280,8 @@ export type ChatSessionItem = {
 	last_ts: number | null,
 	/**  `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行） */
 	safe_mode: SafeMode,
+	/**  快捷指令切换的对话方式（FR-CHT-06，ADR 0022），窗口据此显示“只倾听中”等提示 */
+	mode: ChatMode,
 };
 
 /**

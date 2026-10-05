@@ -7,7 +7,7 @@ use serde::Serialize;
 use specta::Type;
 use tauri::State;
 use xinqing_hub_core::chat::{ChatError, ChatService, Sent};
-use xinqing_hub_core::domain::chat::{self, SafeMode};
+use xinqing_hub_core::domain::chat::{self, ChatMode, SafeMode};
 
 use crate::chat::Chat;
 use crate::error::UiError;
@@ -22,6 +22,8 @@ pub struct ChatSessionItem {
     pub last_ts: f64,
     /// `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行）
     pub safe_mode: SafeMode,
+    /// 快捷指令切换的对话方式（FR-CHT-06，ADR 0022），窗口据此显示“只倾听中”等提示
+    pub mode: ChatMode,
 }
 
 #[derive(Debug, Clone, Serialize, Type)]
@@ -108,6 +110,7 @@ pub fn chat_list_sessions(state: State<'_, AppState>) -> Result<Vec<ChatSessionI
             created_ts: s.created_ts as f64,
             last_ts: s.last_ts as f64,
             safe_mode: s.safe_mode,
+            mode: s.mode,
         })
         .collect())
 }
@@ -131,6 +134,18 @@ pub fn chat_get_messages(
             ai_generated: m.ai_generated,
         })
         .collect())
+}
+
+/// 切换会话的对话方式（FR-CHT-06“我只是想吐槽”“帮我理一理”，回到平常用 `normal`），下一次回复起生效。
+/// 还没有会话时不调这个，在 `chat_send` 里带上 `mode`。“写成情绪日记”“陪我呼吸”是窗口的本地动作。
+#[tauri::command]
+#[specta::specta]
+pub fn chat_set_mode(
+    chat: State<'_, Chat>,
+    session_id: u32,
+    mode: ChatMode,
+) -> Result<(), UiError> {
+    Ok(service(&chat)?.set_mode(i64::from(session_id), mode)?)
 }
 
 #[tauri::command]
@@ -217,6 +232,7 @@ pub fn memory_delete(state: State<'_, AppState>, id: u32) -> Result<(), UiError>
 }
 
 /// 发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
+/// `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0022）。
 /// 异步命令：回复在 tokio 运行时里的后台任务中生成。
 #[tauri::command]
 #[specta::specta]
@@ -224,9 +240,10 @@ pub async fn chat_send(
     chat: State<'_, Chat>,
     session_id: Option<u32>,
     text: String,
+    mode: Option<ChatMode>,
 ) -> Result<ChatSent, UiError> {
     Ok(service(&chat)?
-        .send(session_id.map(i64::from), &text)?
+        .send(session_id.map(i64::from), &text, mode)?
         .into())
 }
 

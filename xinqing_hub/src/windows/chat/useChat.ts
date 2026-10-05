@@ -177,7 +177,7 @@ export function useChat(now: () => number = Date.now) {
     const userLine = lines.value[lines.value.length - 1]!
     try {
       await start(
-        unwrap(commands.chatSend(sessionId.value, body)).then((s) => {
+        unwrap(commands.chatSend(sessionId.value, body, null)).then((s) => {
           userLine.id = s.user_message_id
           if (s.new_session && sessionId.value !== null) {
             // 上一条已超过 6 小时：后端开了新会话，界面也只留这一条

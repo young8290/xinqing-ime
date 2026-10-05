@@ -41,6 +41,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         2,
         include_str!("../../../migrations/0002_comfort_trigger.sql"),
     ),
+    (3, include_str!("../../../migrations/0003_chat_mode.sql")),
 ];
 
 #[derive(Debug, thiserror::Error)]

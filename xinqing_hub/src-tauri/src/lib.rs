@@ -63,6 +63,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::comfort::comfort_feedback,
             commands::chat::chat_list_sessions,
             commands::chat::chat_get_messages,
+            commands::chat::chat_set_mode,
             commands::chat::chat_search,
             commands::chat::memory_list,
             commands::chat::memory_add,
