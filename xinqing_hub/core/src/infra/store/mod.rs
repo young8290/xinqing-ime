@@ -19,8 +19,10 @@ mod chat;
 mod comfort;
 pub mod export;
 mod rest;
+mod schedule;
 pub use chat::{MessageRow, NewMessage, SessionRow};
 pub use comfort::ComfortRecord;
+pub use schedule::{ScheduleRow, TodoRow};
 
 /// `net_log` 只保留最近这么多条（09 D-20）。
 pub const NET_LOG_KEEP: i64 = 200;
@@ -42,6 +44,10 @@ pub enum StoreError {
     NonNumericFeatures,
     #[error("序列化失败：{0}")]
     Json(#[from] serde_json::Error),
+    #[error("日程字段无效")]
+    InvalidSchedule,
+    #[error("待办字段无效")]
+    InvalidTodo,
 }
 
 pub struct Db {

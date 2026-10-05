@@ -2,12 +2,17 @@
 //!
 //! 值以 JSON 文本存放在 `settings` 表。读取时缺失或已不合法的值一律回落默认值，
 //! 写入时先校验，不合法的值不落库。新增键必须同时写明默认值和取值范围（10 第 6.2 节）。
+//!
+//! 列表类设置（勿扰应用、安静时段）整份读写：界面上删掉一项就是写入删掉后的整份列表，
+//! 出厂值只是默认值，用户清空后不会再合并回来（ADR 0019）。
 
 use serde::{Deserialize, Serialize};
 
+use super::dnd;
+use crate::infra::gateway::BudgetKind;
 use crate::infra::store::{Db, StoreError};
 
-/// 设置项的值。只有这三种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"`）。
+/// 设置项的值。只有这四种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"` / `["22:00-07:00"]`）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(untagged)]
@@ -15,6 +20,8 @@ pub enum SettingValue {
     Bool(bool),
     Number(f64),
     Text(String),
+    // 字符串列表（ADR 0019）
+    List(Vec<String>),
 }
 
 impl SettingValue {
@@ -25,9 +32,23 @@ impl SettingValue {
         }
     }
 
+    pub fn as_f64(&self) -> Option<f64> {
+        match self {
+            SettingValue::Number(x) => Some(*x),
+            _ => None,
+        }
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             SettingValue::Text(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_list(&self) -> Option<&[String]> {
+        match self {
+            SettingValue::List(v) => Some(v),
             _ => None,
         }
     }
@@ -51,6 +72,12 @@ impl From<&str> for SettingValue {
     }
 }
 
+impl From<&[&str]> for SettingValue {
+    fn from(v: &[&str]) -> Self {
+        SettingValue::List(v.iter().map(|s| s.to_string()).collect())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Kind {
     Bool,
@@ -59,8 +86,52 @@ pub enum Kind {
         min: f64,
         max: f64,
     },
+    /// 闭区间内的整数（落库仍是 JSON 数字）
+    Int {
+        min: f64,
+        max: f64,
+    },
     /// 枚举字符串
     Choice(&'static [&'static str]),
+    /// 自由填写的一段文字，格式由 [`Item`] 约束
+    Text(Item),
+    /// 字符串列表：最多 `max` 项，每项按 [`Item`] 校验，不许重复（忽略 ASCII 大小写）
+    List {
+        item: Item,
+        max: usize,
+    },
+}
+
+/// 文字类设置的格式。只放已知格式，不收任意文本：设置值会出现在界面和固定文案里（求助卡片），
+/// 任意文本绕得过禁用词校验（ADR 0019 第 3 条）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Item {
+    /// 进程名，如 `Zoom.exe`（[`dnd::valid_app`]）
+    App,
+    /// 时段 `"HH:MM-HH:MM"`，可跨午夜（[`dnd::QuietRange`]）
+    TimeRange,
+    /// 电话号码：数字、空格与 `+-()`，至少 3 个数字，不超过 [`PHONE_MAX_CHARS`] 字；空串表示没填
+    Phone,
+}
+
+pub const PHONE_MAX_CHARS: usize = 24;
+
+impl Item {
+    pub fn accepts(self, s: &str) -> bool {
+        match self {
+            Item::App => dnd::valid_app(s),
+            Item::TimeRange => dnd::QuietRange::parse(s).is_some(),
+            Item::Phone => {
+                s.is_empty()
+                    || (s.chars().count() <= PHONE_MAX_CHARS
+                        && s.trim() == s
+                        && s.chars().all(|c| {
+                            c.is_ascii_digit() || matches!(c, ' ' | '+' | '-' | '(' | ')')
+                        })
+                        && s.chars().filter(char::is_ascii_digit).count() >= 3)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -102,6 +173,23 @@ pub const KEYS: &[KeySpec] = &[
         key: "care.level",
         kind: Kind::Choice(&["more", "normal", "less", "off"]),
         default: || "normal".into(),
+    },
+    // 勿扰应用与安静时段（FR-CMF-01 第 5 条，ADR 0019）：整份列表，默认是出厂的三个会议应用、没有安静时段
+    KeySpec {
+        key: "care.dnd_apps",
+        kind: Kind::List {
+            item: Item::App,
+            max: 32,
+        },
+        default: || dnd::DEFAULT_APPS.into(),
+    },
+    KeySpec {
+        key: "care.quiet_hours",
+        kind: Kind::List {
+            item: Item::TimeRange,
+            max: 4,
+        },
+        default: || SettingValue::List(Vec::new()),
     },
     KeySpec {
         key: "care.style",
@@ -164,6 +252,54 @@ pub const KEYS: &[KeySpec] = &[
         kind: Kind::Bool,
         default: || true.into(),
     },
+    // 求助卡片上的学校心理中心电话（FR-SAF-03），默认没填
+    KeySpec {
+        key: "safety.school_phone",
+        kind: Kind::Text(Item::Phone),
+        default: || "".into(),
+    },
+    // 每日预算上限（FR-AIG-07）：10 第 6.2 节的 `ai.daily_caps` 拆成每类一个整数键（ADR 0019 第 4 条），默认值与
+    // `BudgetKind::default_cap` 一致；0 表示当天不用这一类
+    KeySpec {
+        key: "ai.cap.jev",
+        kind: Kind::Int {
+            min: 0.0,
+            max: 20000.0,
+        },
+        default: || 3000.0.into(),
+    },
+    KeySpec {
+        key: "ai.cap.llm",
+        kind: Kind::Int {
+            min: 0.0,
+            max: 2000.0,
+        },
+        default: || 200.0.into(),
+    },
+    KeySpec {
+        key: "ai.cap.chat",
+        kind: Kind::Int {
+            min: 0.0,
+            max: 1000.0,
+        },
+        default: || 100.0.into(),
+    },
+    KeySpec {
+        key: "ai.cap.schedule",
+        kind: Kind::Int {
+            min: 0.0,
+            max: 500.0,
+        },
+        default: || 50.0.into(),
+    },
+    KeySpec {
+        key: "ai.cap.rewrite",
+        kind: Kind::Int {
+            min: 0.0,
+            max: 1000.0,
+        },
+        default: || 100.0.into(),
+    },
     KeySpec {
         key: "dev.mode",
         kind: Kind::Bool,
@@ -199,10 +335,45 @@ impl KeySpec {
         match (self.kind, v) {
             (Kind::Bool, SettingValue::Bool(_)) => true,
             (Kind::Number { min, max }, SettingValue::Number(x)) => (min..=max).contains(x),
+            (Kind::Int { min, max }, SettingValue::Number(x)) => {
+                x.fract() == 0.0 && (min..=max).contains(x)
+            }
             (Kind::Choice(opts), SettingValue::Text(s)) => opts.contains(&s.as_str()),
+            (Kind::Text(item), SettingValue::Text(s)) => item.accepts(s),
+            (Kind::List { item, max }, SettingValue::List(v)) => {
+                let mut seen = std::collections::HashSet::new();
+                v.len() <= max
+                    && v.iter()
+                        .all(|s| item.accepts(s) && seen.insert(s.to_ascii_lowercase()))
+            }
             _ => false,
         }
     }
+}
+
+/// 预算类别对应的设置键（ADR 0019 第 4 条）。
+pub fn cap_key(kind: BudgetKind) -> &'static str {
+    match kind {
+        BudgetKind::Jev => "ai.cap.jev",
+        BudgetKind::Llm => "ai.cap.llm",
+        BudgetKind::ChatTurn => "ai.cap.chat",
+        BudgetKind::SchedulePrefilter => "ai.cap.schedule",
+        BudgetKind::Rewrite => "ai.cap.rewrite",
+    }
+}
+
+/// 读出全部预算上限，交给网关 `set_cap`。读不出来的类别用默认值。
+pub fn caps(db: &Db) -> Vec<(BudgetKind, u32)> {
+    BudgetKind::ALL
+        .iter()
+        .map(|&k| {
+            let cap = get(db, cap_key(k))
+                .ok()
+                .and_then(|v| v.as_f64())
+                .map_or(k.default_cap(), |x| x as u32);
+            (k, cap)
+        })
+        .collect()
 }
 
 pub fn get(db: &Db, key: &str) -> Result<SettingValue, SettingsError> {
@@ -317,6 +488,107 @@ mod tests {
             get(&db, "widget.opacity").unwrap(),
             SettingValue::Number(1.0)
         );
+    }
+
+    fn list(v: &[&str]) -> SettingValue {
+        v.into()
+    }
+
+    #[test]
+    fn lists_are_whole_values_and_can_be_emptied() {
+        let db = Db::open_in_memory().unwrap();
+        assert_eq!(get(&db, "care.dnd_apps").unwrap(), list(dnd::DEFAULT_APPS));
+        assert_eq!(get(&db, "care.quiet_hours").unwrap(), list(&[]));
+        // 清空出厂的勿扰应用：存的是空列表，读回来也是空的，不会合并回默认值
+        assert!(set(&db, "care.dnd_apps", &list(&[])).unwrap());
+        assert_eq!(get(&db, "care.dnd_apps").unwrap(), list(&[]));
+        assert_eq!(
+            db.settings_get("care.dnd_apps").unwrap().as_deref(),
+            Some("[]")
+        );
+        assert!(
+            set(
+                &db,
+                "care.quiet_hours",
+                &list(&["22:30-07:00", "12:00-13:00"])
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            db.settings_get("care.quiet_hours").unwrap().as_deref(),
+            Some(r#"["22:30-07:00","12:00-13:00"]"#)
+        );
+    }
+
+    #[test]
+    fn list_items_are_validated() {
+        let db = Db::open_in_memory().unwrap();
+        for bad in [
+            list(&["Zoom.exe", "zoom.exe"]),
+            list(&["C:\\Zoom.exe"]),
+            list(&[""]),
+            text("Zoom.exe"),
+            SettingValue::List(vec!["a.exe".into(); 33]),
+        ] {
+            assert!(
+                matches!(
+                    set(&db, "care.dnd_apps", &bad),
+                    Err(SettingsError::OutOfRange { .. })
+                ),
+                "{bad:?}"
+            );
+        }
+        for bad in [
+            list(&["22:00-22:00"]),
+            list(&["7:00-8:00"]),
+            list(&[
+                "01:00-02:00",
+                "02:00-03:00",
+                "03:00-04:00",
+                "04:00-05:00",
+                "05:00-06:00",
+            ]),
+        ] {
+            assert!(set(&db, "care.quiet_hours", &bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn school_phone_accepts_phone_numbers_only() {
+        let db = Db::open_in_memory().unwrap();
+        assert_eq!(get(&db, "safety.school_phone").unwrap(), text(""));
+        for ok in ["010-1234 5678", "+86 (10) 12345678", "12356", ""] {
+            assert!(set(&db, "safety.school_phone", &text(ok)).is_ok(), "{ok}");
+        }
+        for bad in [
+            "打这个电话",
+            "12",
+            " 12356",
+            "1234567890123456789012345",
+            "12356\n",
+        ] {
+            assert!(
+                set(&db, "safety.school_phone", &text(bad)).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn caps_are_integers_and_default_to_the_budget_defaults() {
+        let db = Db::open_in_memory().unwrap();
+        for k in BudgetKind::ALL {
+            let s = spec(cap_key(k)).expect("每个预算类别都有设置键");
+            assert_eq!((s.default)(), SettingValue::Number(k.default_cap() as f64));
+        }
+        assert!(set(&db, "ai.cap.chat", &SettingValue::Number(1.5)).is_err());
+        assert!(set(&db, "ai.cap.chat", &SettingValue::Number(-1.0)).is_err());
+        set(&db, "ai.cap.chat", &SettingValue::Number(0.0)).unwrap();
+        set(&db, "ai.cap.jev", &SettingValue::Number(500.0)).unwrap();
+        let caps = caps(&db);
+        assert!(caps.contains(&(BudgetKind::ChatTurn, 0)));
+        assert!(caps.contains(&(BudgetKind::Jev, 500)));
+        assert!(caps.contains(&(BudgetKind::Llm, 200)));
     }
 
     #[test]

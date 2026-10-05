@@ -22,6 +22,14 @@ pub enum BudgetKind {
 }
 
 impl BudgetKind {
+    pub const ALL: [BudgetKind; 5] = [
+        BudgetKind::Jev,
+        BudgetKind::Llm,
+        BudgetKind::ChatTurn,
+        BudgetKind::SchedulePrefilter,
+        BudgetKind::Rewrite,
+    ];
+
     pub fn default_cap(self) -> u32 {
         match self {
             BudgetKind::Jev => 3000,

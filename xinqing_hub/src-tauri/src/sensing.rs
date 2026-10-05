@@ -222,6 +222,10 @@ impl SensePort for ShellPort {
         eprintln!("{msg}");
     }
 
+    fn request_exit(&self) {
+        self.app.exit(0);
+    }
+
     fn explained(&self, e: &Explanation) {
         self.app.state::<AppState>().set_explanation(e.clone());
     }
