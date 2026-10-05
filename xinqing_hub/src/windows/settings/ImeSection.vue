@@ -8,7 +8,8 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { CommandError, commands, events, unwrap, type ImeConfigChange, type ImeField } from '@/api'
 import { errorText, t } from '@/i18n'
 import ImeFieldControl from './ImeFieldControl.vue'
-import { advancedGroups, commonFields, effectiveField, getPath } from './imeForm'
+import { HOTKEY_KEYS, normalizeHotkey } from './hotkey'
+import { advancedGroups, commonFields, effectiveField, fieldLabel, getPath } from './imeForm'
 
 type Phase = 'loading' | 'ready' | 'unavailable' | 'error'
 
@@ -103,6 +104,23 @@ async function save(key: string, value: unknown): Promise<void> {
   await refresh()
 }
 
+/** 候选数字键模板（`ctrl+number` 表示 Ctrl+1～9），录到 Ctrl+数字时也算重复 */
+const NUMBER_TEMPLATE_KEYS = ['keys.pin_candidate', 'keys.delete_candidate']
+
+/** 快捷键重复检测：`combo`（规范写法）已经给了别的哪一项，返回它的名称。 */
+function takenBy(self: string, combo: string): string | null {
+  for (const k of HOTKEY_KEYS) {
+    if (k !== self && normalizeHotkey(getPath(values.value, k)) === combo) return fieldLabel(k)
+  }
+  const asTemplate = combo.replace(/\+\d$/, '+number')
+  if (asTemplate !== combo) {
+    for (const k of NUMBER_TEMPLATE_KEYS) {
+      if (normalizeHotkey(getPath(values.value, k)) === asTemplate) return fieldLabel(k)
+    }
+  }
+  return null
+}
+
 function onToggle(prefix: string, e: Event): void {
   if ((e.target as HTMLDetailsElement).open) opened.add(prefix)
 }
@@ -151,6 +169,7 @@ onUnmounted(() => {
         :field="f"
         :value="getPath(values, f.key)"
         :error="errors[f.key]"
+        :taken-by="(combo: string) => takenBy(f.key, combo)"
         @save="save(f.key, $event)"
       />
 
@@ -168,6 +187,7 @@ onUnmounted(() => {
             :field="f"
             :value="getPath(values, f.key)"
             :error="errors[f.key]"
+            :taken-by="(combo: string) => takenBy(f.key, combo)"
             @save="save(f.key, $event)"
           />
         </template>

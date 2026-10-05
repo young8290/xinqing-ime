@@ -15,7 +15,7 @@
 | A-03 | `wind-xinqing-tap`：队列、XQP 服务端、心跳、背压 | 代码完成 | [#4](https://github.com/young8290/xinqing-ime/pull/4)，`wind_input/crates/wind-xinqing-tap/`，ADR 0009 第 1–9 条 | 命名管道与 ACL 没在真 Windows 上跑过；ADR 0009 待评审 |
 | A-04 | 核心钩子：按键、上屏、焦点、组字、候选 | 完成 | [#5](https://github.com/young8290/xinqing-ime/pull/5)，`wind-coordinator/src/xinqing.rs` | 组字长度只看 `input_buffer`，临时拼音等独占模式的缓冲不计 |
 | A-05 | 隐私闸门、无痕模式（菜单、`Ctrl+Alt+P`） | 完成 | [#8](https://github.com/young8290/xinqing-ime/pull/8)，配置段 `[xinqing]`、state.toml `xinqing_paused` | 安全桌面闸门见第 3 节（[#24](https://github.com/young8290/xinqing-ime/pull/24)） |
-| A-06 | Hub 守护、总开关、下行处理 | 完成 | [#9](https://github.com/young8290/xinqing-ime/pull/9)，`wind-xinqing-tap/src/guard.rs`，ADR 0009 第 10 条 | Hub 收到 `bye{disabled}` 后自己退出，是 Hub 侧的事，没做 |
+| A-06 | Hub 守护、总开关、下行处理 | 完成 | [#9](https://github.com/young8290/xinqing-ime/pull/9)，`wind-xinqing-tap/src/guard.rs`，Hub 收到 `bye{disabled}` 后退出（本 PR），ADR 0009 第 10 条 | 命名管道与 ACL 的真 Windows 验证见 A-03 |
 | A-07 | 主菜单“心晴”分组、工具栏天气按钮、光标旁气泡 | 完成 | [#10](https://github.com/young8290/xinqing-ime/pull/10)、[#13](https://github.com/young8290/xinqing-ime/pull/13)；`docs/design/toolbar-customization.md` 第十三节 | 图标大小、小圆点位置、菜单与气泡要在真机上看一眼 |
 | A-08 | 温柔改写（核心一侧） | 大部分完成 | [#18](https://github.com/young8290/xinqing-ime/pull/18)（已合并），`wind-coordinator/src/xinqing/rewrite.rs`，ADR 0009 第 11 条 | 见第 4 节 |
 | A-09 | DLL 全量按键时序 `CMD_XQ_KEY_TRACE` | 暂不做 | — | 按 16 推荐的方案甲，FR-SEN-08 在 13 第 2.1 节降级清单第 1 项，提前降为 P2；团队改选别的方案再做。要改 C++（`wind_tsf/`） |

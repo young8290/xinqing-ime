@@ -13,8 +13,8 @@
 | C-02 | mock-ai（Jev 三类、OpenAI 兼容含 SSE、各故障场景） | 完成 | `tools/mock-ai/` | 16 第 3 节建议移给 E，W1 评审会还没定 |
 | C-03 | AI 网关：trait、Jev/LLM 客户端、熔断、重试、健康检查、隐私过滤、密钥 DPAPI、预算 | 主体完成 | HTTP 实现：`xinqing_hub/gateway/`；trait、熔断、预算、脱敏：`core/src/infra/gateway/`；接入外壳：[xinqing-ime#21](https://github.com/young8290/xinqing-ime/pull/21)（已合并，含 Hu-yiye 的 [#7](https://github.com/young8290/xinqing-ime/pull/7)），ADR 0012 | 见第 3.2 节 |
 | C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **后端完成** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)（已合并）；第三部分（安静时段、自定义勿扰应用）：[xinqing-ime#44](https://github.com/young8290/xinqing-ime/pull/44)；ADR 0015、0019 | 见第 3.1 节：主动关怀要等 B 把 Jev 接进 `Sense`；系统专注助手不判断（ADR 0019 第 7 条）；E-COMFORT 评测 |
-| C-05 | 日程识别：L1/L2/L3、代码校验、去重、提醒调度、冲突 | 未开始 | `hub_templates/schedule_patterns.toml`、`prompts/schedule.md`、评测集 `eval/datasets/e_plan.jsonl`、`e_extract.jsonl` | 计划 W7–W8；提醒调度 `scheduler` 也给 B-04（04:00 重算基线）用 |
-| C-06 | 待办识别与清单、提醒 | 未开始 | `prompts/todo.md`、`eval/datasets/e_todo.jsonl` | 计划 W8（P1） |
+| C-05 | 日程识别：L1/L2/L3、代码校验、去重、提醒调度、冲突 | 本地初筛与结构化存储完成 | [xinqing-ime#42](https://github.com/young8290/xinqing-ime/pull/42)（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；模板 `hub_templates/schedule_patterns.toml`、评测集 `eval/datasets/e_plan.jsonl`、`e_extract.jsonl` | L2/L3 抽取、字段校验、提醒调度与冲突处理待做；提醒调度 `scheduler` 也给 B-04（04:00 重算基线）用 |
+| C-06 | 待办识别与清单、提醒 | 本地初筛与结构化存储完成 | #42（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；`prompts/todo.md`、评测集 `eval/datasets/e_todo.jsonl` | AI 抽取、提醒调度与前端清单待做（P1） |
 | C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P0 部分完成** | [xinqing-ime#40](https://github.com/young8290/xinqing-ime/pull/40)（已合并）：纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018 | 见第 3.3 节：快捷指令、记忆增删改、历史搜索与保留期设置（P1） |
 | C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
 | C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | 未开始 | `prompts/rewrite.md`、`eval/datasets/e_rewrite.jsonl`；`sense.rs` 收到 `rewrite_req` 时先回 `RewriteFail::Offline` | 计划 W8–W9；依赖 A-08 改写模式；V8 校验、可还原占位符 `[号码1]` |
@@ -27,13 +27,14 @@
 xinqing_hub/
 ├─ core/src/infra/gateway/   AiGateway trait 与类型、问题目录与字段白名单、熔断 breaker.rs、预算 budget.rs、脱敏 privacy.rs、离线网关
 ├─ core/src/domain/
+│  ├─ schedule.rs            日程/待办逐句本地初筛，原句只在内存候选中保留
 │  ├─ comfort.rs             暖心话：频率档位、触发判断 Trigger、状态摘要、P-COMFORT 拼装、V1–V7 校验、模板选句
 │  ├─ validate.rs            08 第 5 节输出校验（V1、V3 计数、V4 禁用词、V5 重复、V7 语言；V2/V6/V8/V9 随功能补）
 │  ├─ safety.rs              危机词表本地通道
 │  ├─ dnd.rs                 勿扰应用与安静时段的解析、判断（暖心话用，休息提醒也可用）
 │  └─ settings.rs            设置键注册表（契约）：值的四种形态与格式校验（ADR 0019）、`cap_key` / `caps`
 ├─ core/src/care.rs          暖心话服务 ComfortService：订阅总线 → 触发 → 大模型（重试 1 次）或模板 → comfort_log → ComfortPort::show
-├─ core/src/infra/store/     Db：迁移、窗口与状态、反馈、net_log（只留最近 200 条）；comfort.rs 是 comfort_log 的读写
+├─ core/src/infra/store/     Db：迁移、窗口与状态、反馈、net_log（只留最近 200 条）；comfort.rs 是 comfort_log 的读写；schedule.rs 写结构化日程/待办并去重
 ├─ core/migrations/          0001_init.sql、0002_comfort_trigger.sql（契约；已发布的脚本不改，新改动按 main 上的最大编号顺延）
 ├─ gateway/src/
 │  ├─ lib.rs                 HttpGateway：预算 → 选模型 → 隐私过滤 → 发送 → 熔断与统计 → 重试；health 订阅、换配置时接过预算
@@ -135,7 +136,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 1. 跟进 ADR 0019 的评审（D、E）；D 做设置页“关怀”“AI 服务”分类时如需改形状，在本 ADR 上改；
 2. C-01 剩余：`DbWriter` 单写线程；
 3. C-07 剩余的 P1（快捷指令、记忆、历史搜索）；日记的危机识别随 C-10；
-4. C-05 日程（P0，W7–W8），连同提醒调度 `scheduler`。
+4. C-05 日程剩余（P0，W7–W8）：#42 做了本地初筛与存储，还差 L2/L3 抽取、字段校验、提醒调度 `scheduler` 与冲突处理。
 
 ## 7. 修订记录
 
