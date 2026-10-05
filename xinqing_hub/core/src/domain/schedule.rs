@@ -2,6 +2,7 @@
 //!
 //! 原句仅保留在返回值中供后续显式同意后的单句确认使用；调用方不得持久化它。
 
+use chrono::NaiveDate;
 use regex::Regex;
 use serde::Deserialize;
 
@@ -42,6 +43,122 @@ pub struct TodoDraft {
     pub title: String,
     pub due_date: Option<String>,
     pub source: String,
+}
+
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum ExtractError {
+    #[error("AI 抽取结果不是有效 JSON")]
+    Json,
+    #[error("AI 抽取结果字段类型或值不合法")]
+    Shape,
+    #[error("AI 抽取结果日期或时间不合法")]
+    DateTime,
+    #[error("AI 抽取结果标题超长或为空")]
+    Title,
+}
+
+#[derive(Debug, Deserialize)]
+struct ScheduleOutput {
+    has_event: bool,
+    title: Option<String>,
+    date: Option<String>,
+    time: Option<String>,
+    end_time: Option<String>,
+    all_day: bool,
+    location: Option<String>,
+    is_deadline: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct TodoOutput {
+    is_todo: bool,
+    title: Option<String>,
+    due_date: Option<String>,
+}
+
+fn optional_date(value: Option<String>) -> Result<Option<String>, ExtractError> {
+    value
+        .map(|date| {
+            NaiveDate::parse_from_str(&date, "%Y-%m-%d")
+                .map(|_| date)
+                .map_err(|_| ExtractError::DateTime)
+        })
+        .transpose()
+}
+
+fn optional_time(value: Option<String>) -> Result<Option<String>, ExtractError> {
+    value
+        .map(|time| {
+            chrono::NaiveTime::parse_from_str(&time, "%H:%M")
+                .map(|_| time)
+                .map_err(|_| ExtractError::DateTime)
+        })
+        .transpose()
+}
+
+/// 校验 P-SCHEDULE 的 JSON。`has_event=false` 返回 `Ok(None)`，不写入数据库。
+pub fn validate_schedule_json(raw: &str) -> Result<Option<ScheduleDraft>, ExtractError> {
+    let output: ScheduleOutput = serde_json::from_str(raw).map_err(|_| ExtractError::Json)?;
+    if !output.has_event {
+        return Ok(None);
+    }
+    let title = output
+        .title
+        .filter(|value| !value.trim().is_empty())
+        .ok_or(ExtractError::Title)?;
+    if title.chars().count() > 12 {
+        return Err(ExtractError::Title);
+    }
+    let date = optional_date(output.date)?;
+    let time = optional_time(output.time)?;
+    let end_time = optional_time(output.end_time)?;
+    if output.all_day && time.is_some() || end_time.is_some() && time.is_none() {
+        return Err(ExtractError::Shape);
+    }
+    if let (Some(start), Some(end)) = (&time, &end_time)
+        && start >= end
+    {
+        return Err(ExtractError::DateTime);
+    }
+    if output
+        .location
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > 40)
+    {
+        return Err(ExtractError::Shape);
+    }
+    Ok(Some(ScheduleDraft {
+        title: title.trim().to_owned(),
+        date,
+        time,
+        end_time,
+        all_day: output.all_day,
+        location: output.location.filter(|value| !value.trim().is_empty()),
+        is_deadline: output.is_deadline,
+        remind_offsets: Vec::new(),
+        source: "ai".into(),
+        flags: Vec::new(),
+    }))
+}
+
+/// 校验 P-TODO 的 JSON。`is_todo=false` 返回 `Ok(None)`，不写入数据库。
+pub fn validate_todo_json(raw: &str) -> Result<Option<TodoDraft>, ExtractError> {
+    let output: TodoOutput = serde_json::from_str(raw).map_err(|_| ExtractError::Json)?;
+    if !output.is_todo {
+        return Ok(None);
+    }
+    let title = output
+        .title
+        .filter(|value| !value.trim().is_empty())
+        .ok_or(ExtractError::Title)?;
+    if title.chars().count() > 16 {
+        return Err(ExtractError::Title);
+    }
+    Ok(Some(TodoDraft {
+        title: title.trim().to_owned(),
+        due_date: optional_date(output.due_date)?,
+        source: "ai".into(),
+    }))
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -338,5 +455,44 @@ mod tests {
     fn rejects_out_of_range_calendar_dates() {
         assert!(!recognizer().has_date("19月99号要面试"));
         assert!(recognizer().has_date("10月15号上午面试"));
+    }
+
+    #[test]
+    fn validates_schedule_shape_and_time_order() {
+        let draft = validate_schedule_json(r#"{"has_event":true,"title":"组会","date":"2026-10-09","time":"15:00","end_time":"16:00","all_day":false,"location":"实验楼","is_deadline":false}"#).unwrap().unwrap();
+        assert_eq!(draft.source, "ai");
+        assert_eq!(draft.time.as_deref(), Some("15:00"));
+        assert_eq!(
+            validate_schedule_json(
+                r#"{"has_event":true,"title":"组会","date":"2026-10-09","time":"16:00","end_time":"15:00","all_day":false,"location":null,"is_deadline":false}"#
+            ),
+            Err(ExtractError::DateTime)
+        );
+        assert_eq!(
+            validate_schedule_json(
+                r#"{"has_event":true,"title":"组会","date":"2026-02-30","time":null,"end_time":null,"all_day":true,"location":null,"is_deadline":false}"#
+            ),
+            Err(ExtractError::DateTime)
+        );
+    }
+
+    #[test]
+    fn validates_todo_route_and_title_limit() {
+        assert!(
+            validate_todo_json(r#"{"is_todo":false,"title":null,"due_date":null}"#)
+                .unwrap()
+                .is_none()
+        );
+        let todo =
+            validate_todo_json(r#"{"is_todo":true,"title":"打印简历","due_date":"2026-10-09"}"#)
+                .unwrap()
+                .unwrap();
+        assert_eq!(todo.source, "ai");
+        assert_eq!(
+            validate_todo_json(
+                r#"{"is_todo":true,"title":"这是一条超过十六个汉字长度的待办事项标题","due_date":null}"#
+            ),
+            Err(ExtractError::Title)
+        );
     }
 }
