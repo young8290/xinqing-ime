@@ -13,6 +13,7 @@ pub mod fusion;
 pub mod research;
 pub mod rest;
 pub mod retention;
+pub mod rewrite;
 pub mod routine;
 pub mod rules;
 pub mod safety;
