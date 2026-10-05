@@ -39,6 +39,7 @@ export const commands = {
 	/**
 	 *  主动报告心情（FR-STA-10）。写入 `self_report` 表后交给感知任务：之后 60 分钟显示用户说的状态
 	 *  （“说不上来”不覆盖），并推送 `self_report:changed`。备注只存本地，用完即清零（NFR-PRI-09）。
+	 *  研究模式的邀请（`research:invite`）弹出后 30 分钟内的自评记为 `source = esm`（FR-DMO-04）。
 	 */
 	selfReportSet: (weather: SelfWeather, note: string | null) => typedError<null, UiError>(__TAURI_INVOKE("self_report_set", { weather, note })),
 	/**  某天（本地日期 `YYYY-MM-DD`）的自评，按时间先后；看板时间线用实心标记显示。 */
@@ -55,6 +56,13 @@ export const commands = {
 	getRoutine: (days: number) => typedError<Routine, UiError>(__TAURI_INVOKE("get_routine", { days })),
 	/**  是否为演示模式（FR-DMO-03）：是的话界面在标题栏显示“演示模式”。以 `--demo` 启动时为是（ADR 0023）。 */
 	demoStatus: () => typedError<DemoStatus, UiError>(__TAURI_INVOKE("demo_status")),
+	/**  研究模式的自评邀请点了“跳过”（FR-DMO-04）：之后的自评按用户主动报告记。 */
+	researchDismiss: () => typedError<null, UiError>(__TAURI_INVOKE("research_dismiss")),
+	/**
+	 *  删除研究期间邀请得到的自评（`source = esm`，FR-DMO-04“研究结束后删除”），返回删了几条。
+	 *  用户主动的自评不动。界面应先请用户确认。
+	 */
+	researchClear: () => typedError<number, UiError>(__TAURI_INVOKE("research_clear")),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
@@ -145,6 +153,7 @@ export const events = {
 	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
+	researchInvite: makeEvent<ResearchInvite>("research:invite"),
 	restDue: makeEvent<RestDue>("rest:due"),
 	safetyTriggered: makeEvent<SafetyTriggered>("safety:triggered"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
@@ -491,6 +500,14 @@ export type NetLogView = {
 	status: string,
 	tokens_in: number | null,
 	tokens_out: number | null,
+};
+
+/**
+ *  `research:invite`：研究模式的定时自评邀请（FR-DMO-04）。小组件弹出“主动报告心情”面板，可跳过（`research_dismiss`）；
+ *  `answer_until_ts`（Unix 毫秒）之前提交的自评记为研究数据（`source = esm`），过了就按普通自评记。
+ */
+export type ResearchInvite = {
+	answer_until_ts: number | null,
 };
 
 /**  用户对提醒卡片的操作（FR-RST-06 第 2 条），也是 `reminder_log.action` 的取值。 */

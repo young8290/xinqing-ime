@@ -18,7 +18,7 @@ use xinqing_hub_core::domain::features::persist;
 use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
 use xinqing_hub_core::domain::rest::{RestAction, RestKind};
 use xinqing_hub_core::domain::routine::{self, Routine};
-use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
+use xinqing_hub_core::domain::self_report::{self, ReportSource, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
 use xinqing_hub_core::infra::store::export;
@@ -27,6 +27,7 @@ use xinqing_hub_core::sense::SenseCmd;
 use crate::error::UiError;
 use crate::events::{SelfReportChanged, SettingsChanged, StatusChanged};
 use crate::gateway::Ai;
+use crate::research::Research;
 use crate::rest::Rest;
 use crate::sensing::Sensing;
 use crate::sim::{self, DemoStatus};
@@ -121,24 +122,32 @@ pub fn submit_feedback(
 
 /// 主动报告心情（FR-STA-10）。写入 `self_report` 表后交给感知任务：之后 60 分钟显示用户说的状态
 /// （“说不上来”不覆盖），并推送 `self_report:changed`。备注只存本地，用完即清零（NFR-PRI-09）。
+/// 研究模式的邀请（`research:invite`）弹出后 30 分钟内的自评记为 `source = esm`（FR-DMO-04）。
 #[tauri::command]
 #[specta::specta]
 pub fn self_report_set(
     app: AppHandle,
     state: State<'_, AppState>,
     sensing: State<'_, Sensing>,
+    research: State<'_, Research>,
     weather: SelfWeather,
     note: Option<String>,
 ) -> Result<(), UiError> {
     let note = note.map(zeroize::Zeroizing::new);
     let ts = sim::clock().now_ms();
+    let source = if research.take_answer(ts) {
+        ReportSource::Esm
+    } else {
+        ReportSource::User
+    };
     let rec = state.writer().write_sync(|db| {
-        self_report::record(
+        self_report::record_from(
             db,
             weather,
             note.as_deref().map(String::as_str),
             state.auto_state(),
             ts,
+            source,
         )
     })?;
     if sensing
@@ -160,6 +169,23 @@ pub fn self_report_set(
         eprintln!("推送 self_report:changed 失败：{e}");
     }
     Ok(())
+}
+
+/// 研究模式的自评邀请点了“跳过”（FR-DMO-04）：之后的自评按用户主动报告记。
+#[tauri::command]
+#[specta::specta]
+pub fn research_dismiss(research: State<'_, Research>) -> Result<(), UiError> {
+    research.dismiss();
+    Ok(())
+}
+
+/// 删除研究期间邀请得到的自评（`source = esm`，FR-DMO-04“研究结束后删除”），返回删了几条。
+/// 用户主动的自评不动。界面应先请用户确认。
+#[tauri::command]
+#[specta::specta]
+pub fn research_clear(state: State<'_, AppState>) -> Result<u32, UiError> {
+    let n = state.writer().write_sync(self_report::delete_esm)?;
+    Ok(u32::try_from(n).unwrap_or(u32::MAX))
 }
 
 /// 某天（本地日期 `YYYY-MM-DD`）的自评，按时间先后；看板时间线用实心标记显示。
