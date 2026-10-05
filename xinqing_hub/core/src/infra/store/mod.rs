@@ -19,7 +19,6 @@ mod chat;
 mod comfort;
 pub mod export;
 mod rest;
-mod chat;
 mod schedule;
 pub use chat::{MessageRow, NewMessage, SessionRow};
 pub use comfort::ComfortRecord;
