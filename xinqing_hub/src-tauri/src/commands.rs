@@ -244,6 +244,13 @@ pub fn pause_set(app: AppHandle, sensing: State<'_, Sensing>, on: bool) -> Resul
     Ok(())
 }
 
+/// 全部设置键的类型、取值范围与默认值（ADR 0019 第 9 条），设置页按它出控件，与 `ime_schema` 对称。
+#[tauri::command]
+#[specta::specta]
+pub fn settings_schema() -> Vec<settings::SettingField> {
+    settings::schema()
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn settings_get(state: State<'_, AppState>, key: String) -> Result<SettingValue, UiError> {

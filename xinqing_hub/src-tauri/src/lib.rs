@@ -53,6 +53,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::research_dismiss,
             commands::research_clear,
             commands::pause_set,
+            commands::settings_schema,
             commands::settings_get,
             commands::settings_set,
             commands::consent_get,
