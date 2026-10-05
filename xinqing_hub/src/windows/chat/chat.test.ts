@@ -104,7 +104,9 @@ describe('对话窗口', () => {
   })
 
   it('顶部常驻 AI 说明；6 小时内接着上次的会话，只有 AI 回复带“AI 生成”', async () => {
-    mocks.sessions = [{ id: 3, title: '考试', created_ts: NOW - 1000, last_ts: NOW - 1000, safe_mode: 'off' }]
+    mocks.sessions = [
+      { id: 3, title: '考试', created_ts: NOW - 1000, last_ts: NOW - 1000, safe_mode: 'off', mode: 'normal' },
+    ]
     mocks.messages[3] = [
       { id: 1, role: 'user', content: '考砸了', ts: NOW - 2000, ai_generated: false },
       { id: 2, role: 'assistant', content: '抱抱你。', ts: NOW - 1000, ai_generated: true },
@@ -117,7 +119,9 @@ describe('对话窗口', () => {
   })
 
   it('超过 6 小时的会话不自动打开', async () => {
-    mocks.sessions = [{ id: 3, title: '旧', created_ts: 0, last_ts: NOW - 7 * 3600_000, safe_mode: 'off' }]
+    mocks.sessions = [
+      { id: 3, title: '旧', created_ts: 0, last_ts: NOW - 7 * 3600_000, safe_mode: 'off', mode: 'normal' },
+    ]
     mocks.messages[3] = [{ id: 1, role: 'user', content: '很久以前', ts: 0, ai_generated: false }]
     const w = await mountChat()
     expect(w.find('.empty').text()).toBe(t('chat.empty'))
@@ -126,7 +130,7 @@ describe('对话窗口', () => {
   it('Enter 发送，回复逐段显示，结束后以 chat:done 的全文为准', async () => {
     const w = await mountChat()
     await type(w, '  今天好累  ')
-    expect(mocks.chatSend).toHaveBeenCalledWith(null, '今天好累')
+    expect(mocks.chatSend).toHaveBeenCalledWith(null, '今天好累', null)
     expect(w.find('.typing').text()).toBe(t('chat.typing'))
     expect(w.find('button.compact').exists()).toBe(true)
     expect(w.text()).toContain(t('chat.btn_stop'))
@@ -188,7 +192,7 @@ describe('对话窗口', () => {
 
   it('复制 AI 回复用后端给的带标识文本（FR-CHT-04 第 5 条）', async () => {
     mocks.chatCopy.mockReturnValue(ok('抱抱你。（内容由 AI 生成）'))
-    mocks.sessions = [{ id: 3, title: 'x', created_ts: NOW, last_ts: NOW, safe_mode: 'off' }]
+    mocks.sessions = [{ id: 3, title: 'x', created_ts: NOW, last_ts: NOW, safe_mode: 'off', mode: 'normal' }]
     mocks.messages[3] = [{ id: 2, role: 'assistant', content: '抱抱你。', ts: NOW, ai_generated: true }]
     const w = await mountChat()
     await w.find('.meta button').trigger('click')
@@ -242,7 +246,7 @@ describe('对话窗口', () => {
     })
 
     it('打开触发过危机识别的会话时卡片在顶部', async () => {
-      mocks.sessions = [{ id: 3, title: 'x', created_ts: NOW, last_ts: NOW, safe_mode: 'on' }]
+      mocks.sessions = [{ id: 3, title: 'x', created_ts: NOW, last_ts: NOW, safe_mode: 'on', mode: 'normal' }]
       const w = await mountChat()
       expect(w.find('[role=alert]').exists()).toBe(true)
     })
@@ -250,8 +254,15 @@ describe('对话窗口', () => {
 
   it('历史抽屉按日期分组；删除全部要再确认一次', async () => {
     mocks.sessions = [
-      { id: 1, title: '今天的', created_ts: NOW, last_ts: NOW - 8 * 3600_000, safe_mode: 'off' },
-      { id: 2, title: '很早的', created_ts: 0, last_ts: 0, safe_mode: 'off' },
+      {
+        id: 1,
+        title: '今天的',
+        created_ts: NOW,
+        last_ts: NOW - 8 * 3600_000,
+        safe_mode: 'off',
+        mode: 'normal',
+      },
+      { id: 2, title: '很早的', created_ts: 0, last_ts: 0, safe_mode: 'off', mode: 'normal' },
     ]
     const w = await mountChat()
     await w.find('.bar .icon').trigger('click')

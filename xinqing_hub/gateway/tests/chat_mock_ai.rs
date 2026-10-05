@@ -109,7 +109,7 @@ async fn until_end(events: &mut mpsc::UnboundedReceiver<ChatEvent>) -> (String, 
 #[tokio::test]
 async fn streams_reply_through_http_gateway() {
     let mut r = rig(Mock::Normal).await;
-    let sent = r.service.send(None, "今天有点累").unwrap();
+    let sent = r.service.send(None, "今天有点累", None).unwrap();
     let (streamed, end) = until_end(&mut r.events).await;
     assert_eq!(streamed, REPLY);
     let ChatEvent::Done {
@@ -145,7 +145,7 @@ async fn streams_reply_through_http_gateway() {
 #[tokio::test]
 async fn cut_stream_reports_stuck_and_keeps_user_message() {
     let mut r = rig(Mock::StreamCut).await;
-    let sent = r.service.send(None, "你好").unwrap();
+    let sent = r.service.send(None, "你好", None).unwrap();
     let (_, end) = until_end(&mut r.events).await;
     assert!(
         matches!(

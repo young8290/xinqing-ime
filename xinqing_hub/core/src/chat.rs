@@ -18,8 +18,8 @@ use futures::StreamExt;
 use tokio::sync::watch;
 
 use crate::domain::chat::{
-    self, ChatCopy, ChatPrompts, CrisisChannel, JEV_CRISIS_THRESHOLD, ReplyCheck, SafeMode,
-    StatePoint, Turn,
+    self, ChatCopy, ChatMode, ChatPrompts, CrisisChannel, JEV_CRISIS_THRESHOLD, ReplyCheck,
+    SafeMode, StatePoint, Turn,
 };
 use crate::domain::comfort::Style;
 use crate::domain::safety::CrisisLexicon;
@@ -169,7 +169,13 @@ impl ChatService {
     }
 
     /// 发一条消息（`chat_send`）。须在 tokio 运行时里调用：回复在后台任务里生成。
-    pub fn send(self: &Arc<Self>, session_id: Option<i64>, text: &str) -> Result<Sent, ChatError> {
+    /// `chat_mode` 不为空时先把（可能是新开的）会话切到这种对话方式，再生成回复（FR-CHT-06，ADR 0021）。
+    pub fn send(
+        self: &Arc<Self>,
+        session_id: Option<i64>,
+        text: &str,
+        chat_mode: Option<ChatMode>,
+    ) -> Result<Sent, ChatError> {
         let text = text.trim();
         if text.is_empty() {
             return Err(ChatError::Empty);
@@ -195,6 +201,9 @@ impl ChatService {
             if self.busy(id) {
                 return Err(ChatError::Busy);
             }
+            if let Some(m) = chat_mode {
+                db.chat_set_mode(id, m)?;
+            }
             let mid = db.chat_message_insert(&NewMessage {
                 session_id: id,
                 role: "user",
@@ -219,6 +228,16 @@ impl ChatService {
             new_session,
             safety: local,
         })
+    }
+
+    /// 切换会话的对话方式（快捷指令“我只是想吐槽”“帮我理一理”，回到平常用 `Normal`）。
+    /// 从下一次回复起生效；正在生成的回复不受影响。
+    pub fn set_mode(&self, session_id: i64, mode: ChatMode) -> Result<(), ChatError> {
+        if self.port.db().chat_set_mode(session_id, mode)? {
+            Ok(())
+        } else {
+            Err(ChatError::NoSession)
+        }
     }
 
     /// 为会话最后一条用户消息重新生成回复（“重试”，ADR 0018 第 4 条）。不再写用户消息，也不再做危机识别。
@@ -299,7 +318,12 @@ impl ChatService {
     }
 
     /// 本次请求的系统提示词与上下文（FR-CHT-05）。
-    fn messages(&self, session_id: i64, safe: bool) -> Result<Vec<Message>, StoreError> {
+    fn messages(
+        &self,
+        session_id: i64,
+        safe: bool,
+        mode: ChatMode,
+    ) -> Result<Vec<Message>, StoreError> {
         let style = self.port.style();
         let summary = if !safe && self.port.summary_allowed() {
             self.today_summary()?
@@ -326,7 +350,7 @@ impl ChatService {
             role: "system".into(),
             content: self
                 .prompts
-                .system(safe, style, summary.as_deref(), &memories),
+                .system(safe, style, mode, summary.as_deref(), &memories),
         }];
         out.extend(chat::trim_context(&history).iter().map(|t| Message {
             role: if t.user { "user" } else { "assistant" }.into(),
@@ -387,14 +411,12 @@ impl ChatService {
         let mut jev = Box::pin(Self::judge_crisis(self.gateway.clone(), text));
         let mut jev_hit: Option<bool> = if crisis.is_some() { None } else { Some(false) };
 
-        let safe = self
-            .port
-            .db()
-            .chat_session(session_id)
-            .ok()
-            .flatten()
+        let session = self.port.db().chat_session(session_id).ok().flatten();
+        let safe = session
+            .as_ref()
             .is_some_and(|s| s.safe_mode == SafeMode::On);
-        let messages = match self.messages(session_id, safe) {
+        let mode = session.map_or(ChatMode::Normal, |s| s.mode);
+        let messages = match self.messages(session_id, safe, mode) {
             Ok(m) => m,
             Err(e) => {
                 self.port.note(&format!("组装对话上下文失败：{e}"));
@@ -406,7 +428,7 @@ impl ChatService {
                 return;
             }
         };
-        let prompt_ver = self.prompts.ver(safe);
+        let prompt_ver = self.prompts.ver(safe, mode);
         let req = CompleteRequest {
             scenario: Scenario::Chat,
             prompt_ver: prompt_ver.clone(),
@@ -780,7 +802,7 @@ mod tests {
         e.script(Ok(vec![Some("听起来"), Some("挺累的。")]));
         let sent = e
             .svc
-            .send(None, "  今天考试没考好，心里有点难受  ")
+            .send(None, "  今天考试没考好，心里有点难受  ", None)
             .unwrap();
         assert!(sent.new_session && !sent.safety);
         e.settle().await;
@@ -830,10 +852,10 @@ mod tests {
         e.script(Ok(vec![Some("嗯嗯。")]));
         e.script(Ok(vec![Some("好呀。")]));
         e.script(Ok(vec![Some("你好。")]));
-        let a = e.svc.send(None, "第一句").unwrap();
+        let a = e.svc.send(None, "第一句", None).unwrap();
         e.settle().await;
         e.clock.advance_ms(60_000);
-        let b = e.svc.send(Some(a.session_id), "第二句").unwrap();
+        let b = e.svc.send(Some(a.session_id), "第二句", None).unwrap();
         e.settle().await;
         assert_eq!(b.session_id, a.session_id);
         assert!(!b.new_session);
@@ -842,10 +864,42 @@ mod tests {
         let roles: Vec<&str> = req.messages.iter().map(|m| m.role.as_str()).collect();
         assert_eq!(roles, ["system", "user", "assistant", "user"]);
         e.clock.advance_ms(chat::NEW_SESSION_GAP_MS + 1);
-        let c = e.svc.send(Some(a.session_id), "第三句").unwrap();
+        let c = e.svc.send(Some(a.session_id), "第三句", None).unwrap();
         e.settle().await;
         assert!(c.new_session);
         assert_ne!(c.session_id, a.session_id);
+    }
+
+    #[tokio::test]
+    async fn chat_mode_sticks_to_session_until_switched_back() {
+        let e = env(true);
+        for _ in 0..3 {
+            e.script(Ok(vec![Some("嗯，我在听。")]));
+        }
+        let a = e
+            .svc
+            .send(None, "今天被说了一顿", Some(ChatMode::Vent))
+            .unwrap();
+        e.settle().await;
+        e.clock.advance_ms(60_000);
+        // 不带 mode 时沿用会话里存的对话方式
+        e.svc.send(Some(a.session_id), "就是很委屈", None).unwrap();
+        e.settle().await;
+        e.svc.set_mode(a.session_id, ChatMode::Normal).unwrap();
+        e.clock.advance_ms(60_000);
+        e.svc.send(Some(a.session_id), "好多了", None).unwrap();
+        e.settle().await;
+        let reqs = e.ai.requests.lock().unwrap().clone();
+        for req in &reqs[..2] {
+            assert_eq!(req.prompt_ver, "P-CHAT v1 + P-CHAT-VENT v1");
+            assert!(req.messages[0].content.contains("只倾听"));
+        }
+        assert_eq!(reqs[2].prompt_ver, "P-CHAT v1");
+        assert!(!reqs[2].messages[0].content.contains("只倾听"));
+        assert!(matches!(
+            e.svc.set_mode(99, ChatMode::Vent),
+            Err(ChatError::NoSession)
+        ));
     }
 
     #[tokio::test]
@@ -862,7 +916,7 @@ mod tests {
                 .unwrap();
         }
         e.script(Ok(vec![Some("嗯。")]));
-        e.svc.send(None, "在吗").unwrap();
+        e.svc.send(None, "在吗", None).unwrap();
         e.settle().await;
         let sys = e.ai.requests.lock().unwrap()[0].messages[0].content.clone();
         assert!(sys.contains("用户今天的大致状态：下午平稳"), "{sys}");
@@ -874,7 +928,7 @@ mod tests {
         let e = env(false);
         *e.ai.crisis_p.lock().unwrap() = Some(0.9);
         e.script(Ok(vec![Some("谢谢你告诉我。你现在安全吗？")]));
-        let sent = e.svc.send(None, "我真的不想活了").unwrap();
+        let sent = e.svc.send(None, "我真的不想活了", None).unwrap();
         assert!(sent.safety);
         assert_eq!(e.port.safety.lock().unwrap().as_slice(), [sent.session_id]);
         assert_eq!(e.mode(sent.session_id), SafeMode::On);
@@ -903,14 +957,14 @@ mod tests {
         *e.ai.crisis_p.lock().unwrap() = Some(0.6);
         e.script(Ok(vec![Some("我在听。")]));
         e.script(Ok(vec![Some("你现在安全吗？")]));
-        let sent = e.svc.send(None, "感觉一切都没有意义").unwrap();
+        let sent = e.svc.send(None, "感觉一切都没有意义", None).unwrap();
         assert!(!sent.safety);
         e.settle().await;
         assert_eq!(e.safety_log(), ["jev"]);
         assert_eq!(e.mode(sent.session_id), SafeMode::On);
         assert_eq!(e.port.safety.lock().unwrap().len(), 1);
         *e.ai.crisis_p.lock().unwrap() = Some(0.1);
-        e.svc.send(Some(sent.session_id), "嗯").unwrap();
+        e.svc.send(Some(sent.session_id), "嗯", None).unwrap();
         e.settle().await;
         assert_eq!(
             e.ai.requests.lock().unwrap()[1].prompt_ver,
@@ -923,7 +977,7 @@ mod tests {
         // FR-SAF-03 第 2 条、FR-SAF-04：断网时求助卡片与固定回应照常
         let e = env(false);
         e.script(Err(AiError::Network));
-        let sent = e.svc.send(None, "我真的不想活了").unwrap();
+        let sent = e.svc.send(None, "我真的不想活了", None).unwrap();
         e.settle().await;
         let ChatEvent::Done {
             text, ai_generated, ..
@@ -941,7 +995,7 @@ mod tests {
     async fn failure_keeps_user_message_and_retry_regenerates() {
         let e = env(false);
         e.script(Err(AiError::Timeout));
-        let sent = e.svc.send(None, "你好").unwrap();
+        let sent = e.svc.send(None, "你好", None).unwrap();
         e.settle().await;
         assert_eq!(
             e.last_event(),
@@ -991,7 +1045,7 @@ mod tests {
     async fn mid_stream_error_and_daily_cap() {
         let e = env(false);
         e.script(Ok(vec![Some("半截"), None]));
-        e.svc.send(None, "你好").unwrap();
+        e.svc.send(None, "你好", None).unwrap();
         e.settle().await;
         assert!(matches!(
             e.last_event(),
@@ -1001,7 +1055,7 @@ mod tests {
             }
         ));
         e.script(Err(AiError::BudgetExceeded));
-        e.svc.send(None, "再来").unwrap();
+        e.svc.send(None, "再来", None).unwrap();
         e.settle().await;
         assert!(matches!(
             e.last_event(),
@@ -1017,7 +1071,7 @@ mod tests {
         let e = env(false);
         e.script(Ok(vec![Some("可以试试"), Some("割腕")]));
         e.script(Ok(vec![Some("你这是抑郁症")]));
-        e.svc.send(None, "随便聊聊").unwrap();
+        e.svc.send(None, "随便聊聊", None).unwrap();
         e.settle().await;
         let ChatEvent::Done {
             text, ai_generated, ..
@@ -1026,7 +1080,7 @@ mod tests {
             panic!()
         };
         assert!(text.contains("12356") && !ai_generated);
-        e.svc.send(None, "再聊聊").unwrap();
+        e.svc.send(None, "再聊聊", None).unwrap();
         e.settle().await;
         let ChatEvent::Done { text, .. } = e.last_event() else {
             panic!()
@@ -1039,10 +1093,10 @@ mod tests {
         let e = env(false);
         *e.ai.hang.lock().unwrap() = true;
         e.script(Ok(vec![Some("我想想")]));
-        let sent = e.svc.send(None, "讲个故事").unwrap();
+        let sent = e.svc.send(None, "讲个故事", None).unwrap();
         tokio::time::sleep(Duration::from_millis(20)).await;
         assert!(matches!(
-            e.svc.send(Some(sent.session_id), "快点"),
+            e.svc.send(Some(sent.session_id), "快点", None),
             Err(ChatError::Busy)
         ));
         e.svc.stop(sent.request_id);
@@ -1063,13 +1117,13 @@ mod tests {
     async fn dismiss_raises_threshold_but_keeps_record() {
         let e = env(false);
         e.script(Ok(vec![Some("你现在安全吗？")]));
-        let sent = e.svc.send(None, "我真的不想活了").unwrap();
+        let sent = e.svc.send(None, "我真的不想活了", None).unwrap();
         e.settle().await;
         e.svc.dismiss_safety(sent.session_id).unwrap();
         assert_eq!(e.mode(sent.session_id), SafeMode::Dismissed);
         // 阈值提高后，同一句不再触发……
         e.script(Ok(vec![Some("嗯。")]));
-        let again = e.svc.send(Some(sent.session_id), "活着好累").unwrap();
+        let again = e.svc.send(Some(sent.session_id), "活着好累", None).unwrap();
         assert!(!again.safety);
         e.settle().await;
         assert_eq!(e.ai.requests.lock().unwrap()[1].prompt_ver, "P-CHAT v1");
@@ -1083,11 +1137,11 @@ mod tests {
             .unwrap();
         rt.block_on(async {
             let e = env(false);
-            assert!(matches!(e.svc.send(None, "   "), Err(ChatError::Empty)));
+            assert!(matches!(e.svc.send(None, "   ", None), Err(ChatError::Empty)));
             let long = "字".repeat(chat::MAX_INPUT_CHARS + 1);
-            assert!(matches!(e.svc.send(None, &long), Err(ChatError::TooLong)));
+            assert!(matches!(e.svc.send(None, &long, None), Err(ChatError::TooLong)));
             assert!(matches!(
-                e.svc.send(Some(99), "你好"),
+                e.svc.send(Some(99), "你好", None),
                 Err(ChatError::NoSession)
             ));
         });

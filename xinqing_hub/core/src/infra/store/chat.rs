@@ -4,7 +4,7 @@ use rusqlite::{OptionalExtension, params};
 use xqp::MoodState;
 
 use super::{Db, StoreError, parse_state};
-use crate::domain::chat::SafeMode;
+use crate::domain::chat::{ChatMode, SafeMode};
 
 /// 会话列表的一行（左侧抽屉，FR-CHT-02 第 3 条）。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,6 +15,8 @@ pub struct SessionRow {
     /// 最后一条消息的时间；还没有消息时等于 `created_ts`
     pub last_ts: i64,
     pub safe_mode: SafeMode,
+    /// 快捷指令切换的对话方式（ADR 0021）
+    pub mode: ChatMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +43,7 @@ pub struct NewMessage<'a> {
 
 const SESSION_COLS: &str = "s.id, s.title, s.created_ts,
     coalesce((SELECT max(ts) FROM chat_message m WHERE m.session_id = s.id), s.created_ts),
-    s.safe_mode";
+    s.safe_mode, s.mode";
 
 fn session_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
     Ok(SessionRow {
@@ -50,6 +52,7 @@ fn session_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
         created_ts: r.get(2)?,
         last_ts: r.get(3)?,
         safe_mode: SafeMode::from_db(r.get(4)?),
+        mode: ChatMode::from_db(&r.get::<_, String>(5)?),
     })
 }
 
@@ -80,6 +83,14 @@ impl Db {
         ))?;
         let rows = stmt.query_map([], session_row)?;
         Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// 切换会话的对话方式；会话不存在时返回 `false`。
+    pub fn chat_set_mode(&self, id: i64, mode: ChatMode) -> Result<bool, StoreError> {
+        Ok(self.conn.execute(
+            "UPDATE chat_session SET mode = ?2 WHERE id = ?1",
+            params![id, mode.as_db()],
+        )? != 0)
     }
 
     pub fn chat_set_safe_mode(&self, id: i64, mode: SafeMode) -> Result<(), StoreError> {

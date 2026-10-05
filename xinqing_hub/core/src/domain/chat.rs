@@ -31,51 +31,37 @@ pub const SUMMARY_CHARS: usize = 200;
 /// Q-CRISIS 阈值（08 第 3 节，偏向召回）。
 pub const JEV_CRISIS_THRESHOLD: f64 = 0.5;
 
-/// 对话窗口的四个快捷指令（FR-CHT-06）。按钮传稳定的 snake_case ID；中文标签只在界面层展示。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Shortcut {
-    WriteDiary,
-    Breathe,
+/// 会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0021）。
+/// “写成情绪日记”“陪我呼吸”是窗口里的本地动作，不经过这里。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum ChatMode {
+    /// 平常的对话
+    #[default]
+    Normal,
+    /// 💬 我只是想吐槽：本会话只倾听，只共情和复述，不给建议
     Vent,
+    /// 🧭 帮我理一理：引导说清“发生了什么 / 我的感受 / 我能做的一小步”
     Organize,
 }
 
-impl Shortcut {
-    /// 解析前端传来的稳定 ID，同时接受迁移期间可能出现的旧别名。
-    pub fn parse(value: &str) -> Option<Self> {
-        match value.trim() {
-            "write_diary" | "diary" => Some(Self::WriteDiary),
-            "breathe" | "breathe_1m" => Some(Self::Breathe),
-            "vent" | "just_vent" => Some(Self::Vent),
-            "organize" | "sort_out" => Some(Self::Organize),
-            _ => None,
-        }
-    }
-
-    pub const fn id(self) -> &'static str {
+impl ChatMode {
+    pub fn as_db(self) -> &'static str {
         match self {
-            Self::WriteDiary => "write_diary",
-            Self::Breathe => "breathe",
-            Self::Vent => "vent",
-            Self::Organize => "organize",
+            ChatMode::Normal => "normal",
+            ChatMode::Vent => "vent",
+            ChatMode::Organize => "organize",
         }
     }
 
-    /// 需要大模型的两个指令使用固定的不可见引导语，避免把实现细节暴露给用户。
-    pub const fn prompt(self) -> Option<&'static str> {
-        match self {
-            Self::Vent => {
-                Some("接下来请只倾听我。先共情和复述我说的内容，不给建议，不急着解决问题。")
-            }
-            Self::Organize => Some(
-                "请帮我理一理这件事，引导我依次说清：发生了什么、我的感受、我能做的一小步。一次只问一个问题。",
-            ),
-            Self::WriteDiary | Self::Breathe => None,
+    /// 库里不认识的值按平常对话处理。
+    pub fn from_db(v: &str) -> Self {
+        match v {
+            "vent" => ChatMode::Vent,
+            "organize" => ChatMode::Organize,
+            _ => ChatMode::Normal,
         }
-    }
-
-    pub const fn is_local(self) -> bool {
-        matches!(self, Self::WriteDiary | Self::Breathe)
     }
 }
 
@@ -242,6 +228,9 @@ impl PromptFile {
 pub struct ChatPrompts {
     chat: PromptFile,
     safe: PromptFile,
+    /// 快捷指令的对话方式：接在 P-CHAT 后面（ADR 0021）
+    vent: PromptFile,
+    organize: PromptFile,
 }
 
 impl ChatPrompts {
@@ -249,23 +238,38 @@ impl ChatPrompts {
         Ok(Self {
             chat: PromptFile::load(dirs, "prompts/chat.md")?,
             safe: PromptFile::load(dirs, "prompts/chat_safe.md")?,
+            vent: PromptFile::load(dirs, "prompts/chat_vent.md")?,
+            organize: PromptFile::load(dirs, "prompts/chat_organize.md")?,
         })
     }
 
-    /// 记在 `chat_message.prompt_ver` 与 `CompleteRequest.prompt_ver`。
-    pub fn ver(&self, safe: bool) -> String {
-        if safe {
-            format!("P-CHAT-SAFE v{}", self.safe.version)
-        } else {
-            format!("P-CHAT v{}", self.chat.version)
+    fn mode_file(&self, mode: ChatMode) -> Option<(&'static str, &PromptFile)> {
+        match mode {
+            ChatMode::Normal => None,
+            ChatMode::Vent => Some(("P-CHAT-VENT", &self.vent)),
+            ChatMode::Organize => Some(("P-CHAT-ORGANIZE", &self.organize)),
         }
     }
 
-    /// 系统提示词。安全模式固定温和语气，不用风格、摘要和记忆（FR-CHT-10）。
+    /// 记在 `chat_message.prompt_ver` 与 `CompleteRequest.prompt_ver`。快捷指令的对话方式也记上版本，
+    /// 例如 `P-CHAT v1 + P-CHAT-VENT v1`；安全模式不用对话方式。
+    pub fn ver(&self, safe: bool, mode: ChatMode) -> String {
+        if safe {
+            return format!("P-CHAT-SAFE v{}", self.safe.version);
+        }
+        let base = format!("P-CHAT v{}", self.chat.version);
+        match self.mode_file(mode) {
+            Some((name, f)) => format!("{base} + {name} v{}", f.version),
+            None => base,
+        }
+    }
+
+    /// 系统提示词。安全模式固定温和语气，不用风格、摘要、记忆和对话方式（FR-CHT-10、ADR 0021）。
     pub fn system(
         &self,
         safe: bool,
         style: Style,
+        mode: ChatMode,
         summary: Option<&str>,
         memories: &[String],
     ) -> String {
@@ -290,7 +294,12 @@ impl ChatPrompts {
                 out.replace(slot, value)
             };
         }
-        out.trim().to_string()
+        let mut out = out.trim().to_string();
+        if let Some((_, f)) = self.mode_file(mode) {
+            out.push('\n');
+            out.push_str(f.body.trim());
+        }
+        out
     }
 }
 
@@ -495,16 +504,11 @@ mod tests {
     }
 
     #[test]
-    fn shortcuts_have_stable_ids_and_prompts() {
-        assert_eq!(Shortcut::parse("write_diary").unwrap().id(), "write_diary");
-        assert_eq!(Shortcut::parse("breathe_1m").unwrap().id(), "breathe");
-        assert_eq!(
-            Shortcut::parse("just_vent").unwrap().prompt(),
-            Shortcut::Vent.prompt()
-        );
-        assert!(Shortcut::Organize.prompt().unwrap().contains("发生了什么"));
-        assert!(Shortcut::Breathe.is_local());
-        assert!(Shortcut::parse("unknown").is_none());
+    fn chat_mode_round_trips_through_db() {
+        for m in [ChatMode::Normal, ChatMode::Vent, ChatMode::Organize] {
+            assert_eq!(ChatMode::from_db(m.as_db()), m);
+        }
+        assert_eq!(ChatMode::from_db("??"), ChatMode::Normal);
     }
 
     #[test]
@@ -551,24 +555,50 @@ mod tests {
     #[test]
     fn prompts_fill_and_drop_blocks() {
         let p = ChatPrompts::load(&dirs()).unwrap();
-        assert_eq!(p.ver(false), "P-CHAT v1");
-        assert_eq!(p.ver(true), "P-CHAT-SAFE v1");
-        let plain = p.system(false, Style::Gentle, None, &[]);
+        assert_eq!(p.ver(false, ChatMode::Normal), "P-CHAT v1");
+        assert_eq!(p.ver(true, ChatMode::Vent), "P-CHAT-SAFE v1");
+        let plain = p.system(false, Style::Gentle, ChatMode::Normal, None, &[]);
         assert!(!plain.contains('{'), "没填的变量不能留在提示词里：{plain}");
         assert!(plain.ends_with("绝不提供任何方法相关的信息。"));
         let full = p.system(
             false,
             Style::Lively,
+            ChatMode::Normal,
             Some("下午平稳，今天已输入 2 小时"),
             &["下周三考英语".into(), "养了一只猫叫团子".into()],
         );
         assert!(full.contains("语气轻快"));
         assert!(full.contains("用户今天的大致状态：下午平稳，今天已输入 2 小时"));
         assert!(full.contains("用户请你记住的事：下周三考英语；养了一只猫叫团子"));
-        let safe = p.system(true, Style::Lively, Some("x"), &["y".into()]);
+        let safe = p.system(true, Style::Lively, ChatMode::Vent, Some("x"), &["y".into()]);
         assert!(safe.contains("你现在安全吗"));
         assert!(!safe.contains("语气轻快"), "安全模式忽略风格（FR-CHT-10）");
+        assert!(!safe.contains("只倾听"), "安全模式忽略对话方式（ADR 0021）");
         assert!(!safe.contains("<!--"));
+    }
+
+    #[test]
+    fn chat_modes_append_after_p_chat_and_carry_version() {
+        let p = ChatPrompts::load(&dirs()).unwrap();
+        assert_eq!(
+            p.ver(false, ChatMode::Vent),
+            "P-CHAT v1 + P-CHAT-VENT v1"
+        );
+        assert_eq!(
+            p.ver(false, ChatMode::Organize),
+            "P-CHAT v1 + P-CHAT-ORGANIZE v1"
+        );
+        let plain = p.system(false, Style::Gentle, ChatMode::Normal, None, &[]);
+        let vent = p.system(false, Style::Gentle, ChatMode::Vent, None, &[]);
+        assert!(vent.starts_with(&plain), "边界部分原样保留");
+        assert!(vent.contains("只倾听"));
+        assert!(!vent.contains("<!--"));
+        let organize = p.system(false, Style::Gentle, ChatMode::Organize, None, &[]);
+        assert!(organize.contains("我能做的一小步"));
+        let banned = BannedWords::load(&dirs()).unwrap();
+        for text in [&vent, &organize] {
+            assert_eq!(banned.find(&text[plain.len()..], Scene::Other), None);
+        }
     }
 
     #[test]
