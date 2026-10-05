@@ -3,20 +3,20 @@
 > 负责范围（产品书 13 第 1 节）：AIG 网关、CMF 暖心话、CHT 对话、DIA 日记、SAF 危机安全、SCH 日程与待办、RWR 温柔改写的 Hub 部分、REV-01/02 晚间小结与周信、评测脚本；
 > 另是数据库迁移（`xinqing_hub/core/migrations/`）与设置键注册表（`xinqing_hub/core/src/domain/settings.rs`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.3 节。本文件随 C 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（C-07 对话与 C-08 危机安全的对话部分，ADR 0018）
+> 最后更新：2026-10-05（设置值扩展：列表与格式类型，安静时段与自定义勿扰应用，`ai.cap.*`，ADR 0019）
 
 ## 1. 任务状态
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| C-01 | Hub 骨架：分层、事件总线、SQLite 迁移 v1、单写线程、settings | 大部分完成 | `core/src/bus.rs`、`core/migrations/`（0001、0002）、`core/src/infra/store/`、`core/src/domain/settings.rs`（设置键 `KEYS`、内部键 `INTERNAL_KEYS`） | 单写线程 `DbWriter`（17 第 2.9 节）没做，外壳现在用 `Mutex<Db>` 串行；设置键只登记了 8 个（10 第 6.2 节列的 `care.*`、`ai.*`、`rest.*` 等随各功能补）；D-08 的表单生成器要一个“键注册表 → schema”的命令，待和 D 约定（契约 PR） |
+| C-01 | Hub 骨架：分层、事件总线、SQLite 迁移 v1、单写线程、settings | 大部分完成 | `core/src/bus.rs`、`core/migrations/`（0001、0002）、`core/src/infra/store/`、`core/src/domain/settings.rs`（设置键 `KEYS`、内部键 `INTERNAL_KEYS`）；设置值的列表与格式类型：ADR 0019 | 单写线程 `DbWriter`（17 第 2.9 节）没做，外壳现在用 `Mutex<Db>` 串行；设置键已登记 27 个，10 第 6.2 节其余的（`chat.retention_days`、`review.*`、`sch.*` 等）随各功能补；设置页若要“键注册表 → schema”的命令，等 D 提 |
 | C-02 | mock-ai（Jev 三类、OpenAI 兼容含 SSE、各故障场景） | 完成 | `tools/mock-ai/` | 16 第 3 节建议移给 E，W1 评审会还没定 |
 | C-03 | AI 网关：trait、Jev/LLM 客户端、熔断、重试、健康检查、隐私过滤、密钥 DPAPI、预算 | 主体完成 | HTTP 实现：`xinqing_hub/gateway/`；trait、熔断、预算、脱敏：`core/src/infra/gateway/`；接入外壳：[xinqing-ime#21](https://github.com/young8290/xinqing-ime/pull/21)（已合并，含 Hu-yiye 的 [#7](https://github.com/young8290/xinqing-ime/pull/7)），ADR 0012 | 见第 3.2 节 |
-| C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **进行中（后端基本完成）** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)；ADR 0015 | 见第 3.1 节 |
+| C-04 | 暖心话：触发、生成、校验、模板兜底、频率控制、反馈 | **后端完成** | 第一部分（主动关怀与自评回应）：[xinqing-ime#27](https://github.com/young8290/xinqing-ime/pull/27)（已合并）；第二部分（反馈与自动降档）：[xinqing-ime#29](https://github.com/young8290/xinqing-ime/pull/29)（已合并）；第三部分（安静时段、自定义勿扰应用）：本 PR；ADR 0015、0019 | 见第 3.1 节：主动关怀要等 B 把 Jev 接进 `Sense`；系统专注助手不判断（ADR 0019 第 7 条）；E-COMFORT 评测 |
 | C-05 | 日程识别：L1/L2/L3、代码校验、去重、提醒调度、冲突 | 未开始 | `hub_templates/schedule_patterns.toml`、`prompts/schedule.md`、评测集 `eval/datasets/e_plan.jsonl`、`e_extract.jsonl` | 计划 W7–W8；提醒调度 `scheduler` 也给 B-04（04:00 重算基线）用 |
 | C-06 | 待办识别与清单、提醒 | 未开始 | `prompts/todo.md`、`eval/datasets/e_todo.jsonl` | 计划 W8（P1） |
-| C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P0 部分完成** | 纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018 | 见第 3.3 节：快捷指令、记忆增删改、历史搜索与保留期设置（P1） |
-| C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | 本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
+| C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P0 部分完成** | [xinqing-ime#40](https://github.com/young8290/xinqing-ime/pull/40)（已合并）：纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018 | 见第 3.3 节：快捷指令、记忆增删改、历史搜索与保留期设置（P1） |
+| C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
 | C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | 未开始 | `prompts/rewrite.md`、`eval/datasets/e_rewrite.jsonl`；`sense.rs` 收到 `rewrite_req` 时先回 `RewriteFail::Offline` | 计划 W8–W9；依赖 A-08 改写模式；V8 校验、可还原占位符 `[号码1]` |
 | C-10 | 情绪日记、晚间小结、周信 | 未开始 | `hub_templates/evening.toml`、`letter_fallback.md`、`prompts/diary.md`、`letter.md` | 16 第 3 节建议移给 B，W1 评审会还没定（B 的交接文档也记了“未认领”） |
 | C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表 | E-COMFORT 没有脚本；报告（`eval/reports/`）要等各服务做完、用真实接口跑出预测文件 |
@@ -30,7 +30,8 @@ xinqing_hub/
 │  ├─ comfort.rs             暖心话：频率档位、触发判断 Trigger、状态摘要、P-COMFORT 拼装、V1–V7 校验、模板选句
 │  ├─ validate.rs            08 第 5 节输出校验（V1、V3 计数、V4 禁用词、V5 重复、V7 语言；V2/V6/V8/V9 随功能补）
 │  ├─ safety.rs              危机词表本地通道
-│  └─ settings.rs            设置键注册表（契约）
+│  ├─ dnd.rs                 勿扰应用与安静时段的解析、判断（暖心话用，休息提醒也可用）
+│  └─ settings.rs            设置键注册表（契约）：值的四种形态与格式校验（ADR 0019）、`cap_key` / `caps`
 ├─ core/src/care.rs          暖心话服务 ComfortService：订阅总线 → 触发 → 大模型（重试 1 次）或模板 → comfort_log → ComfortPort::show
 ├─ core/src/infra/store/     Db：迁移、窗口与状态、反馈、net_log（只留最近 200 条）；comfort.rs 是 comfort_log 的读写
 ├─ core/migrations/          0001_init.sql、0002_comfort_trigger.sql（契约；已发布的脚本不改，新改动按 main 上的最大编号顺延）
@@ -61,7 +62,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 部分 | 需求 | 状态 |
 |---|---|---|
 | 主动关怀触发：`need_comfort ≥ 0.75`、非流畅状态连续 ≥ 2 个窗口、冷却、每日上限、无痕 | FR-CMF-01 第 1–4、6 条 | 完成（#27）：`domain::comfort::Trigger`。**要 Jev 接进 `Sense` 后才会真正触发**：`MoodEvent::Sample` 新增 `need_comfort`、`valence`，现在 `sense.rs` 填 `None`，降级时不主动关怀（FR-STA-08 第 2 条）。接 Jev 的 B 把这两个值填上即可 |
-| 勿扰：前台全屏（含放映）、默认勿扰应用 | FR-CMF-01 第 5 条 | 部分（#27）：全屏复用 D 的 `fullscreen::foreground_fullscreen`；应用按 XQP `focus` 的进程名比较。用户自定义勿扰应用、安静时段、系统专注助手未做（ADR 0015 第 6 条） |
+| 勿扰：前台全屏（含放映）、勿扰应用、安静时段 | FR-CMF-01 第 5 条 | 完成（#27、本 PR）：全屏复用 D 的 `fullscreen::foreground_fullscreen`；勿扰应用读 `care.dnd_apps`（默认三个会议应用，用户可删），按 XQP `focus` 的进程名忽略大小写比较；安静时段读 `care.quiet_hours`（`"22:30-07:00"`，可跨午夜）。判断在 `domain::dnd`。系统专注助手没有公开接口，不判断（ADR 0019 第 7 条） |
 | 状态摘要（不含原文）、P-COMFORT、校验 V1/V2/V3/V4/V5/V7、不通过重试 1 次、模板兜底 | FR-CMF-02/03 | 完成（#27）。未同意 ④ 时不调大模型；网关报错不重试；第一次已用 5 秒以上不重试（ADR 0015 第 5 条） |
 | 模板：按风格与组随机、排除最近 10 条与用户屏蔽、深夜用 `late_night` 组、简洁风格取 ≤ 15 字 | FR-CMF-03、FR-CHT-10 | 完成（#27）；出厂 180 句都过长度与禁用词（单测） |
 | 写 `comfort_log`（含 `trigger`）、推 `comfort:new {id, text, source, ai_generated}`、小组件隐藏时点亮工具栏小圆点 | FR-CMF-04、09 D-10 | 完成（#27），迁移 0002。打字机效果、`AI 生成` 标签、小精灵“靠近”、2 小时后淡出为“今日一句”都在前端，等 D 接（`play('approach')` 已有） |
@@ -74,7 +75,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 | 部分 | 需求 | 状态 |
 |---|---|---|
-| `ai.daily_caps`、`ai.llm_models` 设置键 → `set_cap` / 模型列表 | FR-AIG-07、10 第 6.2 节 | 未做：`SettingValue` 只有布尔、数字、字符串，`daily_caps` 是表；要么拆成 `ai.cap.jev` 这类数字键，要么扩 `SettingValue`，属于契约改动，先和 D 商量（与 `care.dnd_apps`、`care.quiet_hours` 一起定）。模型列表现在跟着 `secrets_set` 存 |
+| 每日预算上限设置 → `set_cap` | FR-AIG-07、10 第 6.2 节 | 完成（本 PR）：`ai.daily_caps` 拆成 `ai.cap.jev` / `llm` / `chat` / `schedule` / `rewrite` 五个整数键（ADR 0019 第 4 条）；外壳启动时和 `settings_set` 改了这些键时调 `Ai::apply_caps`，立即生效、今日用量不清零。设置页控件等 D（FR-SET-08）。`ai.llm_models` 仍随 `secrets_set` 存（ADR 0012） |
 | 设置页“最近 20 次出网请求”（`Db::net_log_recent` 已有） | FR-SET-09 | 未做：要一个命令，10 第 5.1 节没列，和 D 的设置页隐私分类一起加 |
 | 演示者视图的网关指标（`HttpGateway::metrics` / `models` 已有） | FR-AIG-08 | 未做：随 B-10 演示模式 |
 | Jev 判断接进实时感知（`Sense`） | FR-STA-05 | **B 的任务**（B 交接文档 B-06）。外壳托管的 `Arc<Ai>` 实现 `AiGateway`，`sensing::start` 里 `app.state::<Arc<Ai>>()` 拿到后转成 `Arc<dyn AiGateway>` 传给 `Sense` 即可；顺带把 `need_comfort`、`valence` 填进 `MoodEvent::Sample` |
@@ -96,6 +97,13 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 ## 4. 关键决定与待评审
 
+- **ADR 0019（设置值的列表与格式类型，8 条）**：提议，待 D（`bindings.ts`、设置页）、E（隐私、导出导入）评审，B 知会。要点：
+  `SettingValue` 加字符串列表（前端 `string[]`），**整份读写**，出厂列表用户可清空；`Kind` 加 `Int`、`Text(Item)`、`List { item, max }`，
+  文字只收已知格式（进程名、时段、电话），因为电话会进豁免禁用词的求助卡片；`ai.daily_caps` 拆成 `ai.cap.*`；安静时段只管主动关怀；
+  系统专注助手不判断。**给 D 的接口**：`care.dnd_apps`（`string[]`，进程名）、`care.quiet_hours`（`string[]`，`"HH:MM-HH:MM"`）、
+  `safety.school_phone`（`string`，空串 = 没填；求助卡片 `SafetyCard.vue` 现在固定显示“可在设置中添加”，读这个键即可）、
+  `ai.cap.*`（整数），都走现有的 `settings_get` / `settings_set` / `settings:changed`，不合法返回 `settings.out_of_range`。
+
 - **ADR 0018（AI 对话与对话中危机安全的实现解释，8 条）**：提议，待 D、E 评审。要点：Q-CRISIS 与大模型并行、只有 Jev 命中时从下一条起进入安全模式；V4 替换句 `chat.replaced`；`safe_mode` 用 0/1/2；新增 `chat_retry`、`chat_delete_all`、`safety_dismiss`；中途出错丢弃半截、停止保留已生成部分。
 - **ADR 0015（暖心话的实现解释，12 条）**：#27 提出前 8 条，本 PR 补第 9–12 条（反馈命令、🔕 时限、降档计法、内部键），待 B、D、E 评审。要点：`comfort_log` 加 `trigger` 列，自评回应不占每日名额；
   降级时不主动关怀；持续按窗口数计；时段与分组、模板放宽顺序；重试时限 5 秒；勿扰先做全屏与默认应用；工具栏小圆点；新增 `care.level`。
@@ -114,6 +122,8 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 - 出网日志写库走 `Mutex<Db>`，和感知任务抢同一把锁；`DbWriter`（C-01 剩余）接入后改走单写线程。
 - `ai_usage_today` 只列网关自己计数的 Jev、大模型、对话、改写四类；日程初筛（C-05）和周信（C-10）由各自服务计数，做完再加。
 - 暖心话目前只有负面自评会真正说出来：主动关怀等 Jev 接进 `Sense`（B）。
+- 休息提醒（B-08）的勿扰现在只看前台全屏，没有读 `care.dnd_apps`；ADR 0019 第 6 条建议共用这个列表，`domain::dnd::is_dnd_app` 可直接用，等 B 决定。
+- 设置值列表的重复按 ASCII 大小写判断：`Zoom.exe` 与 `ZOOM.EXE` 算重复，非 ASCII 的进程名（如 `企业微信.exe`）大小写不折叠，Windows 上也基本不会出现。
 - 暖心话服务按总线顺序处理事件，生成一句话（最长约 8 秒）期间到来的窗口排队，总线容量 1024，不会丢；只影响触发时刻的计数，不影响结果。
 - 🔕 与降档时间存在 `settings` 表的内部键（`care.muted_until`、`care.reduced_ts`），登记在 `settings::INTERNAL_KEYS`；E 做导出导入时只处理 `KEYS` 里的键（ADR 0015 第 12 条）。B 的 `baseline.reset_ts`（#25）合并后也要登记进去。
 - 降档按“那句暖心话的日期”归天：今天才给昨天的暖心话点 👎，算昨天的反馈。
@@ -122,7 +132,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 ## 6. 下一步（按优先级）
 
-1. 与 D 商定列表 / 时间段类设置值（`care.dnd_apps`、`care.quiet_hours`、`ai.daily_caps`），一次扩好设置契约，再补上安静时段与自定义勿扰应用（C-04 最后一块）；
+1. 跟进 ADR 0019 的评审（D、E）；D 做设置页“关怀”“AI 服务”分类时如需改形状，在本 ADR 上改；
 2. C-01 剩余：`DbWriter` 单写线程；
 3. C-07 剩余的 P1（快捷指令、记忆、历史搜索）；日记的危机识别随 C-10；
 4. C-05 日程（P0，W7–W8），连同提醒调度 `scheduler`。
@@ -135,3 +145,4 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 2026-10-04 | C-03 已合并（#21）；C-04 第一部分：暖心话主动关怀与自评回应、迁移 0002、`care.level`、`comfort:new`、ADR 0015 |
 | 2026-10-04 | C-04 第一部分已合并（#27）；C-04 第二部分：暖心话反馈（👍 / 👎 / 🔕）、自动降档、`care:reduced`、内部键 `INTERNAL_KEYS`，ADR 0015 补第 9–12 条 |
 | 2026-10-05 | C-07 对话（P0 部分）与 C-08 危机安全的对话部分、D-06 对话窗口第一版，ADR 0018 |
+| 2026-10-05 | C-07/C-08 已合并（#40）；设置值扩展（列表、整数、格式文本）、`care.dnd_apps` / `care.quiet_hours` 接进暖心话、`safety.school_phone`、`ai.cap.*` 接进网关，ADR 0019 |
