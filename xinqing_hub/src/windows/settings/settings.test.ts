@@ -122,7 +122,7 @@ describe('设置中心', () => {
     const w = mount(App)
     await flushPromises()
     const nav = w.findAll('nav button')
-    expect(nav.map((b) => b.text())).toEqual(['输入法', '外观', 'AI 服务', '隐私与关于'])
+    expect(nav.map((b) => b.text())).toEqual(['输入法', '外观', '关怀', 'AI 服务', '隐私与关于'])
     expect(nav[0]!.attributes('aria-current')).toBe('page')
     expect(w.find('h1').text()).toBe('输入法')
   })

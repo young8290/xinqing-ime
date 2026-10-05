@@ -1,17 +1,34 @@
 <script setup lang="ts">
 // 求助卡片（05 FR-SAF-02）：固定文案，存在本地，断网照常显示。固定在对话窗口顶部；点“我现在是安全的”后折叠成一行，
 // 本次会话内仍可见、不可移除。电话号码可以一键复制。“我说的不是这个意思”（FR-SAF-06）只在安全模式下出现。
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { t } from '@/i18n'
+import { useSettingsStore } from '@/stores/settings'
 
 const props = defineProps<{ collapsed: boolean; dismissed: boolean }>()
 const emit = defineEmits<{ safe: []; expand: []; misread: [] }>()
 
-/** 学校心理中心电话的设置项还没有（设置键注册表暂无文本类型），先显示“可在设置中添加”。 */
-const lines = computed(() => t('safety.card', { school_phone: t('safety.school_phone_empty') }).split('\n'))
-const NUMBERS = ['12356', '110', '120'] as const
+// 学校心理中心电话来自设置“关怀”（safety.school_phone，FR-SAF-03）；没填时显示“可在设置中添加”。
+// 设置读不到（后端没起来）也照常显示卡片，只是少这一个号码。
+const settings = useSettingsStore()
+const schoolPhone = computed(() => {
+  const v = settings.values['safety.school_phone']
+  return typeof v === 'string' ? v : ''
+})
+const lines = computed(() =>
+  t('safety.card', { school_phone: schoolPhone.value || t('safety.school_phone_empty') }).split('\n'),
+)
+const numbers = computed(() => ['12356', '110', '120', ...(schoolPhone.value ? [schoolPhone.value] : [])])
 const copied = ref<string | null>(null)
 const learnMore = ref(false)
+
+onMounted(async () => {
+  try {
+    await settings.init(['safety.school_phone'])
+  } catch (e) {
+    console.warn('读取学校心理中心电话失败', e)
+  }
+})
 
 async function copyNumber(n: string): Promise<void> {
   try {
@@ -34,7 +51,7 @@ async function copyNumber(n: string): Promise<void> {
       <li v-for="(l, i) in lines.slice(1)" :key="i">{{ l }}</li>
     </ul>
     <div class="numbers">
-      <button v-for="n in NUMBERS" :key="n" class="compact" @click="copyNumber(n)">
+      <button v-for="n in numbers" :key="n" class="compact" @click="copyNumber(n)">
         {{ copied === n ? t('safety.copied', { number: n }) : t('safety.copy_number', { number: n }) }}
       </button>
     </div>
