@@ -570,7 +570,13 @@ mod tests {
         assert!(full.contains("语气轻快"));
         assert!(full.contains("用户今天的大致状态：下午平稳，今天已输入 2 小时"));
         assert!(full.contains("用户请你记住的事：下周三考英语；养了一只猫叫团子"));
-        let safe = p.system(true, Style::Lively, ChatMode::Vent, Some("x"), &["y".into()]);
+        let safe = p.system(
+            true,
+            Style::Lively,
+            ChatMode::Vent,
+            Some("x"),
+            &["y".into()],
+        );
         assert!(safe.contains("你现在安全吗"));
         assert!(!safe.contains("语气轻快"), "安全模式忽略风格（FR-CHT-10）");
         assert!(!safe.contains("只倾听"), "安全模式忽略对话方式（ADR 0021）");
@@ -580,10 +586,7 @@ mod tests {
     #[test]
     fn chat_modes_append_after_p_chat_and_carry_version() {
         let p = ChatPrompts::load(&dirs()).unwrap();
-        assert_eq!(
-            p.ver(false, ChatMode::Vent),
-            "P-CHAT v1 + P-CHAT-VENT v1"
-        );
+        assert_eq!(p.ver(false, ChatMode::Vent), "P-CHAT v1 + P-CHAT-VENT v1");
         assert_eq!(
             p.ver(false, ChatMode::Organize),
             "P-CHAT v1 + P-CHAT-ORGANIZE v1"

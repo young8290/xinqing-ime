@@ -123,7 +123,11 @@ pub fn chat_get_messages(
 /// 还没有会话时不调这个，在 `chat_send` 里带上 `mode`。“写成情绪日记”“陪我呼吸”是窗口的本地动作。
 #[tauri::command]
 #[specta::specta]
-pub fn chat_set_mode(chat: State<'_, Chat>, session_id: u32, mode: ChatMode) -> Result<(), UiError> {
+pub fn chat_set_mode(
+    chat: State<'_, Chat>,
+    session_id: u32,
+    mode: ChatMode,
+) -> Result<(), UiError> {
     Ok(service(&chat)?.set_mode(i64::from(session_id), mode)?)
 }
 

@@ -1137,9 +1137,15 @@ mod tests {
             .unwrap();
         rt.block_on(async {
             let e = env(false);
-            assert!(matches!(e.svc.send(None, "   ", None), Err(ChatError::Empty)));
+            assert!(matches!(
+                e.svc.send(None, "   ", None),
+                Err(ChatError::Empty)
+            ));
             let long = "字".repeat(chat::MAX_INPUT_CHARS + 1);
-            assert!(matches!(e.svc.send(None, &long, None), Err(ChatError::TooLong)));
+            assert!(matches!(
+                e.svc.send(None, &long, None),
+                Err(ChatError::TooLong)
+            ));
             assert!(matches!(
                 e.svc.send(Some(99), "你好", None),
                 Err(ChatError::NoSession)
