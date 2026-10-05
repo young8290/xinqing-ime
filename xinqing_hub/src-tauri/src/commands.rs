@@ -43,14 +43,24 @@ pub fn get_status(state: State<'_, AppState>) -> Result<StatusSnapshot, UiError>
     Ok(state.status())
 }
 
-/// 导出用户数据（FR-DAT-03）。路径由前端文件选择器提供；导出完成后返回实际写入的路径。
+/// 导出用户数据（FR-DAT-03），写到前端文件选择器给的 `path`（已存在则覆盖）。
+/// 1 年数据量要几秒，放进 `spawn_blocking`，不占主线程；导出期间数据库锁一直被占着。
 #[tauri::command]
 #[specta::specta]
-pub fn data_export(state: State<'_, AppState>, path: String) -> Result<String, UiError> {
-    let destination = std::path::PathBuf::from(&path);
-    export::export(&state.db(), &destination, HUB_VERSION, chrono::Local::now())
-        .map(|_| path)
-        .map_err(|e| UiError::internal("data.export", e))
+pub async fn data_export(app: AppHandle, path: String) -> Result<(), UiError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        export::export(
+            &state.db(),
+            std::path::Path::new(&path),
+            HUB_VERSION,
+            chrono::Local::now(),
+        )
+    })
+    .await
+    .map_err(|e| UiError::internal("data.export.join", e))?
+    .map(|_| ())
+    .map_err(|e| UiError::internal("data.export", e))
 }
 
 /// 状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；

@@ -7,8 +7,11 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	getStatus: () => typedError<StatusSnapshot, UiError>(__TAURI_INVOKE("get_status")),
-	/**  导出用户数据（FR-DAT-03）。路径由前端文件选择器提供；导出完成后返回实际写入的路径。 */
-	dataExport: (path: string) => typedError<string, UiError>(__TAURI_INVOKE("data_export", { path })),
+	/**
+	 *  导出用户数据（FR-DAT-03），写到前端文件选择器给的 `path`（已存在则覆盖）。
+	 *  1 年数据量要几秒，放进 `spawn_blocking`，不占主线程；导出期间数据库锁一直被占着。
+	 */
+	dataExport: (path: string) => typedError<null, UiError>(__TAURI_INVOKE("data_export", { path })),
 	/**
 	 *  状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；
 	 *  带上时是看板时间线上那个状态点的解释，记录不存在或窗口已清理时为 `null`。
