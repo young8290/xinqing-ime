@@ -317,6 +317,17 @@ pub const KEYS: &[KeySpec] = &[
         kind: Kind::Choice(&["30", "90", "365", "permanent"]),
         default: || "90".into(),
     },
+    // 晚间小结（FR-REV-01）：开关与时刻（21:00–23:30，每半小时一档）
+    KeySpec {
+        key: "review.evening.enabled",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
+    KeySpec {
+        key: "review.evening.time",
+        kind: Kind::Choice(crate::domain::evening::TIMES),
+        default: || "22:30".into(),
+    },
     KeySpec {
         key: "dev.mode",
         kind: Kind::Bool,
@@ -348,6 +359,8 @@ pub const INTERNAL_KEYS: &[&str] = &[
     crate::domain::comfort_feedback::REDUCED_TS_KEY,
     // 上次“重置基线”的时间（Unix 毫秒，B-04，ADR 0014）
     crate::domain::features::persist::RESET_KEY,
+    // 上一次出晚间小结是哪一天的晚上（C-10，ADR 0029）
+    crate::domain::evening::SHOWN_ON_KEY,
 ];
 
 #[derive(Debug, thiserror::Error)]

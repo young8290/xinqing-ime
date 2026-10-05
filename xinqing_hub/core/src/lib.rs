@@ -7,6 +7,7 @@ pub mod bus;
 pub mod care;
 pub mod chat;
 pub mod domain;
+pub mod evening;
 pub mod infra;
 pub mod pipeline;
 pub mod research;
