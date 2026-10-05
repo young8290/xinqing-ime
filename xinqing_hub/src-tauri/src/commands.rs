@@ -45,12 +45,14 @@ pub fn get_status(state: State<'_, AppState>) -> Result<StatusSnapshot, UiError>
 }
 
 /// 导出用户数据（FR-DAT-03），写到前端文件选择器给的 `path`（已存在则覆盖）。
-/// 1 年数据量要几秒，放进 `spawn_blocking`，不占主线程；导出期间数据库锁一直被占着。
+/// 1 年数据量要几秒，放进 `spawn_blocking`，不占主线程。先提交排队中的数据（ADR 0020 第 3 条最多晚 5 秒），
+/// 再在只读连接上导出，导出期间不挡写入。
 #[tauri::command]
 #[specta::specta]
 pub async fn data_export(app: AppHandle, path: String) -> Result<(), UiError> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
+        state.writer().flush();
         export::export(
             &state.db(),
             std::path::Path::new(&path),
