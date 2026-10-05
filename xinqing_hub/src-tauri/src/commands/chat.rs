@@ -192,7 +192,8 @@ pub fn memory_list(state: State<'_, AppState>) -> Result<Vec<MemoryItem>, UiErro
 }
 
 fn validate_memory(content: &str) -> Result<&str, UiError> {
-    chat::memory_entry(content).ok_or_else(|| UiError::new("chat.memory_invalid", "error.memory_invalid"))
+    chat::memory_entry(content)
+        .ok_or_else(|| UiError::new("chat.memory_invalid", "error.memory_invalid"))
 }
 
 /// 记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。

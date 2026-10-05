@@ -879,14 +879,19 @@ mod tests {
     async fn explicit_remember_request_is_offered_for_confirmation_not_saved() {
         let e = env(true);
         e.script(Ok(vec![Some("好的。")]));
-        let sent = e
-            .svc
-            .send(None, "帮我记一下：下周三考英语", None)
-            .unwrap();
+        let sent = e.svc.send(None, "帮我记一下：下周三考英语", None).unwrap();
         e.settle().await;
         assert_eq!(sent.memory_candidate.as_deref(), Some("下周三考英语"));
         // 只是给界面去问，记忆表里还没有（FR-CHT-07 第 4 条：不自动保存）
-        assert!(e.port.db.lock().unwrap().memories_list().unwrap().is_empty());
+        assert!(
+            e.port
+                .db
+                .lock()
+                .unwrap()
+                .memories_list()
+                .unwrap()
+                .is_empty()
+        );
         // 求助卡片出现时不问
         let sent = e.svc.send(None, "记住，我真的不想活了", None).unwrap();
         assert!(sent.safety);
