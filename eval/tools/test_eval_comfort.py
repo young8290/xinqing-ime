@@ -5,7 +5,9 @@ import tempfile
 import unittest
 from argparse import Namespace
 from pathlib import Path
+from unittest import mock
 
+import _eval_common
 import eval_comfort
 
 
@@ -44,14 +46,16 @@ class ComfortEvaluationTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            report, passed = eval_comfort.run(
-                Namespace(
-                    dataset=dataset,
-                    predictions=predictions,
-                    banned_words=Path(eval_comfort.REPO_ROOT) / "hub_templates" / "banned_words.toml",
-                    version="P-COMFORT v1",
+            # 报告写进临时目录，单测不往仓库的 eval/reports/ 里留文件
+            with mock.patch.object(_eval_common, "REPORT_DIR", Path(directory) / "reports"):
+                report, passed = eval_comfort.run(
+                    Namespace(
+                        dataset=dataset,
+                        predictions=predictions,
+                        banned_words=Path(eval_comfort.REPO_ROOT) / "hub_templates" / "banned_words.toml",
+                        version="P-COMFORT v1",
+                    )
                 )
-            )
             self.assertTrue(passed)
             self.assertTrue(report.exists())
             self.assertNotIn("辛苦", report.read_text(encoding="utf-8"))
@@ -72,14 +76,15 @@ class ComfortEvaluationTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            _, passed = eval_comfort.run(
-                Namespace(
-                    dataset=dataset,
-                    predictions=predictions,
-                    banned_words=Path(eval_comfort.REPO_ROOT) / "hub_templates" / "banned_words.toml",
-                    version="P-COMFORT v1",
+            with mock.patch.object(_eval_common, "REPORT_DIR", Path(directory) / "reports"):
+                _, passed = eval_comfort.run(
+                    Namespace(
+                        dataset=dataset,
+                        predictions=predictions,
+                        banned_words=Path(eval_comfort.REPO_ROOT) / "hub_templates" / "banned_words.toml",
+                        version="P-COMFORT v1",
+                    )
                 )
-            )
             self.assertFalse(passed)
 
 
