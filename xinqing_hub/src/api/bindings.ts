@@ -478,8 +478,8 @@ export type SelfWeather =
 /**  🤷 说不上来 */
 "unsure";
 
-/**  设置项的值。只有这三种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"`）。 */
-export type SettingValue = boolean | number | null | string;
+/**  设置项的值。只有这四种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"` / `["22:00-07:00"]`）。 */
+export type SettingValue = boolean | number | null | string | string[];
 
 /**  `settings:changed`：只带键名，窗口自行重新读取。 */
 export type SettingsChanged = {

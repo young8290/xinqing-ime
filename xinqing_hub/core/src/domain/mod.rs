@@ -4,6 +4,7 @@ pub mod chat;
 pub mod comfort;
 pub mod comfort_feedback;
 pub mod consent;
+pub mod dnd;
 pub mod explain;
 pub mod features;
 pub mod feedback;
