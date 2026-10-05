@@ -2,7 +2,7 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（B-03 / B-04：特征与基线的 Python 对拍）
+> 最后更新：2026-10-05（B-09：作息洞察统计与 `daily_summary` 计时列）
 
 ## 1. 任务状态
 
@@ -15,8 +15,8 @@
 | B-05 | 本地规则 R1–R6 | 完成（R1b 除外） | `domain/rules.rs`、`domain/features/typo.rs` | R1b 需要核心在 `comp` 里加 `invalid` 字段（ADR 0008 第 5 条），待 A 决定 |
 | B-06 | 融合与滞回、降级运行 | 完成 | `domain/fusion.rs`、`pipeline.rs`、`sense.rs` | Jev 判断还没接进 `Sense`（等 C 的网关 PR），现在实时路径全部走降级 |
 | B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
-| B-08 | 使用时长与四类休息提醒等（P0） | 第一部分完成（PR 合并后） | 判断 `domain/rest.rs`、服务 `rest.rs`、`infra/store/rest.rs`；外壳 `src-tauri/src/rest.rs`；小组件 `windows/widget/{useRest.ts,RestCard.vue}` | 见第 3.1 节：系统通知、专注时段、`daily_summary` 统计、设置界面 |
-| B-09 | 作息洞察统计 | 未开始 | — | 计划 W9 |
+| B-08 | 使用时长与四类休息提醒等（P0） | 第一部分完成（PR 合并后） | 判断 `domain/rest.rs`、服务 `rest.rs`、`infra/store/rest.rs`；外壳 `src-tauri/src/rest.rs`；小组件 `windows/widget/{useRest.ts,RestCard.vue}` | 见第 3.1 节：系统通知、专注时段、设置界面 |
+| B-09 | 作息洞察统计 | 后端完成（PR 合并后） | 统计 `domain/routine.rs`、写库 `infra/store/summary.rs`；`get_routine(days)` 命令；见第 3.2 节 | 看板周报的折线和数字归 D-07；周信 / 晚间小结引用等 C-10 认领 |
 | B-10 | 演示模式（clock 替换、演示数据库） | 未开始 | `infra/clock.rs` 已有 `Clock` / `ManualClock` 可用 | 计划 W10 |
 | B-11 | E-STATE 评测与报告 | 未开始 | — | 依赖 B-02 的录制数据；`xq-replay --json` 已能输出每个窗口的特征、状态和解释 |
 | （C-10） | 情绪日记、晚间小结、周信 | 未认领 | — | 16 第 3 节建议从 C 移给 B，W1 评审会还没定 |
@@ -29,6 +29,8 @@ xinqing_hub/core/src/
 ├─ domain/rules.rs    R2–R6
 ├─ domain/fusion.rs   融合与滞回、降级、“不准”阈值上调（record_unfit）
 ├─ domain/explain.rs  状态解释（FR-STA-09）
+├─ domain/rest.rs     使用时长与休息提醒（FR-RST）；服务在 rest.rs
+├─ domain/routine.rs  作息洞察与 daily_summary 计时列（FR-REV-03）
 ├─ pipeline.rs        XQP 事件 → 窗口 → 特征 → 规则 → 融合；replay() 供测试和 xq-replay
 ├─ sense.rs           实时感知任务（与外壳之间只走 SensePort）
 └─ bin/xq-replay.rs   离线回放
@@ -64,8 +66,25 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | `reminder_log` 记录用户操作 | FR-RST-08 | 完成：只记点了哪个按钮，不记“显示过” |
 | 小组件隐藏时改用系统通知 | FR-NTF-01 | **未做**，随 D-09 接入；在此之前只有光标旁气泡 |
 | 专注时段 `rest.focus_period` | FR-RST-06 | **未做**：设置键注册表还没有自由文本类型 |
-| `daily_summary` 的 `rests_due` / `rests_done` / 喝水次数 | FR-RST-08 | **未做**，等 B-09 统计时一起做（`Db::reminder_counts` 已有） |
+| `daily_summary` 的 `typing_min` / `rests_due` / `rests_done` / `water` | FR-RST-08 | 完成（随 B-09）：见第 3.2 节 |
 | 设置界面里的 `rest.*` | FR-RST-09 | **未做**：统一设置窗口（D-08）暂缓，目前只能改库里的默认值 |
+
+## 3.2 B-09 作息洞察与 `daily_summary` 计时列
+
+- **写入**：`RestEngine::on_input` / `on_system_idle` 记了新的活跃分钟时返回 `true`，服务调 `RestPort::active_minute`，
+  外壳调 `routine::record_active_minute`：自然日的 `typing_min` 加 1；18:00–次日 06:00 的分钟把“当晚”日期那一行的
+  `last_active_ts` 往后推（只往后推，时钟回拨不会拉前）。凌晨的分钟算前一天晚上，`typing_min` 仍算自然日。
+- **口径**：活跃分钟就是 FR-RST-01 的活跃分钟，包括改用系统空闲计时的时段（无痕且 `rest.count_when_paused` 开着、英文状态、没连输入法）。
+  系统空闲只有“最近一次键鼠操作的时间”，不含按键信息；关掉 `rest.count_when_paused` 则无痕期间不计。
+- **休息提醒计数**：每显示一次 `rests_due` 加 1（点“5 分钟后”再出现会再算一次）；点“已完成”`rests_done` 加 1，喝水提醒的完成同时 `water` 加 1。
+  完成率 = `rests_done / rests_due`（FR-RST-08）。按点击时的自然日记。
+- **读取**：`get_routine(days)` 返回截至最近一个**已经结束**（过了次日 06:00）的晚上共 `days` 晚（1–90），每晚一项（没有记录的为 `null`），
+  `stop_min` 是距当晚日期 0 点的分钟数（18:00 = 1080，次日 01:30 = 1530），可以直接做折线纵轴，跨午夜也连续；
+  `avg_stop_min` 四舍五入到分钟；`late` / `late_nights`：停止时间在 00:00 或之后（00:00 那一分钟已在午夜之后）。
+- **验收**：TC-REV-04 的手算核对在 `domain::routine::tests::one_week_matches_hand_calculation`（注释里列了一周数据和算式），
+  在 Asia/Shanghai、America/Los_Angeles、Australia/Sydney（10-04 夏令时开始）时区下都跑过。
+- **文案**：界面必须写“停止打字时间”，注明“只统计在这台电脑上打字的时间，不等于入睡时间”，不得出现“睡眠质量 / 睡眠监测 / 失眠”（DS-COPY-09）；
+  这部分界面文案在 D-07 里，后端没有给用户看的文字。
 
 ## 4. 关键决定与待评审
 
@@ -95,7 +114,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 
 ## 6. 下一步（按优先级）
 
-1. B-08 剩余：系统通知（随 D-09）、专注时段、`daily_summary` 统计；
+1. B-08 剩余：系统通知（随 D-09）、专注时段（等 C 的自由文本设置类型）；
 2. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`。建议做法：不改 XQP，改为 Hub 在调试构建里读环境变量 `XQ_SIM_BASELINE`（固定基线文件，不读写真实基线）和 `XQ_SIM_START_AT`（演示时钟起点，和 B-10 一起做）；`xq-sim` 收到这两个参数时打印对应的 Hub 启动命令。另一种做法是在 `hello` 里加可选字段，那要先写 ADR，请 A 评审契约。和 A、E 商量后再定；
 3. B-10 演示模式（时钟替换、演示数据库），与上一条的 `--start-at` 一起做。
 
@@ -110,3 +129,4 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-04 | B-04：基线写读 `baseline` 表、启动和 04:00 重算、`baseline_reset` 命令与 ADR 0014；修复 #16 / #17 交叉合并后的前端字段名（#22） |
 | 2026-10-05 | B-08 第一部分：使用时长、四类休息提醒、时机与勿扰、疲劳联动、`reminder_log`、小组件提醒卡片 |
 | 2026-10-05 | B-03 / B-04：窗口切分、特征、基线统计的 Python 参考实现与 Rust 对拍（FR-STA-02/03 验收），CI 校验对拍文件 |
+| 2026-10-05 | B-09：`daily_summary` 的使用时长、停止打字时间、休息提醒计数；作息洞察统计与 `get_routine` 命令（TC-REV-04） |

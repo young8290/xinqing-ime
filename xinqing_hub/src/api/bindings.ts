@@ -42,6 +42,11 @@ export const commands = {
 	 *  之后只用重置以后的窗口，重新进入冷启动（“正在熟悉你的打字习惯”从 0% 开始）。
 	 */
 	baselineReset: () => typedError<null, UiError>(__TAURI_INVOKE("baseline_reset")),
+	/**
+	 *  作息洞察（FR-REV-03，看板周报）：截至最近一个已经结束的晚上共 `days` 晚（1–90）的停止打字时间。
+	 *  界面一律称“停止打字时间”，并注明只统计这台电脑上的打字、不等于入睡时间（DS-COPY-09）。
+	 */
+	getRoutine: (days: number) => typedError<Routine, UiError>(__TAURI_INVOKE("get_routine", { days })),
 	/**  暂停 / 恢复感知（FR-WGT-06 右键菜单）：进行中的窗口作废，并经 XQP 下发给输入法（FR-SEN-06）。 */
 	pauseSet: (on: boolean) => typedError<null, UiError>(__TAURI_INVOKE("pause_set", { on })),
 	settingsGet: (key: string) => typedError<SettingValue, UiError>(__TAURI_INVOKE("settings_get", { key })),
@@ -449,6 +454,30 @@ export type RestDue = {
 
 /**  四类提醒，声明顺序即优先级（高 → 低）。 */
 export type RestKind = "night" | "move" | "eye" | "water";
+
+/**  作息洞察（FR-REV-03）：最近若干晚的停止打字时间、平均停止时间、熬夜天数。 */
+export type Routine = {
+	/**  从早到晚，每晚一项（含没有记录的晚上），最后一项是最近一个已经结束的晚上 */
+	nights: RoutineNight[],
+	/**  有记录的晚上的平均停止时间，单位同 `stop_min`，四舍五入到分钟；一晚都没有时为 `null` */
+	avg_stop_min: number | null,
+	/**  熬夜天数 */
+	late_nights: number,
+	/**  有记录的晚数 */
+	counted_nights: number,
+};
+
+/**  一晚的停止打字时间（`get_routine` 的折线点）。 */
+export type RoutineNight = {
+	/**  当晚日期，本地 `YYYY-MM-DD` */
+	date: string,
+	/**  停止打字时间，Unix 毫秒；这晚 18:00 后没有在这台电脑上打字时为 `null` */
+	stop_ts: number | null,
+	/**  停止打字时间距当晚日期 0 点的分钟数（18:00 = 1080，次日 01:30 = 1530），折线的纵轴 */
+	stop_min: number | null,
+	/**  晚于 00:00 */
+	late: boolean,
+};
 
 /**  会话的安全状态，存在 `chat_session.safe_mode`（ADR 0018 第 3 条）。 */
 export type SafeMode = 

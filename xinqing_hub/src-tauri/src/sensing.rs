@@ -153,7 +153,11 @@ fn load_pipeline() -> anyhow::Result<StatePipeline> {
 /// 启动时重算一次基线（FR-STA-03 第 4 条）：关机期间错过的 04:00 也能补上，冷启动进度也从库里接上。
 fn recompute_baseline(app: &AppHandle, p: &mut StatePipeline) {
     let now = chrono::Utc::now().timestamp_millis();
-    match persist::recompute(&app.state::<AppState>().db(), now) {
+    match app
+        .state::<AppState>()
+        .writer()
+        .write_sync(|db| persist::recompute(db, now))
+    {
         Ok(stats) => p.baseline_mut().apply(&stats),
         Err(e) => eprintln!("重算基线失败，先用出厂默认值：{e}"),
     }
@@ -200,22 +204,19 @@ impl SensePort for ShellPort {
     fn save_window(&self, rec: &WindowRecord<'_>) {
         let state = self.app.state::<AppState>();
         state.set_auto_state(rec.fusion.shown);
-        let db = state.db();
-        let w = rec.window;
-        let saved = db
-            .insert_window(rec.start_ms, rec.end_ms, w.app_cat, &w.features, &w.hints)
-            .and_then(|id| {
-                db.insert_mood_state(
-                    rec.end_ms,
-                    Some(id),
-                    rec.fusion.cand,
-                    rec.fusion.shown,
-                    rec.fusion.source,
-                )
-            });
-        if let Err(e) = saved {
-            eprintln!("写入特征窗口失败：{e}");
-        }
+        // 普通数据，排队批量提交（17 第 2.9 节）；窗口与状态记录在同一个任务里，一起成功或一起丢弃
+        let (start, end) = (rec.start_ms, rec.end_ms);
+        let (app_cat, features, hints) = (
+            rec.window.app_cat,
+            rec.window.features.clone(),
+            rec.window.hints.clone(),
+        );
+        let (cand, shown, source) = (rec.fusion.cand, rec.fusion.shown, rec.fusion.source);
+        state.writer().enqueue("window", move |db| {
+            let id = db.insert_window(start, end, app_cat, &features, &hints)?;
+            db.insert_mood_state(end, Some(id), cand, shown, source)
+                .map(drop)
+        });
     }
 
     fn note(&self, msg: &str) {
@@ -232,7 +233,10 @@ impl SensePort for ShellPort {
 
     fn recompute_baseline(&self, now_ms: i64) -> Option<BaselineStats> {
         let state = self.app.state::<AppState>();
-        match persist::recompute(&state.db(), now_ms) {
+        match state
+            .writer()
+            .write_sync(|db| persist::recompute(db, now_ms))
+        {
             Ok(stats) => {
                 if let Some(sensing) = self.app.try_state::<Sensing>() {
                     sensing.apply_baseline(&stats);

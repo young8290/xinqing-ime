@@ -6,10 +6,12 @@
 
 use std::sync::Arc;
 
+use chrono::{DateTime, Local, TimeZone};
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::sync::mpsc;
 use xinqing_hub_core::domain::rest::{Due, KindCfg, RestAction, RestConfig, RestKind, parse_hhmm};
+use xinqing_hub_core::domain::routine;
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::rest::{RestCmd, RestPort, RestService};
@@ -108,6 +110,13 @@ impl RestPort for ShellPort {
             text: tip.into(),
             ms: TIP_MS,
         });
+        let now = Local::now();
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("daily_summary", move |db| {
+                routine::record_rest(db, now, true, false)
+            });
         let ev = RestDue {
             kind: due.kind,
             tired: due.tired,
@@ -118,14 +127,31 @@ impl RestPort for ShellPort {
     }
 
     fn log(&self, ts: i64, kind: RestKind, action: RestAction) {
-        if let Err(e) =
-            self.app
-                .state::<AppState>()
-                .db()
-                .reminder_insert(ts, kind.as_str(), action.as_str())
-        {
-            eprintln!("写入休息提醒记录失败：{e}");
-        }
+        // 普通数据，排队批量提交（ADR 0020）；提醒记录与每日汇总在同一个任务里
+        let water = kind == RestKind::Water;
+        let local = (action == RestAction::Done)
+            .then(|| Local.timestamp_millis_opt(ts).single())
+            .flatten();
+        let (kind, action) = (kind.as_str(), action.as_str());
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("reminder_log", move |db| {
+                db.reminder_insert(ts, kind, action)?;
+                if let Some(local) = local {
+                    routine::record_rest(db, local, false, water)?;
+                }
+                Ok(())
+            });
+    }
+
+    fn active_minute(&self, local: DateTime<Local>) {
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("daily_summary", move |db| {
+                routine::record_active_minute(db, local)
+            });
     }
 
     fn note(&self, msg: &str) {

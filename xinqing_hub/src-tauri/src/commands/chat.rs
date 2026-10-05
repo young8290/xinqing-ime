@@ -175,7 +175,9 @@ pub fn chat_copy(chat: State<'_, Chat>, message_id: u32) -> Result<String, UiErr
 #[tauri::command]
 #[specta::specta]
 pub fn chat_delete(state: State<'_, AppState>, session_id: u32) -> Result<(), UiError> {
-    state.db().chat_delete(Some(i64::from(session_id)))?;
+    state
+        .writer()
+        .write_sync(|db| db.chat_delete(Some(i64::from(session_id))))?;
     Ok(())
 }
 
@@ -183,7 +185,7 @@ pub fn chat_delete(state: State<'_, AppState>, session_id: u32) -> Result<(), Ui
 #[tauri::command]
 #[specta::specta]
 pub fn chat_delete_all(state: State<'_, AppState>) -> Result<(), UiError> {
-    state.db().chat_delete(None)?;
+    state.writer().write_sync(|db| db.chat_delete(None))?;
     Ok(())
 }
 

@@ -20,7 +20,9 @@ pub fn comfort_feedback(
     id: u32,
     verdict: ComfortVerdict,
 ) -> Result<(), UiError> {
-    let out = comfort_feedback::record(&state.db(), i64::from(id), verdict, chrono::Local::now())?;
+    let out = state.writer().write_sync(|db| {
+        comfort_feedback::record(db, i64::from(id), verdict, chrono::Local::now())
+    })?;
     if let Some(level) = out.reduced_to {
         let changed = SettingsChanged {
             key: "care.level".into(),
