@@ -148,7 +148,7 @@ pub struct GatewayConfig {
     /// 没配置的一侧所有请求都返回 `ModelUnavailable`，领域服务走降级路径
     pub jev: Option<JevConfig>,
     pub llm: Option<LlmConfig>,
-    /// 每日预算上限的覆盖值（FR-AIG-07，设置 `ai.daily_caps`）
+    /// 每日预算上限的覆盖值（FR-AIG-07，设置 `ai.cap.*`，外壳在启动和改设置时用 `set_cap` 覆盖）
     pub caps: Vec<(BudgetKind, u32)>,
 }
 

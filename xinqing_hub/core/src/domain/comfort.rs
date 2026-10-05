@@ -28,8 +28,6 @@ pub const MIN_HAN: usize = 6;
 pub const MAX_HAN: usize = 30;
 /// “简洁”风格从温柔模板里选不超过这么多字的句子（comfort.toml 文件头）。
 pub const BRIEF_MAX_HAN: usize = 15;
-/// FR-CMF-01 第 5 条的默认勿扰应用（小写比较）。PowerPoint 放映属于全屏，由外壳的全屏探测覆盖。
-pub const DND_APPS: &[&str] = &["wemeetapp.exe", "zoom.exe", "ms-teams.exe"];
 
 /// 主动关怀频率（设置 `care.level`，FR-CMF-06）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -317,12 +315,6 @@ impl Trigger {
 
 fn minutes(ms: i64) -> u32 {
     u32::try_from(ms.max(0) / 60_000).unwrap_or(u32::MAX)
-}
-
-/// 应用是否在默认勿扰列表里（忽略大小写）。
-pub fn is_dnd_app(app: &str) -> bool {
-    let a = app.to_lowercase();
-    DND_APPS.iter().any(|d| *d == a)
 }
 
 /// 负面自评对应的状态（FR-STA-10 第 2 条）；其余自评不回应。
@@ -698,9 +690,7 @@ mod tests {
     }
 
     #[test]
-    fn dnd_apps_and_self_report_mapping() {
-        assert!(is_dnd_app("WeMeetApp.exe"));
-        assert!(!is_dnd_app("WeChat.exe"));
+    fn self_report_mapping() {
         assert_eq!(self_report_state(SelfWeather::Rain), Some(MoodState::Low));
         assert_eq!(self_report_state(SelfWeather::Sunny), None);
         assert_eq!(self_report_state(SelfWeather::Unsure), None);

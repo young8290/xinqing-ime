@@ -75,6 +75,14 @@ impl ShellPort {
         let v = settings::get(&state.db(), key).ok()?;
         v.as_str().map(str::to_string)
     }
+
+    fn list(&self, key: &str) -> Vec<String> {
+        let state = self.app.state::<AppState>();
+        settings::get(&state.db(), key)
+            .ok()
+            .and_then(|v| v.as_list().map(<[String]>::to_vec))
+            .unwrap_or_default()
+    }
 }
 
 impl ComfortPort for ShellPort {
@@ -93,6 +101,14 @@ impl ComfortPort for ShellPort {
 
     fn dnd(&self) -> bool {
         crate::fullscreen::foreground_fullscreen()
+    }
+
+    fn dnd_apps(&self) -> Vec<String> {
+        self.list("care.dnd_apps")
+    }
+
+    fn quiet_hours(&self) -> Vec<String> {
+        self.list("care.quiet_hours")
     }
 
     fn muted_until(&self) -> Option<i64> {
