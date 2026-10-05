@@ -5,6 +5,7 @@
 
 pub mod bus;
 pub mod care;
+pub mod chat;
 pub mod domain;
 pub mod infra;
 pub mod pipeline;

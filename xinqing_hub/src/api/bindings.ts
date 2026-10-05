@@ -69,6 +69,26 @@ export const commands = {
 	 *  这句话已被清理时什么也不做。
 	 */
 	comfortFeedback: (id: number, verdict: ComfortVerdict) => typedError<null, UiError>(__TAURI_INVOKE("comfort_feedback", { id, verdict })),
+	chatListSessions: () => typedError<ChatSessionItem[], UiError>(__TAURI_INVOKE("chat_list_sessions")),
+	/**  一个会话的消息，从旧到新。 */
+	chatGetMessages: (sessionId: number) => typedError<ChatMessageItem[], UiError>(__TAURI_INVOKE("chat_get_messages", { sessionId })),
+	/**
+	 *  发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
+	 *  异步命令：回复在 tokio 运行时里的后台任务中生成。
+	 */
+	chatSend: (sessionId: number | null, text: string) => typedError<ChatSent, UiError>(__TAURI_INVOKE("chat_send", { sessionId, text })),
+	/**  “重试”：为会话最后一条用户消息重新生成回复（FR-CHT-04 第 2 条）。 */
+	chatRetry: (sessionId: number) => typedError<ChatSent, UiError>(__TAURI_INVOKE("chat_retry", { sessionId })),
+	/**  “停止生成”（FR-CHT-04 第 3 条）。已生成的部分照常保存，经 `chat:done`（`stopped = true`）推送。 */
+	chatStop: (requestId: number) => typedError<null, UiError>(__TAURI_INVOKE("chat_stop", { requestId })),
+	/**  复制一条消息的文本：AI 回复末尾附加“（内容由 AI 生成）”（FR-CHT-04 第 5 条）。剪贴板由前端写。 */
+	chatCopy: (messageId: number) => typedError<string, UiError>(__TAURI_INVOKE("chat_copy", { messageId })),
+	/**  删除一个会话（FR-CHT-08）。 */
+	chatDelete: (sessionId: number) => typedError<null, UiError>(__TAURI_INVOKE("chat_delete", { sessionId })),
+	/**  删除全部对话（FR-CHT-08）。 */
+	chatDeleteAll: () => typedError<null, UiError>(__TAURI_INVOKE("chat_delete_all")),
+	/**  求助卡片上的“我说的不是这个意思”（FR-SAF-06）：本会话回到普通模式、词表阈值提高，求助信息折叠保留。 */
+	safetyDismiss: (sessionId: number) => typedError<null, UiError>(__TAURI_INVOKE("safety_dismiss", { sessionId })),
 	/**  全部已登记的输入法配置键与类型，设置页据此生成表单。 */
 	imeSchema: () => typedError<ImeField[], UiError>(__TAURI_INVOKE("ime_schema")),
 	/**  整份合并后的输入法配置。 */
@@ -80,10 +100,14 @@ export const commands = {
 /** Events */
 export const events = {
 	careReduced: makeEvent<CareReduced>("care:reduced"),
+	chatDelta: makeEvent<ChatDelta>("chat:delta"),
+	chatDone: makeEvent<ChatDone>("chat:done"),
+	chatError: makeEvent<ChatErrorEvent>("chat:error"),
 	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
 	restDue: makeEvent<RestDue>("rest:due"),
+	safetyTriggered: makeEvent<SafetyTriggered>("safety:triggered"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
 	statusChanged: makeEvent<StatusChanged>("status:changed"),
@@ -132,6 +156,72 @@ export type BudgetKind =
  */
 export type CareReduced = {
 	level: string,
+};
+
+/**  `chat:delta`：对话回复的一段增量（FR-CHT-04 第 1 条），按到达顺序拼接显示。 */
+export type ChatDelta = {
+	request_id: number,
+	text_delta: string,
+};
+
+/**
+ *  `chat:done`：回复结束。`text` 是最终写库的全文，校验替换或截断过时与增量拼出来的不同，界面以它为准；
+ *  `ai_generated` 为假（固定回应、替换句）时不显示 `AI 生成` 标签。用户停止生成且一个字都没有时 `message_id` 为 `null`。
+ */
+export type ChatDone = {
+	request_id: number,
+	session_id: number,
+	message_id: number | null,
+	text: string,
+	ai_generated: boolean,
+	stopped: boolean,
+};
+
+/**
+ *  `chat:error`：没拿到回复（超时、模型不可用、今日额度用完）。用户消息已保存，界面移除半截回复，
+ *  显示 `chat.stuck` 或 `chat.daily_cap` 和“重试”（`chat_retry`）。
+ */
+export type ChatErrorEvent = {
+	request_id: number,
+	session_id: number,
+	reason: ChatFailure,
+};
+
+export type ChatFailure = 
+/**  超时、模型不可用、网络等：“晴晴有点卡，稍后再试” */
+"stuck" | 
+/**  今日对话额度用完（FR-AIG-07）：“今天聊了很多啦，明天继续？” */
+"daily_cap";
+
+export type ChatMessageItem = {
+	id: number,
+	/**  `user` / `assistant` / `system_notice` */
+	role: string,
+	content: string,
+	ts: number | null,
+	/**  为真时显示 `AI 生成` 标签（FR-CHT-04 第 4 条） */
+	ai_generated: boolean,
+};
+
+/**  `chat_send` / `chat_retry` 的结果；回复经 `chat:*` 事件推送。 */
+export type ChatSent = {
+	request_id: number,
+	session_id: number,
+	user_message_id: number | null,
+	/**  开了新会话（没传会话，或上一条消息已超过 6 小时） */
+	new_session: boolean,
+	/**  本地词表命中：立即显示求助卡片 */
+	safety: boolean,
+};
+
+/**  左侧抽屉的一行（FR-CHT-02 第 3 条）。时间戳是 Unix 毫秒（前端绑定不导出 i64）。 */
+export type ChatSessionItem = {
+	id: number,
+	title: string,
+	created_ts: number | null,
+	last_ts: number | null,
+	/**  `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行） */
+	safe_mode: SafeMode,
 };
 
 /**
@@ -333,6 +423,23 @@ export type RestDue = {
 
 /**  四类提醒，声明顺序即优先级（高 → 低）。 */
 export type RestKind = "night" | "move" | "eye" | "water";
+
+/**  会话的安全状态，存在 `chat_session.safe_mode`（ADR 0018 第 3 条）。 */
+export type SafeMode = 
+/**  普通模式 */
+"off" | 
+/**  触发过危机识别：用 P-CHAT-SAFE，求助卡片固定在窗口顶部（FR-SAF-02/03） */
+"on" | 
+/**  用户点了“我说的不是这个意思”：回到普通模式、词表阈值提高，求助信息仍折叠显示一行（FR-SAF-06） */
+"dismissed";
+
+/**
+ *  `safety:triggered`：危机识别命中（FR-SAF-01）。对话窗口立即在顶部固定显示求助卡片（FR-SAF-02），
+ *  本会话切换为安全模式。
+ */
+export type SafetyTriggered = {
+	session_id: number,
+};
 
 /**
  *  `self_report:changed`：用户刚自评（FR-STA-10）。到 `until_ts` 之前小组件显示“你说的：…”；
