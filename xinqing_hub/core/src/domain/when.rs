@@ -44,8 +44,9 @@ static CLOCK: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 static RANGE: LazyLock<Regex> = LazyLock::new(|| Regex::new("^\\s*(?:到|至|-|~|—)\\s*").unwrap());
-static PERIOD: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("凌晨|早上|早晨|上午|中午|下午|傍晚|晚上|夜里|今晚|明晚|明早|今早").unwrap());
+static PERIOD: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new("凌晨|早上|早晨|上午|中午|下午|傍晚|晚上|夜里|今晚|明晚|明早|今早").unwrap()
+});
 static DEADLINE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         "截止|DDL|ddl|[Dd]eadline|之前.{0,8}(?:交|提交|完成)|[号日天周一二三四五六七八九十点0-9]前.{0,8}(?:交|提交|完成)",
@@ -58,7 +59,12 @@ fn number(s: &str) -> Option<u32> {
     if let Ok(n) = s.parse() {
         return Some(n);
     }
-    let digit = |c: char| "零一二三四五六七八九".find(c).map(|i| (i / 3) as u32).or((c == '两').then_some(2));
+    let digit = |c: char| {
+        "零一二三四五六七八九"
+            .find(c)
+            .map(|i| (i / 3) as u32)
+            .or((c == '两').then_some(2))
+    };
     let chars: Vec<char> = s.chars().collect();
     match chars.as_slice() {
         ['十'] => Some(10),
@@ -103,10 +109,15 @@ fn clock(sentence: &str) -> Option<(NaiveTime, Option<NaiveTime>, Option<&str>)>
             };
             (number(h.as_str())?, m)
         } else {
-            (c.get(7)?.as_str().parse().ok()?, c.get(8)?.as_str().parse().ok()?)
+            (
+                c.get(7)?.as_str().parse().ok()?,
+                c.get(8)?.as_str().parse().ok()?,
+            )
         };
         match period {
-            Some("下午" | "傍晚" | "晚上" | "夜里" | "今晚" | "明晚") if h <= 11 => h += 12,
+            Some("下午" | "傍晚" | "晚上" | "夜里" | "今晚" | "明晚") if h <= 11 => {
+                h += 12
+            }
             Some("中午") if (1..=5).contains(&h) => h += 12,
             _ => {}
         }
@@ -145,7 +156,8 @@ fn date_of(sentence: &str, now: NaiveDateTime, time: Option<NaiveTime>) -> Optio
             Some("下下") => Some(in_week(today, 2, w)),
             _ => {
                 // 无修饰：今天之后最近的周 X；今天就是周 X 且时刻未过取今天
-                let ahead = (w.num_days_from_monday() + 7 - today.weekday().num_days_from_monday()) % 7;
+                let ahead =
+                    (w.num_days_from_monday() + 7 - today.weekday().num_days_from_monday()) % 7;
                 let passed = time.is_some_and(|t| t <= now.time());
                 let ahead = if ahead == 0 && passed { 7 } else { ahead };
                 Some(today + Duration::days(ahead as i64))
@@ -155,7 +167,10 @@ fn date_of(sentence: &str, now: NaiveDateTime, time: Option<NaiveTime>) -> Optio
     if let Some(c) = MONTH_DAY.captures(sentence) {
         let (m, d) = match (c.get(1), c.get(2)) {
             (Some(m), Some(d)) => (number(m.as_str())?, number(d.as_str())?),
-            _ => (c.get(3)?.as_str().parse().ok()?, c.get(4)?.as_str().parse().ok()?),
+            _ => (
+                c.get(3)?.as_str().parse().ok()?,
+                c.get(4)?.as_str().parse().ok()?,
+            ),
         };
         // 今年已经过去 → 明年同日（补充规则 1）
         let this_year = NaiveDate::from_ymd_opt(today.year(), m, d)?;
@@ -250,7 +265,10 @@ mod tests {
     #[test]
     fn ranges_periods_and_rollover() {
         let w = parse("10.20下午两点到四点期中考试", now());
-        assert_eq!((w.date, w.time, w.end_time), (d(10, 20), t(14, 0), t(16, 0)));
+        assert_eq!(
+            (w.date, w.time, w.end_time),
+            (d(10, 20), t(14, 0), t(16, 0))
+        );
         assert_eq!(
             parse("1月8号期末考试", now()).date,
             NaiveDate::from_ymd_opt(2027, 1, 8)

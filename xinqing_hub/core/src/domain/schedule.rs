@@ -122,7 +122,12 @@ fn checked_title(title: Option<String>, max: usize) -> Result<String, ExtractErr
     if title.is_empty() {
         return Err(ExtractError::Title);
     }
-    Ok(title.chars().take(max).collect::<String>().trim_end().to_owned())
+    Ok(title
+        .chars()
+        .take(max)
+        .collect::<String>()
+        .trim_end()
+        .to_owned())
 }
 
 /// V4：标题和地点取自用户原句，原句里本来就有的词（“按时吃药”）不拦，只拦模型自己带进来的（ADR 0023）。
@@ -159,7 +164,6 @@ fn format_date(date: NaiveDate) -> String {
 fn format_time(time: NaiveTime) -> String {
     time.format("%H:%M").to_string()
 }
-
 
 /// 校验并规范化 P-SCHEDULE 的输出（08 第 5 节 V1～V4、FR-SCH-03、FR-SCH-04 校验第 1～5 条）。
 /// `sentence` 是送去抽取的那一句（只在内存里用，不落库），`now` 是本地时间；`has_event=false` 返回 `Ok(None)`。
@@ -232,8 +236,8 @@ pub fn validate_schedule_json(
 
     let mut flags = Vec::new();
     // 只在模型给了值、而最后用的不是它时标 `adjusted`；模型留空由代码补上的不算
-    let adjusted = model_date.is_some_and(|m| date != Some(m))
-        || model_time.is_some_and(|m| time != Some(m));
+    let adjusted =
+        model_date.is_some_and(|m| date != Some(m)) || model_time.is_some_and(|m| time != Some(m));
     if adjusted {
         flags.push(FLAG_ADJUSTED.to_owned());
     }
@@ -859,7 +863,12 @@ mod tests {
             Err(ExtractError::Json)
         );
         assert_eq!(
-            validate_schedule_json(r#"{"has_event":true,"title":"组会"}"#, PLAIN, now(), &banned),
+            validate_schedule_json(
+                r#"{"has_event":true,"title":"组会"}"#,
+                PLAIN,
+                now(),
+                &banned
+            ),
             Err(ExtractError::Shape)
         );
         assert_eq!(
@@ -889,9 +898,12 @@ mod tests {
         let banned = banned();
         let todo = |raw: &str, sentence: &str| validate_todo_json(raw, sentence, now(), &banned);
         assert!(
-            todo(r#"{"is_todo":false,"title":null,"due_date":null}"#, "记得打印简历")
-                .unwrap()
-                .is_none()
+            todo(
+                r#"{"is_todo":false,"title":null,"due_date":null}"#,
+                "记得打印简历"
+            )
+            .unwrap()
+            .is_none()
         );
         let t = todo(
             "```json\n{\"is_todo\":true,\"title\":\" 打印简历 \",\"due_date\":\"2026-10-09\"}\n```",
