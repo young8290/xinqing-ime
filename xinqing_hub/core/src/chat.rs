@@ -169,7 +169,7 @@ impl ChatService {
     }
 
     /// 发一条消息（`chat_send`）。须在 tokio 运行时里调用：回复在后台任务里生成。
-    /// `chat_mode` 不为空时先把（可能是新开的）会话切到这种对话方式，再生成回复（FR-CHT-06，ADR 0021）。
+    /// `chat_mode` 不为空时先把（可能是新开的）会话切到这种对话方式，再生成回复（FR-CHT-06，ADR 0022）。
     pub fn send(
         self: &Arc<Self>,
         session_id: Option<i64>,

@@ -15,7 +15,7 @@ pub struct SessionRow {
     /// 最后一条消息的时间；还没有消息时等于 `created_ts`
     pub last_ts: i64,
     pub safe_mode: SafeMode,
-    /// 快捷指令切换的对话方式（ADR 0021）
+    /// 快捷指令切换的对话方式（ADR 0022）
     pub mode: ChatMode,
 }
 

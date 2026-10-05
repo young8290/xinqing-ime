@@ -84,7 +84,7 @@ export const commands = {
 	chatSetMode: (sessionId: number, mode: ChatMode) => typedError<null, UiError>(__TAURI_INVOKE("chat_set_mode", { sessionId, mode })),
 	/**
 	 *  发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
-	 *  `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0021）。
+	 *  `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0022）。
 	 *  异步命令：回复在 tokio 运行时里的后台任务中生成。
 	 */
 	chatSend: (sessionId: number | null, text: string, mode: 
@@ -221,7 +221,7 @@ export type ChatMessageItem = {
 };
 
 /**
- *  会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0021）。
+ *  会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0022）。
  *  “写成情绪日记”“陪我呼吸”是窗口里的本地动作，不经过这里。
  */
 export type ChatMode = 
@@ -251,7 +251,7 @@ export type ChatSessionItem = {
 	last_ts: number | null,
 	/**  `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行） */
 	safe_mode: SafeMode,
-	/**  快捷指令切换的对话方式（FR-CHT-06，ADR 0021），窗口据此显示“只倾听中”等提示 */
+	/**  快捷指令切换的对话方式（FR-CHT-06，ADR 0022），窗口据此显示“只倾听中”等提示 */
 	mode: ChatMode,
 };
 

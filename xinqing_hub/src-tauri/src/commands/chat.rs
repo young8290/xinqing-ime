@@ -22,7 +22,7 @@ pub struct ChatSessionItem {
     pub last_ts: f64,
     /// `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行）
     pub safe_mode: SafeMode,
-    /// 快捷指令切换的对话方式（FR-CHT-06，ADR 0021），窗口据此显示“只倾听中”等提示
+    /// 快捷指令切换的对话方式（FR-CHT-06，ADR 0022），窗口据此显示“只倾听中”等提示
     pub mode: ChatMode,
 }
 
@@ -132,7 +132,7 @@ pub fn chat_set_mode(
 }
 
 /// 发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
-/// `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0021）。
+/// `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0022）。
 /// 异步命令：回复在 tokio 运行时里的后台任务中生成。
 #[tauri::command]
 #[specta::specta]

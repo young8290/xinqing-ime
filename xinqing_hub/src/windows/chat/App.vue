@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 对话窗口（05 FR-CHT-01/02/04/09，16 D-06）：顶部常驻 AI 说明，危机时固定求助卡片（FR-SAF-02），
 // 左侧抽屉是按日期分组的历史会话，回复逐字显示并带 `AI 生成` 标签，可停止、重试、复制。
-// 快捷指令（FR-CHT-06）：吐槽 / 理一理用 `chatSetMode` 或 `chatSend` 的 `mode` 切换会话的对话方式（ADR 0021），
+// 快捷指令（FR-CHT-06）：吐槽 / 理一理用 `chatSetMode` 或 `chatSend` 的 `mode` 切换会话的对话方式（ADR 0022），
 // 日记与呼吸是窗口本地动作，按钮随后续 PR 补上；记忆（FR-CHT-07）、历史搜索（FR-CHT-08）也是 P1。
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'

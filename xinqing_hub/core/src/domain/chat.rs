@@ -31,7 +31,7 @@ pub const SUMMARY_CHARS: usize = 200;
 /// Q-CRISIS 阈值（08 第 3 节，偏向召回）。
 pub const JEV_CRISIS_THRESHOLD: f64 = 0.5;
 
-/// 会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0021）。
+/// 会话的对话方式（FR-CHT-06 快捷指令里要调用 AI 的两个），存在 `chat_session.mode`（ADR 0022）。
 /// “写成情绪日记”“陪我呼吸”是窗口里的本地动作，不经过这里。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
@@ -228,7 +228,7 @@ impl PromptFile {
 pub struct ChatPrompts {
     chat: PromptFile,
     safe: PromptFile,
-    /// 快捷指令的对话方式：接在 P-CHAT 后面（ADR 0021）
+    /// 快捷指令的对话方式：接在 P-CHAT 后面（ADR 0022）
     vent: PromptFile,
     organize: PromptFile,
 }
@@ -264,7 +264,7 @@ impl ChatPrompts {
         }
     }
 
-    /// 系统提示词。安全模式固定温和语气，不用风格、摘要、记忆和对话方式（FR-CHT-10、ADR 0021）。
+    /// 系统提示词。安全模式固定温和语气，不用风格、摘要、记忆和对话方式（FR-CHT-10、ADR 0022）。
     pub fn system(
         &self,
         safe: bool,
@@ -579,7 +579,7 @@ mod tests {
         );
         assert!(safe.contains("你现在安全吗"));
         assert!(!safe.contains("语气轻快"), "安全模式忽略风格（FR-CHT-10）");
-        assert!(!safe.contains("只倾听"), "安全模式忽略对话方式（ADR 0021）");
+        assert!(!safe.contains("只倾听"), "安全模式忽略对话方式（ADR 0022）");
         assert!(!safe.contains("<!--"));
     }
 
