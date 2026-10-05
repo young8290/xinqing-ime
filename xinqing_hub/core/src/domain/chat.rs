@@ -31,6 +31,54 @@ pub const SUMMARY_CHARS: usize = 200;
 /// Q-CRISIS 阈值（08 第 3 节，偏向召回）。
 pub const JEV_CRISIS_THRESHOLD: f64 = 0.5;
 
+/// 对话窗口的四个快捷指令（FR-CHT-06）。按钮传稳定的 snake_case ID；中文标签只在界面层展示。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shortcut {
+    WriteDiary,
+    Breathe,
+    Vent,
+    Organize,
+}
+
+impl Shortcut {
+    /// 解析前端传来的稳定 ID，同时接受迁移期间可能出现的旧别名。
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim() {
+            "write_diary" | "diary" => Some(Self::WriteDiary),
+            "breathe" | "breathe_1m" => Some(Self::Breathe),
+            "vent" | "just_vent" => Some(Self::Vent),
+            "organize" | "sort_out" => Some(Self::Organize),
+            _ => None,
+        }
+    }
+
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::WriteDiary => "write_diary",
+            Self::Breathe => "breathe",
+            Self::Vent => "vent",
+            Self::Organize => "organize",
+        }
+    }
+
+    /// 需要大模型的两个指令使用固定的不可见引导语，避免把实现细节暴露给用户。
+    pub const fn prompt(self) -> Option<&'static str> {
+        match self {
+            Self::Vent => {
+                Some("接下来请只倾听我。先共情和复述我说的内容，不给建议，不急着解决问题。")
+            }
+            Self::Organize => Some(
+                "请帮我理一理这件事，引导我依次说清：发生了什么、我的感受、我能做的一小步。一次只问一个问题。",
+            ),
+            Self::WriteDiary | Self::Breathe => None,
+        }
+    }
+
+    pub const fn is_local(self) -> bool {
+        matches!(self, Self::WriteDiary | Self::Breathe)
+    }
+}
+
 /// 会话的安全状态，存在 `chat_session.safe_mode`（ADR 0018 第 3 条）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
@@ -444,6 +492,19 @@ mod tests {
             "今天考试没考好 心里有点"
         );
         assert_eq!(title_of("嗨"), "嗨");
+    }
+
+    #[test]
+    fn shortcuts_have_stable_ids_and_prompts() {
+        assert_eq!(Shortcut::parse("write_diary").unwrap().id(), "write_diary");
+        assert_eq!(Shortcut::parse("breathe_1m").unwrap().id(), "breathe");
+        assert_eq!(
+            Shortcut::parse("just_vent").unwrap().prompt(),
+            Shortcut::Vent.prompt()
+        );
+        assert!(Shortcut::Organize.prompt().unwrap().contains("发生了什么"));
+        assert!(Shortcut::Breathe.is_local());
+        assert!(Shortcut::parse("unknown").is_none());
     }
 
     #[test]

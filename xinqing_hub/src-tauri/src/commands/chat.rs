@@ -7,7 +7,7 @@ use serde::Serialize;
 use specta::Type;
 use tauri::State;
 use xinqing_hub_core::chat::{ChatError, ChatService, Sent};
-use xinqing_hub_core::domain::chat::SafeMode;
+use xinqing_hub_core::domain::chat::{SafeMode, Shortcut};
 
 use crate::chat::Chat;
 use crate::error::UiError;
@@ -45,6 +45,15 @@ pub struct ChatSent {
     pub new_session: bool,
     /// 本地词表命中：立即显示求助卡片
     pub safety: bool,
+}
+
+/// 快捷指令的执行契约：本地动作由前端执行，需要 AI 的指令返回隐藏引导语。
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct ChatShortcutResult {
+    pub id: String,
+    /// `open_diary` / `start_breathing` / `chat_prompt`
+    pub action: String,
+    pub prompt: Option<String>,
 }
 
 impl From<Sent> for ChatSent {
@@ -114,6 +123,25 @@ pub fn chat_get_messages(
             ai_generated: m.ai_generated,
         })
         .collect())
+}
+
+/// 处理 FR-CHT-06 的四个快捷指令。日记与呼吸不出网；吐槽与理一理只返回固定引导语，
+/// 由窗口把它作为下一轮对话的隐藏指令接入，不把实现文案当作用户输入写入历史。
+#[tauri::command]
+#[specta::specta]
+pub fn chat_shortcut(shortcut: String) -> Result<ChatShortcutResult, UiError> {
+    let shortcut = Shortcut::parse(&shortcut)
+        .ok_or_else(|| UiError::new("chat.shortcut_unknown", "error.generic"))?;
+    let action = match shortcut {
+        Shortcut::WriteDiary => "open_diary",
+        Shortcut::Breathe => "start_breathing",
+        Shortcut::Vent | Shortcut::Organize => "chat_prompt",
+    };
+    Ok(ChatShortcutResult {
+        id: shortcut.id().to_string(),
+        action: action.to_string(),
+        prompt: shortcut.prompt().map(str::to_string),
+    })
 }
 
 /// 发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。

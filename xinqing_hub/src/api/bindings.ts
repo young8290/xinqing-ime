@@ -73,6 +73,11 @@ export const commands = {
 	/**  一个会话的消息，从旧到新。 */
 	chatGetMessages: (sessionId: number) => typedError<ChatMessageItem[], UiError>(__TAURI_INVOKE("chat_get_messages", { sessionId })),
 	/**
+	 *  处理 FR-CHT-06 的四个快捷指令。日记与呼吸不出网；吐槽与理一理只返回固定引导语，
+	 *  由窗口把它作为下一轮对话的隐藏指令接入，不把实现文案当作用户输入写入历史。
+	 */
+	chatShortcut: (shortcut: string) => typedError<ChatShortcutResult, UiError>(__TAURI_INVOKE("chat_shortcut", { shortcut })),
+	/**
 	 *  发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
 	 *  异步命令：回复在 tokio 运行时里的后台任务中生成。
 	 */
@@ -222,6 +227,14 @@ export type ChatSessionItem = {
 	last_ts: number | null,
 	/**  `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行） */
 	safe_mode: SafeMode,
+};
+
+/**  快捷指令的执行契约：本地动作由前端执行，需要 AI 的指令返回隐藏引导语。 */
+export type ChatShortcutResult = {
+	id: string,
+	/**  `open_diary` / `start_breathing` / `chat_prompt` */
+	action: string,
+	prompt: string | null,
 };
 
 /**

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 对话窗口（05 FR-CHT-01/02/04/09，16 D-06）：顶部常驻 AI 说明，危机时固定求助卡片（FR-SAF-02），
 // 左侧抽屉是按日期分组的历史会话，回复逐字显示并带 `AI 生成` 标签，可停止、重试、复制。
-// 快捷指令（FR-CHT-06）、记忆（FR-CHT-07）、历史搜索（FR-CHT-08）是 P1，随后续 PR 补上。
+// 快捷指令的后端契约由 C-07 提供；按钮和本地动画由窗口层接入。记忆、历史搜索仍是 P1。
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { errorText, t } from '@/i18n'
