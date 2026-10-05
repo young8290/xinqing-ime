@@ -1,11 +1,12 @@
 <script setup lang="ts">
-// 设置中心 · 隐私与关于（07 FR-SET-09，P0）。目前只有“关于”：版本号、非官方分支声明、免责声明、开源许可列表。
-// “隐私”部分（出网记录、导出 / 导入 / 删除、撤回同意、隐私说明全文）随 E 的 FR-DAT 任务补上。
+// 设置中心 · 隐私与关于（07 FR-SET-09，P0）。上半部分“隐私”见 PrivacySection.vue；
+// 下半部分“关于”：版本号、非官方分支声明、免责声明、开源许可列表。
 import { onMounted, ref } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
 import AppLogo from '@/components/AppLogo.vue'
 import { t } from '@/i18n'
 import { licenseEntries } from './licenses'
+import PrivacySection from './PrivacySection.vue'
 
 const version = ref<string | null>(null)
 const licenses = licenseEntries()
@@ -22,6 +23,8 @@ onMounted(async () => {
 <template>
   <section>
     <h1>{{ t('settings.privacy_about') }}</h1>
+
+    <PrivacySection />
 
     <h2>{{ t('about.title') }}</h2>
     <div class="brand">

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings",
+  "description": "只给设置窗口：“导出我的数据”弹系统“另存为”对话框选保存位置（07 FR-SET-09、09 FR-DAT-03）。对话框只把用户选的路径交回前端，读写文件仍由 data_export 命令在 Rust 端完成。",
+  "windows": ["settings"],
+  "permissions": ["dialog:allow-save"]
+}

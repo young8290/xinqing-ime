@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 设置中心（07 FR-SET-01～10，16 D-08）：左侧分类、右侧内容。目前有“输入法”（FR-SET-02，ADR 0016）、“外观”、
-// “关怀”（FR-SET-05）、“AI 服务”（FR-SET-08）和“隐私与关于”（只有“关于”部分）；
+// “关怀”（FR-SET-05）、“AI 服务”（FR-SET-08）和“隐私与关于”（FR-SET-09）；
 // 其余分类随 schema 表单生成器（D-08）补上，顺序按 FR-SET-01。地址栏的 #about 直接打开“隐私与关于”。
 import { ref, type Component } from 'vue'
 import { t, type CopyKey } from '@/i18n'

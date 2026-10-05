@@ -5,23 +5,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { commands, unwrap, type ConsentItem, type ConsentState } from '@/api'
-import { errorText, t, type CopyKey } from '@/i18n'
+import { errorText, t } from '@/i18n'
+import { CONSENT_NUMBER as NUMBER } from '../shared/consent'
 import { requestGreeting } from '../shared/firstRun'
+import NoticeTable from '../shared/NoticeTable.vue'
 import AiStep from './AiStep.vue'
 import PrefsStep from './PrefsStep.vue'
 
 type Step = 'age' | 'minor' | 'notice' | 'consent' | 'enhanced' | 'ai' | 'prefs'
-
-const NUMBER: Record<ConsentItem, string> = {
-  sense: '①',
-  jev_features: '②',
-  schedule: '③',
-  llm_summary: '④',
-  enhanced: '⑤',
-  rewrite: '⑥',
-}
-const NOTICE_ROWS = ['rhythm', 'sentence', 'rewrite', 'summary', 'chat', 'app'] as const
-const noticeKey = (row: string, col: 'what' | 'use' | 'where') => `onboarding.notice.${row}.${col}` as CopyKey
 
 const step = ref<Step>('age')
 const consent = ref<ConsentState | null>(null)
@@ -89,22 +80,7 @@ function close(): void {
 
     <section v-else-if="step === 'notice'">
       <h2>{{ t('onboarding.notice_title') }}</h2>
-      <table class="notice">
-        <thead>
-          <tr>
-            <th scope="col">{{ t('onboarding.notice_col_what') }}</th>
-            <th scope="col">{{ t('onboarding.notice_col_use') }}</th>
-            <th scope="col">{{ t('onboarding.notice_col_where') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in NOTICE_ROWS" :key="row">
-            <td>{{ t(noticeKey(row, 'what')) }}</td>
-            <td>{{ t(noticeKey(row, 'use')) }}</td>
-            <td>{{ t(noticeKey(row, 'where')) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <NoticeTable />
       <p>{{ t('onboarding.third_party') }}</p>
       <p class="muted">{{ t('onboarding.not_medical') }}</p>
       <div class="actions">
@@ -164,22 +140,6 @@ function close(): void {
   gap: var(--xq-sp-3);
   justify-content: flex-end;
   margin-top: var(--xq-sp-5);
-}
-
-.notice {
-  width: 100%;
-  margin-bottom: var(--xq-sp-4);
-  border-collapse: collapse;
-  font-size: var(--xq-fs-sm);
-  line-height: var(--xq-lh-sm);
-}
-
-.notice th,
-.notice td {
-  padding: var(--xq-sp-2);
-  border-bottom: 1px solid var(--xq-border);
-  text-align: left;
-  vertical-align: top;
 }
 
 .consent {

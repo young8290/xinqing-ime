@@ -127,6 +127,8 @@ pub fn run() {
                 eprintln!("打开窗口失败：{e}");
             }
         }))
+        // 系统“另存为”对话框：设置页“导出我的数据”选保存位置（FR-DAT-03）；权限只给设置窗口，见 capabilities/settings.json
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
