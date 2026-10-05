@@ -69,13 +69,15 @@ enabled = true
 # ── 快捷方式：整段缺省即一个都不创建 ─────────────────────────────────────────
 #    target/name 用占位符 {setting_exe}/{main_exe}/{display_name}，安装器运行期按
 #    [app] 字段替换 —— 一份配置对 dev/release 通用。{setting_exe} 未配置时该项自动跳过。
-# 心晴：开始菜单里的“心晴”打开 Hub（11 FR-OPS-01）。Windows 通知要求快捷方式带应用标识
-# （AppUserModelID），安装器的快捷方式段还不支持写这一属性，见 docs/xinqing/handover/A-输入法.md。
+# 心晴：开始菜单里的“心晴”打开 Hub（11 FR-OPS-01）。Windows 通知要求开始菜单里有一个带
+# 应用标识（AppUserModelID）的快捷方式，且 Hub 发通知时用同一个标识。Tauri 用 identifier
+# 作这个标识，故此处必须与 xinqing_hub/src-tauri/tauri.conf.json 的 identifier 逐字一致。
 [[shortcut]]
-target      = "xinqing_hub.exe"
-name        = "心晴"
-location    = "start_menu"
-description = "和晴晴聊聊、看看心情、管理日程"
+target            = "xinqing_hub.exe"
+name              = "心晴"
+location          = "start_menu"
+description       = "和晴晴聊聊、看看心情、管理日程"
+app_user_model_id = "com.xinqing.hub"
 
 [[shortcut]]
 target   = "{setting_exe}"
@@ -86,6 +88,14 @@ location = "start_menu"                   # start_menu | desktop
 target   = "uninstall.exe"
 name     = "卸载 {display_name}"
 location = "start_menu"
+
+# ── 应用运行期自己写的自启动值：卸载时一并删除（11 FR-OPS-02）──────────────────
+#    心晴：Hub 设置里的“登录时后台启动”由 Hub 自己写 HKCU\...\Run，安装器没写过、回执里
+#    没有，不声明的话卸载后会留下一条指向已删 exe 的启动项。安装时只把值名记进回执。
+#    约定：Hub 写这一项时值名用 XinQingHub（tauri-plugin-autostart 用 Builder::app_name
+#    设定）；“心晴”是该插件不设 app_name 时的缺省值名（取 productName），一并兜底。
+[runtime_autostart]
+value_names = ["XinQingHub", "心晴"]
 
 # ── 安装完成后的启动行为：整段缺省即装完不启动 ───────────────────────────────
 #    exe 省略即回退 app.main_exe
@@ -128,15 +138,33 @@ cache_dirs  = ["cache", "logs"]
 state_files = ["state.toml", "user_config.seen", "userdata.redb", "hub"]
 remove_dir_when_empty = true
 
+# ── 系统运行时依赖（02 C-PLT-06、11 NFR-COMP-06）─────────────────────────────
+#    心晴：Hub 的界面由 WebView2 渲染。Windows 11 自带；Windows 10 可能没有。装完后检测，
+#    缺了就运行随包的微软在线引导程序（静默、需联网）；仍缺则完成页提示并给下载链接。
+#    输入法本身不依赖它。引导程序由 dev.ps1 打包时下载到 redist\ 并校验微软签名；
+#    没打进 Hub 的包会连同本段一起去掉。GUID 是微软公布的 WebView2 运行时固定值。
+[[prerequisite]]
+name      = "Microsoft Edge WebView2 运行时"
+detect    = [
+  { key = 'HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', value = "pv" },
+  { key = 'HKCU\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', value = "pv" },
+]
+installer = "redist/MicrosoftEdgeWebview2Setup.exe"
+args      = "/silent /install"
+url       = "https://developer.microsoft.com/microsoft-edge/webview2/"
+
 # ── 界面文案：留空即用中性默认（不含「输入法」「词库」字样）──────────────────
 #    安装器内置默认是领域中性的，输入法专用措辞需在此显式声明
 [strings]
 data_dir_hint       = "词库、配置路径"
 mode_hint           = "标准安装注册输入法到系统；便捷模式仅解压文件，不修改系统"
-agreement_text      = "《用户服务协议》"
+# 心晴：协议全文由 dev.ps1 拼出（config\installer-license.txt + 仓库根 LICENSE），打包时读进清单
+agreement_text      = "《许可协议与开源声明》"
 user_data_label     = "删除心晴数据、用户词库和配置数据"
 cache_label         = "清除本地词库缓存"
 delete_data_confirm = "将永久删除 {path} 下的所有词库和配置数据，以及心晴的心情记录、日程、对话和设置，卸载后无法恢复。\n心晴数据不在备份范围内。\n\n确定要勾选删除吗？"
+# 心晴：完成页提示（11 第 155 行）
+finish_note         = "按 Win + Space 切换到心晴输入法\n从开始菜单打开「心晴」，和晴晴聊聊"
 
 # ── 打包参数 ──────────────────────────────────────────────────────────────────
 # source_dir 和 version 由构建脚本通过 CLI 覆盖；此处为本地开发默认值。

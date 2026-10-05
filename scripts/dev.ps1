@@ -941,6 +941,10 @@ function Do-Full ([string]$profile = "release") {
     }
     # 心晴：Hub 在仓库根目录的另一个 cargo 工作区, 不进上面的并行分叉, 单独串行构建
     if (-not (Build-Hub      $profile $outdir)) { return $false }   # xinqing_hub.exe + hub_templates\ (可选)
+    # 心晴：许可文件随产物分发 (MIT 要求随副本附带许可声明; 词库/字体等第三方许可在 NOTICE.md)。
+    #       安装包的协议全文与完成页都指向这两个文件。
+    Copy-Item (Join-Path $ProductRoot "LICENSE")   "$outdir\LICENSE"   -Force
+    Copy-Item (Join-Path $ProductRoot "NOTICE.md") "$outdir\NOTICE.md" -Force
     if (-not (Do-GenData     $outdir))          { return $false }   # data/
     if (-not (Verify-DistData $outdir))         { return $false }   # 硬门禁
     # 签 outdir 根层的 exe/dll。放在这里而不是各 Build-* 里: 并行构建时四路各签各的会
@@ -1807,7 +1811,17 @@ function New-InstallerConfig ([string]$profile, [string]$outdir, [string]$cfgPat
     $base = Get-Content $baseCfg -Raw
     if ($hubMissing) {
         $base = [regex]::Replace($base, '(?ms)^\[\[shortcut\]\]\r?\ntarget\s*=\s*"xinqing_hub\.exe".*?(?=^\[)', '')
+        # 心晴：WebView2 只有 Hub 用, 没 Hub 就不检测、不代装
+        $base = [regex]::Replace($base, '(?ms)^\[\[prerequisite\]\]\r?\nname\s*=\s*"Microsoft Edge WebView2[^"]*".*?(?=^\[)', '')
     }
+
+    # 心晴：协议全文 = config\installer-license.txt (心晴自己的话) + 仓库根 LICENSE (MIT 原文)。
+    #       拼接而不是把 MIT 原文抄进 txt: 同一份许可写两处, 迟早一处过期。
+    $agreement = Join-Path $DistDir "$id.agreement.txt"
+    $agreeText = (Get-Content (Join-Path $ProductRoot "config\installer-license.txt") -Raw -Encoding UTF8) +
+                 (Get-Content (Join-Path $ProductRoot "LICENSE") -Raw -Encoding UTF8)
+    [System.IO.File]::WriteAllText($agreement, $agreeText, (New-Object System.Text.UTF8Encoding($false)))
+    $agreeFwd = $agreement.Replace('\', '/')
 
     $appSec = @"
 [app]
@@ -1844,6 +1858,7 @@ output_name = "$outName"
 output_dir  = "$distFwd"
 logo        = "$logoFwd"
 icon        = "$iconFwd"
+agreement_file = "$agreeFwd"
 "@
     # 砍掉 config 的 [package] 及之后 (打包参数按机器生成), 再替换 [app]/[ime] 段。
     # 用 MatchEvaluator 回调返回字面串, 避免 -replace 把替换文本里的 $ 当分组引用。
@@ -1969,6 +1984,33 @@ function Do-PortableZip ([string]$profile = "release", [bool]$skipBuild = $false
     return $true
 }
 
+# ---------- 心晴：WebView2 引导程序 (安装包随附, 02 C-PLT-06) ----------
+# 微软的在线引导程序 (约 2 MB, 运行时现场下载 WebView2)。只进安装包, 不进 build\ 常驻: 由
+# Do-Installer 放进 redist\、打完包即删, 否则便携版 zip 会把它带上。缓存在 .cache\ 下,
+# 每次使用前都校验 Authenticode 签名 —— 它会以安装器的管理员权限被执行。
+# 下载失败时: 发版流水线 (XQ_REQUIRE_HUB=1) 直接失败; 本地只警告, 装出来的包缺 WebView2 时
+# 完成页会给下载链接。
+$WebView2BootstrapperUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+function Add-WebView2Bootstrapper ([string]$outdir) {
+    $cache = Join-Path $CacheDir "webview2\MicrosoftEdgeWebview2Setup.exe"
+    New-Item -ItemType Directory -Path (Split-Path $cache) -Force | Out-Null
+    if (-not (Get-Dict $WebView2BootstrapperUrl $cache "(WebView2 引导程序)")) {
+        if ($env:XQ_REQUIRE_HUB -eq "1") { ErrMsg "下载 WebView2 引导程序失败 (XQ_REQUIRE_HUB=1)"; return $false }
+        Warn "下载 WebView2 引导程序失败, 本次安装包不含它"; return $true
+    }
+    $sig = Get-AuthenticodeSignature $cache
+    if ($sig.Status -ne "Valid" -or $sig.SignerCertificate.Subject -notmatch "O=Microsoft Corporation") {
+        Remove-Item $cache -Force -ErrorAction SilentlyContinue
+        ErrMsg "WebView2 引导程序签名不对 ($($sig.Status); $($sig.SignerCertificate.Subject)), 已删除缓存"
+        return $false
+    }
+    $redist = Join-Path $outdir "redist"
+    New-Item -ItemType Directory -Path $redist -Force | Out-Null
+    Copy-Item $cache (Join-Path $redist "MicrosoftEdgeWebview2Setup.exe") -Force
+    Gray "已放入: redist\MicrosoftEdgeWebview2Setup.exe (微软签名有效)"
+    return $true
+}
+
 function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) {
     # 1. 定位 wind-installer 兄弟项目
     $instDir = $InstallerDir
@@ -2002,6 +2044,12 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
     #    出来 (验签 Setup.exe 是通过的)。实测踩过。
     #    非 skip 模式下 Do-Full 已经签过, 这里按签名者指纹识别后整体跳过, 不重复消耗配额。
     if (-not (Invoke-SignArtifacts @($outdir) "$profile 产物")) { return $false }
+
+    # 2.6 心晴：有 Hub 才需要 WebView2, 随包放引导程序 (打完包在下面的 finally 里删掉)
+    $redistDir = Join-Path $outdir "redist"
+    if (Test-Path (Join-Path $outdir "xinqing_hub.exe")) {
+        if (-not (Add-WebView2Bootstrapper $outdir)) { return $false }
+    }
 
     # 3. 生成变体 app.toml → dist\ (在 source 之外)
     New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
@@ -2061,6 +2109,8 @@ function Do-Installer ([string]$profile = "release", [bool]$skipBuild = $false) 
         if ($LASTEXITCODE -ne 0) { ErrMsg "打包失败 (见上方 wind-packer 输出)"; return $false }
     } finally {
         Remove-Item $uninstExe -Force -ErrorAction SilentlyContinue
+        # 心晴：引导程序只属于安装包, 不留在 build\ 里 (理由同上: 便携版 zip 会带上它)
+        Remove-Item $redistDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     $setup = Join-Path $DistDir "$(if($profile -eq 'dev'){'XinQingDev-Setup'}else{'XinQing-Setup'})-$Version.exe"
