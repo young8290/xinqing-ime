@@ -13071,7 +13071,8 @@ scripts = { latin = 42 }
         let preset = Config::system_preset_value(Some(data_dir)).unwrap();
         let cfg: Config = preset.try_into().unwrap();
         // config.toml 作为 L2 预置覆盖了空的 code default
-        assert_eq!(cfg.schema.active, "wubi86");
+        // 心晴：出厂默认改为全拼（data/config.toml）
+        assert_eq!(cfg.schema.active, "pinyin");
     }
 
     #[test]
