@@ -55,7 +55,11 @@ async fn main() -> Result<()> {
         eprintln!(
             "xq-sim：使用基线 v{}（{}） {}",
             baseline.version,
-            if baseline.calibrated { "已校准" } else { "未校准" },
+            if baseline.calibrated {
+                "已校准"
+            } else {
+                "未校准"
+            },
             path.display()
         );
     }
@@ -165,8 +169,8 @@ async fn load_baseline(path: &PathBuf) -> Result<BaselineFile> {
     let text = tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("读取基线 {}", path.display()))?;
-    let baseline: BaselineFile = toml::from_str(&text)
-        .with_context(|| format!("解析基线 {}", path.display()))?;
+    let baseline: BaselineFile =
+        toml::from_str(&text).with_context(|| format!("解析基线 {}", path.display()))?;
     if baseline.day.is_empty() || baseline.night.is_empty() {
         bail!("基线必须同时包含 day 和 night 特征");
     }
@@ -182,9 +186,7 @@ async fn load_baseline(path: &PathBuf) -> Result<BaselineFile> {
 }
 
 fn start_offset_ms(value: &str) -> Result<u64> {
-    let (hour, minute) = value
-        .split_once(':')
-        .context("--start-at 格式应为 HH:MM")?;
+    let (hour, minute) = value.split_once(':').context("--start-at 格式应为 HH:MM")?;
     let hour: u32 = hour.parse().context("--start-at 小时无效")?;
     let minute: u32 = minute.parse().context("--start-at 分钟无效")?;
     if hour >= 24 || minute >= 60 {
