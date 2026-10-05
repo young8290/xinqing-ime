@@ -319,13 +319,13 @@ pub const KEYS: &[KeySpec] = &[
         kind: Kind::Bool,
         default: || false.into(),
     },
-    // 演示模式（FR-DMO-03）：开启后下次启动进入演示模式，切换要重启 Hub（ADR 0023 第 1 条、ADR 0024）
+    // 演示模式（FR-DMO-03）：开启后下次启动进入演示模式，切换要重启 Hub（ADR 0023 第 1 条、ADR 0025）
     KeySpec {
         key: "dev.demo",
         kind: Kind::Bool,
         default: || false.into(),
     },
-    // 研究模式（FR-DMO-04）：先填研究编号，再打开开关；编号为空时开关不起作用（ADR 0024）
+    // 研究模式（FR-DMO-04）：先填研究编号，再打开开关；编号为空时开关不起作用（ADR 0025）
     KeySpec {
         key: "research.id",
         kind: Kind::Text(Item::ResearchId),

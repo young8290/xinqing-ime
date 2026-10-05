@@ -2,7 +2,7 @@
 
 > 负责范围（产品书 13 第 1 节）：STA 状态识别、RST 休息提醒、REV-03 作息洞察、DMO 模拟器与演示模式、E-STATE 评测。
 > 任务清单与估算见产品书 16 第 2.2 节。本文件随 B 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（演示与研究模式的设置键，ADR 0024）
+> 最后更新：2026-10-05（演示与研究模式的设置键，ADR 0025）
 
 ## 1. 任务状态
 
@@ -17,7 +17,7 @@
 | B-07 | 状态解释、反馈校准、自评天气（后端） | 后端完成 | 第一部分（状态解释）：[xinqing-ime#11](https://github.com/young8290/xinqing-ime/pull/11)（已合并），ADR 0010；第二部分（`state_explain` 命令）：[xinqing-ime#12](https://github.com/young8290/xinqing-ime/pull/12)（已合并）；第三部分（反馈校准）：[xinqing-ime#15](https://github.com/young8290/xinqing-ime/pull/15)（已合并）；第四部分（自评天气）：[xinqing-ime#17](https://github.com/young8290/xinqing-ime/pull/17)（已合并），ADR 0011 | 见第 3 节 |
 | B-08 | 使用时长与四类休息提醒等（P0） | 第一部分完成（PR 合并后） | 判断 `domain/rest.rs`、服务 `rest.rs`、`infra/store/rest.rs`；外壳 `src-tauri/src/rest.rs`；小组件 `windows/widget/{useRest.ts,RestCard.vue}` | 见第 3.1 节：系统通知、专注时段、设置界面 |
 | B-09 | 作息洞察统计 | 后端完成 | 统计 `domain/routine.rs`、写库 `infra/store/summary.rs`；`get_routine(days)` 命令；见第 3.2 节 | 看板周报的折线和数字归 D-07；周信 / 晚间小结引用等 C-10 认领 |
-| B-10 | 演示模式（clock 替换、演示数据库） | 后端完成 | `ScaledClock`（`infra/clock.rs`）、预置数据 `domain/demo.rs`、外壳 `src-tauri/src/sim.rs`（`--demo`、`open_demo_state`）、`demo_status` 命令；ADR 0023；见第 3.3 节 | 标题栏“演示模式”和演示者视图归 D；`dev.demo`、`research.id`、`research.enabled` 三个设置键单独提给 C（ADR 0024）；外壳读 `dev.demo`、研究模式（FR-DMO-04）等键合并后做 |
+| B-10 | 演示模式（clock 替换、演示数据库） | 后端完成 | `ScaledClock`（`infra/clock.rs`）、预置数据 `domain/demo.rs`、外壳 `src-tauri/src/sim.rs`（`--demo`、`open_demo_state`）、`demo_status` 命令；ADR 0023；见第 3.3 节 | 标题栏“演示模式”和演示者视图归 D；`dev.demo`、`research.id`、`research.enabled` 三个设置键单独提给 C（ADR 0025）；外壳读 `dev.demo`、研究模式（FR-DMO-04）等键合并后做 |
 | B-11 | E-STATE 评测与报告 | 未开始 | — | 依赖 B-02 的录制数据；`xq-replay --json` 已能输出每个窗口的特征、状态和解释 |
 | （C-10） | 情绪日记、晚间小结、周信 | 未认领 | — | 16 第 3 节建议从 C 移给 B，W1 评审会还没定 |
 
@@ -110,7 +110,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
   ③ 实时路径改为先交出解释再推送 `status:changed`，界面收到状态变化后取到的一定是同一次切换的解释，界面也可以用 `Explanation.state` 与快照核对。
 - ADR 0014（个人基线的持久化与重算：数据来源、重算时机、窗口数口径、最少样本数、重置基线）：#25 提出；C 已同意（#25 评论，编号由 0012 改为 0014），等 E 评审。
 - ADR 0011（自评天气的实现解释：“说不上来”不覆盖、校准的计法、自评期间的解释、总线字段类型、覆盖不跨重启）：#17 提出，等 D 与 E 评审。
-- ADR 0024（演示与研究模式的设置键：`dev.demo`、`research.id`（匿名编号格式）、`research.enabled`）：单独的 PR 提出，等 C、E 评审。
+- ADR 0025（演示与研究模式的设置键：`dev.demo`、`research.id`（匿名编号格式）、`research.enabled`）：单独的 PR 提出，等 C、E 评审。
 - ADR 0023（演示模式的实现解释：`--demo` 开启、×60 时钟只加速提醒不加速打字特征、演示库每次重建、同意沿用真实库、预置内容）：B-10 的 PR 提出，等 C、D、E 评审。
 - 这几份 ADR 接受后都要回产品书仓库改 04 FR-STA-01/03/04/06/08/09/10、10 第 5.1/5.3 节、15 和 17 第 2.3 节，并写 00 第 5 节修订记录。
 
@@ -134,7 +134,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 
 1. B-08 剩余：系统通知（随 D-09）、专注时段（等 C 的自由文本设置类型）；
 2. B-01 已完成：`--baseline`、`--start-at`（#46，ADR 0021，待 A、E 评审），暂停 / 单步；剩 Windows 管道客户端版 `--listen`；
-3. B-10 剩余：ADR 0024 的键合并后，外壳启动读 `dev.demo`；研究模式 FR-DMO-04（定时自评邀请、`source = esm`、关闭时可删研究期间的自评）；跟进 ADR 0023 / 0024 评审；
+3. B-10 剩余：ADR 0025 的键合并后，外壳启动读 `dev.demo`；研究模式 FR-DMO-04（定时自评邀请、`source = esm`、关闭时可删研究期间的自评）；跟进 ADR 0023 / 0025 评审；
 4. B-11 评测报告：等 B-02 的真人录制。
 
 ## 7. 修订记录
@@ -151,4 +151,4 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-05 | B-09：`daily_summary` 的使用时长、停止打字时间、休息提醒计数；作息洞察统计与 `get_routine` 命令（TC-REV-04） |
 | 2026-10-05 | B-10：演示模式（`--demo`、×60 `ScaledClock`、每次重建并预置一周的演示库、`demo_status`）与 ADR 0023 |
 | 2026-10-05 | B-01：xq-sim 暂停 / 单步（C 代做） |
-| 2026-10-05 | 设置键 `dev.demo`、`research.id`、`research.enabled` 与 ADR 0024（C 的注册表，单独 PR） |
+| 2026-10-05 | 设置键 `dev.demo`、`research.id`、`research.enabled` 与 ADR 0025（C 的注册表，单独 PR） |
