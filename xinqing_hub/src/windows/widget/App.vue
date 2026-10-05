@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动吸附、
-// 右键菜单、贴边隐藏、悬停状态行显示解释、“我现在…”自评。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
+// 右键菜单、贴边隐藏、悬停状态行显示解释、“我现在…”自评、休息提醒卡片（06 FR-RST-06）。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
 // （进度见 docs/xinqing/handover/D-前端与视觉.md）。
 import { computed, nextTick, onMounted, ref, toRef } from 'vue'
 import { LogicalPosition, getCurrentWindow } from '@tauri-apps/api/window'
@@ -13,15 +13,18 @@ import { errorText, t } from '@/i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useStatusStore } from '@/stores/status'
 import { menuEntries, type MenuAction } from './menu'
+import RestCard from './RestCard.vue'
 import SelfReportPanel from './SelfReportPanel.vue'
 import { statusLine } from './statusLine'
 import { useExplain } from './useExplain'
+import { useRest } from './useRest'
 import { useSelfReport } from './useSelfReport'
 import { useWidgetWindow } from './useWidgetWindow'
 
 const status = useStatusStore()
 const settings = useSettingsStore()
 const selfReport = useSelfReport()
+const rest = useRest()
 const line = computed(() => (status.snapshot ? statusLine(status.snapshot, selfReport.active.value) : null))
 const setting = <T,>(key: string, fallback: T) =>
   computed(() => {
@@ -34,8 +37,8 @@ const topmost = setting('widget.topmost', true)
 const message = ref(t('greeting.idle'))
 const menuOpen = ref(false)
 
-// 菜单或自评面板开着时不贴边收起
-const holdOpen = computed(() => menuOpen.value || selfReport.panelOpen.value)
+// 菜单、自评面板或休息提醒开着时不贴边收起
+const holdOpen = computed(() => menuOpen.value || selfReport.panelOpen.value || rest.due.value !== null)
 const place = useWidgetWindow({ autohide, topmost, holdOpen })
 const explain = useExplain(
   toRef(status, 'snapshot'),
@@ -105,6 +108,8 @@ onMounted(async () => {
   }
   // 自评覆盖期取不到时只是少显示“你说的”，不打扰用户
   selfReport.init().catch((e) => console.warn('读取自评失败', e))
+  // 收不到提醒时光标旁气泡照样会出现，这里只打警告
+  rest.init().catch((e) => console.warn('订阅休息提醒失败', e))
 })
 
 async function run(action: () => Promise<unknown>): Promise<void> {
@@ -267,6 +272,14 @@ function onPointerUp(): void {
             </div>
           </template>
         </ExplainPanel>
+        <!-- 休息提醒排在最后，盖在自评、解释面板之上 -->
+        <RestCard
+          v-if="rest.due.value"
+          class="overlay"
+          :due="rest.due.value"
+          :countdown="rest.countdown.value"
+          @act="(a) => run(() => rest.act(a))"
+        />
         <!-- FR-WGT-04：最多 2 行，悬停显示全文 -->
         <p class="message" :title="message">{{ message }}</p>
         <footer class="footer" />

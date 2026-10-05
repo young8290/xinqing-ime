@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import type { Explanation, SelfReportChanged, SelfReportItem, StatusSnapshot } from '@/api'
+import type { Explanation, RestDue, SelfReportChanged, SelfReportItem, StatusSnapshot } from '@/api'
 import { t } from '@/i18n'
 
 type Item = { id: string; text: string; action: () => void }
@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   selfReportSet: vi.fn(),
   selfReportList: [] as SelfReportItem[],
   emitSelfReport: null as null | ((e: SelfReportChanged) => void),
+  restAction: vi.fn(),
+  emitRest: null as null | ((e: RestDue) => void),
 }))
 const ok = (data: unknown = null) => Promise.resolve({ status: 'ok', data })
 
@@ -34,6 +36,7 @@ vi.mock('@/api', async (orig) => ({
     submitFeedback: mocks.submitFeedback,
     selfReportSet: mocks.selfReportSet,
     selfReportList: () => ok(mocks.selfReportList),
+    restAction: mocks.restAction,
   },
   events: {
     statusChanged: {
@@ -46,6 +49,12 @@ vi.mock('@/api', async (orig) => ({
     selfReportChanged: {
       listen: async (cb: (e: { payload: SelfReportChanged }) => void) => {
         mocks.emitSelfReport = (payload) => cb({ payload })
+        return () => {}
+      },
+    },
+    restDue: {
+      listen: async (cb: (e: { payload: RestDue }) => void) => {
+        mocks.emitRest = (payload) => cb({ payload })
         return () => {}
       },
     },
@@ -446,5 +455,89 @@ describe('“我现在…”自评（FR-STA-10、FR-WGT-06）', () => {
     await flushPromises()
     expect(w.find('.message').text()).toBe(t('error.generic'))
     expect(w.find('[role=dialog]').exists()).toBe(true)
+  })
+})
+
+describe('休息提醒卡片（FR-RST-02～06）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.snapshot = {
+      state: 'fluent',
+      weather: 'sunny',
+      prob: 0.9,
+      offline: false,
+      paused: false,
+      connected: true,
+      baseline_progress: 100,
+    }
+    mocks.setAlwaysOnTop.mockReset().mockResolvedValue(undefined)
+    mocks.show.mockReset().mockResolvedValue(undefined)
+    mocks.openWindow.mockReset().mockReturnValue(ok())
+    mocks.stateExplain.mockReset().mockReturnValue(ok(null))
+    mocks.restAction.mockReset().mockReturnValue(ok())
+  })
+
+  async function due(payload: RestDue) {
+    const w = await mountWidget()
+    mocks.emitRest!(payload)
+    await flushPromises()
+    return w
+  }
+  const buttons = (w: Awaited<ReturnType<typeof mountWidget>>) =>
+    w.findAll('[role=alertdialog] button').map((b) => b.text())
+
+  it('喝水：卡片给三个按钮，“已完成”叫“喝了”；点了就收起并交给后端，不会打开对话', async () => {
+    const w = await due({ kind: 'water', tired: false })
+    const card = w.find('[role=alertdialog]')
+    expect(card.text()).toContain(t('rest.water'))
+    expect(buttons(w)).toEqual([t('rest.btn_drank'), t('rest.btn_later'), t('rest.btn_today_off')])
+    await card.findAll('button')[0]!.trigger('click')
+    await flushPromises()
+    expect(mocks.restAction).toHaveBeenCalledWith('water', 'done')
+    expect(w.find('[role=alertdialog]').exists()).toBe(false)
+    expect(mocks.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('“今天不再提醒”与 Esc（等同 5 分钟后）', async () => {
+    const w = await due({ kind: 'move', tired: false })
+    await w.findAll('[role=alertdialog] button')[2]!.trigger('click')
+    await flushPromises()
+    expect(mocks.restAction).toHaveBeenLastCalledWith('move', 'today_off')
+    mocks.emitRest!({ kind: 'night', tired: false })
+    await flushPromises()
+    await w.find('[role=alertdialog]').trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+    expect(mocks.restAction).toHaveBeenLastCalledWith('night', 'later')
+    expect(w.find('[role=alertdialog]').exists()).toBe(false)
+  })
+
+  it('疲惫时护眼换文案', async () => {
+    const w = await due({ kind: 'eye', tired: true })
+    expect(w.find('[role=alertdialog]').text()).toContain(t('rest.eye_tired'))
+  })
+
+  describe('护眼倒计时', () => {
+    beforeEach(() =>
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] }),
+    )
+    afterEach(() => vi.useRealTimers())
+
+    it('点“已完成”先倒数 20 秒，再显示致谢 2 秒，然后才交给后端', async () => {
+      const w = await due({ kind: 'eye', tired: false })
+      await w.findAll('[role=alertdialog] button')[0]!.trigger('click')
+      await flushPromises()
+      expect(w.find('[role=timer]').text()).toBe('20')
+      expect(buttons(w)).toEqual([])
+      await vi.advanceTimersByTimeAsync(19_000)
+      expect(w.find('[role=timer]').text()).toBe('1')
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(w.find('[role=timer]').text()).toBe(t('rest.eye_done'))
+      expect(mocks.restAction).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(2_000)
+      await flushPromises()
+      expect(mocks.restAction).toHaveBeenCalledWith('eye', 'done')
+      expect(w.find('[role=alertdialog]').exists()).toBe(false)
+    })
   })
 })
