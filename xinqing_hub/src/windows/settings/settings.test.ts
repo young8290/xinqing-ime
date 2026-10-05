@@ -69,6 +69,8 @@ vi.mock('@/api', async (orig) => ({
     secretsSet: mocks.secretsSet,
     aiTestConnection: mocks.aiTestConnection,
     aiUsageToday: mocks.aiUsageToday,
+    consentGet: async () => ({ status: 'ok', data: { policy_ver: 1, items: [] } }),
+    aiNetLogRecent: async () => ({ status: 'ok', data: [] }),
     imeSchema: mocks.imeSchema,
     imeConfigGet: mocks.imeConfigGet,
     imeConfigSet: mocks.imeConfigSet,
