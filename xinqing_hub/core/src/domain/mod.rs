@@ -11,6 +11,7 @@ pub mod rest;
 pub mod retention;
 pub mod rules;
 pub mod safety;
+pub mod schedule;
 pub mod self_report;
 pub mod settings;
 pub mod status;
