@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（D-08 契约：输入法配置变更事件，ADR 0017）
+> 最后更新：2026-10-05（D-08 第三部分：“输入法”分类跟着别处的改动刷新）
 
 ## 1. 任务状态
 
@@ -16,7 +16,7 @@
 | D-05 | 首次引导与同意 | 大部分完成 | `windows/onboarding/`（FR-ONB-01～04，有测试） | FR-ONB-05（AI 地址与密钥、“测试连接”、小组件位置、关怀频率、晴晴打招呼）未做，“测试连接”依赖 C 的网关（xinqing-ime#7） |
 | D-06 | 对话窗口（流式、标识、求助卡片 UI） | 第一版完成 | `windows/chat/`：`useChat.ts`（会话、流式事件、先到事件暂存）、`App.vue`（AI 说明、历史抽屉、气泡与 `AI 生成` 标签、复制、停止 / 重试）、`SafetyCard.vue`（求助卡片，折叠成一行不可移除）；与 C-07/C-08 同一个 PR，ADR 0018 | 快捷指令、记忆、历史搜索（P1）；窗口置顶切换与全局快捷键 `Ctrl+Alt+Q`；学校心理中心电话等设置项 |
 | D-07 | 情绪看板 | 占位 | `windows/dashboard/`（只显示当前天气） | 全部（P1，计划 W9）；ECharts 未引入 |
-| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约 PR（本 PR）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed` | 下一步：设置页接 `ime_config:changed` 与窗口焦点刷新（合并重复刷新、别处改了需要重启时显示横幅）、快捷键录制框随后；其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
+| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；本 PR：“输入法”页接这个事件和窗口焦点刷新 | 下一步：快捷键录制框；其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
 | D-09 | 系统通知、无障碍与高对比度、DPI 走查 | 部分 | 令牌里已有 `forced-colors` 高对比度和 `prefers-reduced-motion`；不可见时暂停动画（`mount.ts` + `base.css`） | 系统通知（FR-NTF-01）、150% 文本大小与 100%–200% DPI 走查都没做 |
 
 ## 2. 代码地图（D 负责的部分）
@@ -44,7 +44,8 @@ xinqing_hub/
 │     └─ useWidgetWindow.ts     调 Tauri 窗口接口：恢复位置、拖动后吸附、贴边隐藏、置顶
 │  └─ settings/
 │     ├─ App.vue                左侧分类（FR-SET-01 的顺序），默认“输入法”，#about 直接打开“隐私与关于”
-│     ├─ ImeSection.vue         输入法：取 schema 和配置、修改即保存、跳过原因 / 重启横幅 / 核心没运行
+│     ├─ ImeSection.vue         输入法：取 schema 和配置、修改即保存、跳过原因 / 重启横幅 / 核心没运行；
+│     │                         收到 ime_config:changed、窗口获得焦点、保存后都重取配置（合并重复的刷新）
 │     ├─ ImeFieldControl.vue    一项配置按类型出控件（开关 / 下拉 / 数字 / 文本 / 列表；map、array 只读）
 │     ├─ imeForm.ts             常用项清单（改时同步 ui_copy.toml 的 [ime.field]）、高级分组、按点分键名取值
 │     ├─ AppearanceSection.vue  外观
@@ -116,7 +117,7 @@ xinqing_hub/
 
 1. D-03 剩余：“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；引导页用上 logo；
 2. D-05：FR-ONB-05，等 C 的网关 PR（xinqing-ime#7）合并后接“测试连接”；
-3. D-08：ADR 0017 合并后设置页接 `ime_config:changed` 和窗口焦点刷新；然后快捷键录制框；其余分类按各自后端补；
+3. D-08：快捷键录制框（键名表从核心取，ADR 0016 第 5 条）；其余分类按各自后端补；
 4. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
 
 ## 7. 修订记录
@@ -133,4 +134,5 @@ xinqing_hub/
 | 2026-10-05 | D-08 契约：ADR 0016、wind-rpc 客户端与 `ime_*` 三个命令 |
 | 2026-10-05 | D-08 第二部分：设置中心“输入法”分类（常用项 + 高级区，修改即保存） |
 | 2026-10-05 | D-08 契约：ADR 0017、wind-rpc 事件通道读线程与 `ime_config:changed` 事件 |
+| 2026-10-05 | D-08 第三部分：“输入法”页接 `ime_config:changed` 与窗口焦点刷新 |
 | 2026-10-05 | D-06 第一版：对话窗口（随 C-07/C-08，ADR 0018） |
