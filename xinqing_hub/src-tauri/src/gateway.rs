@@ -193,9 +193,10 @@ pub fn start(app: &AppHandle, data_dir: &std::path::Path) -> Arc<Ai> {
     let log_app = app.clone();
     tauri::async_runtime::spawn(async move {
         while let Some(entry) = log_rx.recv().await {
-            if let Err(err) = log_app.state::<AppState>().db().net_log_insert(&entry) {
-                eprintln!("保存 AI 出网日志失败：{err}");
-            }
+            log_app
+                .state::<AppState>()
+                .writer()
+                .enqueue("net_log", move |db| db.net_log_insert(&entry));
         }
     });
 

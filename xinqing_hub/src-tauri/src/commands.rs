@@ -16,6 +16,7 @@ use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::features::persist;
 use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
 use xinqing_hub_core::domain::rest::{RestAction, RestKind};
+use xinqing_hub_core::domain::routine::{self, Routine};
 use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
@@ -75,7 +76,10 @@ pub fn submit_feedback(
     match target {
         FeedbackTarget::MoodState => {
             let ts = chrono::Utc::now().timestamp_millis();
-            let rec = feedback::record(&state.db(), target_id.map(i64::from), verdict, ts)?;
+            // 写连接：先提交排队中的状态记录，“记到最近一条”才是界面上显示的那条
+            let rec = state
+                .writer()
+                .write_sync(|db| feedback::record(db, target_id.map(i64::from), verdict, ts))?;
             if let Some(f) = rec
                 && f.verdict == Verdict::Unfit
                 && sensing
@@ -103,13 +107,15 @@ pub fn self_report_set(
 ) -> Result<(), UiError> {
     let note = note.map(zeroize::Zeroizing::new);
     let ts = chrono::Utc::now().timestamp_millis();
-    let rec = self_report::record(
-        &state.db(),
-        weather,
-        note.as_deref().map(String::as_str),
-        state.auto_state(),
-        ts,
-    )?;
+    let rec = state.writer().write_sync(|db| {
+        self_report::record(
+            db,
+            weather,
+            note.as_deref().map(String::as_str),
+            state.auto_state(),
+            ts,
+        )
+    })?;
     if sensing
         .cmds
         .try_send(SenseCmd::SelfReport {
@@ -143,6 +149,14 @@ pub fn self_report_list(
     Ok(self_report::list_day(&state.db(), date)?)
 }
 
+/// 作息洞察（FR-REV-03，看板周报）：截至最近一个已经结束的晚上共 `days` 晚（1–90）的停止打字时间。
+/// 界面一律称“停止打字时间”，并注明只统计这台电脑上的打字、不等于入睡时间（DS-COPY-09）。
+#[tauri::command]
+#[specta::specta]
+pub fn get_routine(state: State<'_, AppState>, days: u32) -> Result<Routine, UiError> {
+    Ok(routine::get(&state.db(), days, chrono::Local::now())?)
+}
+
 /// 重置基线（设置页“感知”分类，FR-SET-04、FR-STA-03 第 4 条）：清空个人统计值，
 /// 之后只用重置以后的窗口，重新进入冷启动（“正在熟悉你的打字习惯”从 0% 开始）。
 #[tauri::command]
@@ -156,7 +170,7 @@ pub fn baseline_reset(
         return Err(UiError::new("baseline.fixed", "error.generic"));
     }
     let now = chrono::Utc::now().timestamp_millis();
-    let stats = persist::reset(&state.db(), now)?;
+    let stats = state.writer().write_sync(|db| persist::reset(db, now))?;
     sensing.apply_baseline(&stats);
     if sensing.cmds.try_send(SenseCmd::Baseline(stats)).is_err() {
         eprintln!("重置基线未能交给感知任务，下次启动时生效");
@@ -186,7 +200,9 @@ pub fn settings_set(
     key: String,
     value: SettingValue,
 ) -> Result<(), UiError> {
-    let changed = settings::set(&state.db(), &key, &value)?;
+    let changed = state
+        .writer()
+        .write_sync(|db| settings::set(db, &key, &value))?;
     if changed
         && key.starts_with("ai.cap.")
         && let Some(ai) = app.try_state::<Arc<Ai>>()
@@ -214,9 +230,10 @@ pub fn consent_set(
     item: ConsentItem,
     granted: bool,
 ) -> Result<ConsentState, UiError> {
-    let db = state.db();
-    consent::set(&db, item, granted, chrono::Utc::now().timestamp_millis())?;
-    let now = ConsentState::load(&db)?;
+    let now = state.writer().write_sync(|db| {
+        consent::set(db, item, granted, chrono::Utc::now().timestamp_millis())?;
+        ConsentState::load(db)
+    })?;
     // Hub 是同意状态的唯一真相源：每次变化都重新下发 cfg（10 第 2.5 节）
     sensing.xqp.send(consent::xqp_cfg(&now));
     let _ = sensing.bus.send(HubEvent::ConsentChanged);

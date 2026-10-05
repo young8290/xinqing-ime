@@ -150,8 +150,8 @@ impl ComfortPort for ShellPort {
     fn save(&self, rec: &ComfortRecord<'_>) -> Option<i64> {
         self.app
             .state::<AppState>()
-            .db()
-            .comfort_insert(rec)
+            .writer()
+            .write_sync(|db| db.comfort_insert(rec))
             .inspect_err(|e| eprintln!("写入暖心话记录失败：{e}"))
             .ok()
     }

@@ -1,5 +1,5 @@
-//! 外壳持有的共享状态。数据库目前是同步的单连接，用互斥锁串行化；
-//! 17 第 2.9 节的单写线程 `DbWriter` 接入后替换这里。
+//! 外壳持有的共享状态。数据库开两个连接（17 第 2.9 节，ADR 0020）：写连接交给 [`DbWriter`]，所有写入都经过它；
+//! [`AppState::db`] 是只读连接，debug 构建下写入会报错。
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, RwLock};
@@ -8,7 +8,7 @@ use xinqing_hub_core::domain::consent::ConsentState;
 use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::status::StatusSnapshot;
-use xinqing_hub_core::infra::store::{Db, StoreError};
+use xinqing_hub_core::infra::store::{Db, DbWriter, StoreError};
 use xqp::MoodState;
 
 use crate::error::UiError;
@@ -16,7 +16,9 @@ use crate::error::UiError;
 pub const DB_FILE: &str = "xinqing.db";
 
 pub struct AppState {
+    /// 只读连接
     db: Mutex<Db>,
+    writer: DbWriter,
     pub status: RwLock<StatusSnapshot>,
     /// 最近一次状态切换的解释（FR-STA-09），由感知任务写入，缓存到下一次切换。
     explanation: RwLock<Option<Explanation>>,
@@ -30,9 +32,11 @@ pub struct AppState {
 impl AppState {
     pub fn init(data_dir: &Path) -> anyhow::Result<Self> {
         std::fs::create_dir_all(data_dir)?;
-        let (db, db_rebuilt) = open_or_rebuild(&data_dir.join(DB_FILE))?;
+        let path = data_dir.join(DB_FILE);
+        let (db, db_rebuilt) = open_or_rebuild(&path)?;
         Ok(Self {
-            db: Mutex::new(db),
+            db: Mutex::new(Db::open_reader(&path)?),
+            writer: DbWriter::new(db),
             status: RwLock::new(StatusSnapshot::default()),
             explanation: RwLock::new(None),
             auto_state: RwLock::new(None),
@@ -40,9 +44,15 @@ impl AppState {
         })
     }
 
+    /// 只读连接。写入一律走 [`AppState::writer`]。
     pub fn db(&self) -> MutexGuard<'_, Db> {
         // 持锁线程 panic 后数据库连接本身仍可用，不让一次 panic 拖垮之后所有命令
         self.db.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// 写入口：用户确认类数据用 `write_sync`，普通数据用 `enqueue`。
+    pub fn writer(&self) -> &DbWriter {
+        &self.writer
     }
 
     pub fn status(&self) -> StatusSnapshot {
@@ -157,6 +167,23 @@ mod tests {
             .collect();
         assert_eq!(backups.len(), 1);
         assert!(s.needs_onboarding().unwrap());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn writes_go_through_the_writer_and_reads_see_them() {
+        let d = tmp_dir("writer");
+        let s = AppState::init(&d).unwrap();
+        s.writer()
+            .write_sync(|db| settings::set(db, "widget.visible", &false.into()))
+            .unwrap();
+        assert!(!s.widget_visible().unwrap(), "同步写入返回后读连接就能读到");
+        if cfg!(debug_assertions) {
+            assert!(
+                settings::set(&s.db(), "widget.visible", &true.into()).is_err(),
+                "读连接不许写"
+            );
+        }
         let _ = std::fs::remove_dir_all(&d);
     }
 

@@ -37,7 +37,7 @@ const JEV_GRACE: Duration = Duration::from_secs(10);
 
 /// 外壳提供给对话服务的能力。
 pub trait ChatPort: Send + Sync {
-    /// 数据库（外壳的 `Mutex<Db>`）。每次取用都很短，不跨 `.await` 持有。
+    /// 写连接（外壳的 `DbWriter::lock`，对话里读写交错，都在写连接上做）。每次取用都很短，不跨 `.await` 持有。
     fn db(&self) -> Box<dyn Deref<Target = Db> + '_>;
     /// 设置 `care.style`（FR-CHT-10）。
     fn style(&self) -> Style;
