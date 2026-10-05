@@ -67,6 +67,14 @@ pub struct RestDue {
     pub tired: bool,
 }
 
+/// `research:invite`：研究模式的定时自评邀请（FR-DMO-04）。小组件弹出“主动报告心情”面板，可跳过（`research_dismiss`）；
+/// `answer_until_ts`（Unix 毫秒）之前提交的自评记为研究数据（`source = esm`），过了就按普通自评记。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "research:invite")]
+pub struct ResearchInvite {
+    pub answer_until_ts: f64,
+}
+
 /// `ime_config:changed`：输入法配置变了（ADR 0017），设置中心的“输入法”分类重新取一次 `ime_config_get`。
 /// 来自核心的 `config.changed`（`setItems` / `applyPatch` / `reload`），或外壳刚连上事件通道（`connected`）。
 /// 核心自己的语言栏、菜单改的配置不广播，所以设置窗口重新获得焦点时也要取一次。

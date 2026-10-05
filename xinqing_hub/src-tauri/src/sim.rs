@@ -18,6 +18,7 @@ use chrono::Local;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::demo;
 use xinqing_hub_core::domain::features::Baseline;
+use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::infra::clock::{self, Clock, OffsetClock, ScaledClock, SystemClock};
 use xinqing_hub_core::infra::store::Db;
 use xinqing_hub_core::infra::templates::{BaselineDefault, TemplateDirs, read_toml};
@@ -46,6 +47,18 @@ pub fn set_demo(on: bool) {
     if DEMO.set(on).is_err() {
         eprintln!("演示模式已确定，忽略这次设置");
     }
+}
+
+/// 真实库里的设置 `dev.demo`（ADR 0025）：为真时这次启动进入演示模式，等同 `--demo`。
+/// 数据目录或真实库不存在、读不了时为 `false`；不会新建真实库。
+pub fn demo_setting(data_dir: &Path) -> bool {
+    let real = data_dir.join(DB_FILE);
+    real.exists()
+        && Db::open_reader(&real)
+            .ok()
+            .and_then(|db| settings::get(&db, "dev.demo").ok())
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
 }
 
 /// 本次运行是否为演示模式。
@@ -221,6 +234,22 @@ mod tests {
         assert!(ConsentState::load(&s.db()).unwrap().needs_onboarding());
         assert!(!d.join(DB_FILE).exists());
         drop(s);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn demo_setting_is_read_from_the_real_database_only() {
+        let d = std::env::temp_dir().join(format!("xq-hub-demo-key-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        assert!(!demo_setting(&d), "没有数据目录");
+        assert!(!d.join(DB_FILE).exists(), "不会新建真实库");
+        let real = AppState::init(&d).unwrap();
+        assert!(!demo_setting(&d), "默认关");
+        real.writer()
+            .write_sync(|db| settings::set(db, "dev.demo", &true.into()))
+            .unwrap();
+        assert!(demo_setting(&d));
+        drop(real);
         let _ = std::fs::remove_dir_all(&d);
     }
 

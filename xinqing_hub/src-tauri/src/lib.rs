@@ -13,6 +13,7 @@ mod fullscreen;
 mod gateway;
 mod ime_events;
 mod paths;
+mod research;
 mod rest;
 mod secrets;
 mod sensing;
@@ -49,6 +50,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::baseline_reset,
             commands::get_routine,
             commands::demo_status,
+            commands::research_dismiss,
+            commands::research_clear,
             commands::pause_set,
             commands::settings_get,
             commands::settings_set,
@@ -89,6 +92,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::ComfortNew,
             events::CareReduced,
             events::RestDue,
+            events::ResearchInvite,
             events::ImeConfigChanged,
             events::ChatDelta,
             events::ChatDone,
@@ -104,8 +108,9 @@ pub fn export_bindings(path: &Path) -> anyhow::Result<()> {
 
 pub fn run() {
     let launch = LaunchArgs::parse(std::env::args().skip(1));
-    // 演示模式要在任何服务取时钟之前定下来（ADR 0023）
-    sim::set_demo(launch.demo);
+    // 演示模式要在任何服务取时钟之前定下来：`--demo` 或真实库里的 `dev.demo`（ADR 0023、0025）
+    let demo_key = paths::hub_data_dir().is_ok_and(|d| sim::demo_setting(&d));
+    sim::set_demo(launch.demo || demo_key);
     let builder = specta_builder();
 
     tauri::Builder::default()
@@ -139,6 +144,8 @@ pub fn run() {
             comfort::start(app.handle());
             // 休息提醒：使用时长计时与四类提醒（B-08）
             rest::start(app.handle());
+            // 研究模式：定时自评邀请（FR-DMO-04）
+            research::start(app.handle());
             // 对话与对话里的危机安全（C-07、C-08）
             chat::start(app.handle());
 

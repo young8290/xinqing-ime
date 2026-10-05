@@ -133,6 +133,29 @@ fn mismatch(weather: SelfWeather, auto: Option<MoodState>) -> Option<bool> {
     Some(auto.is_some_and(|a| a != mine))
 }
 
+/// 自评的来源（D-24 `self_report.source`）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReportSource {
+    /// 用户主动报告
+    User,
+    /// 研究模式的定时邀请（FR-DMO-04）
+    Esm,
+}
+
+impl ReportSource {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReportSource::User => "user",
+            ReportSource::Esm => "esm",
+        }
+    }
+}
+
+/// 删掉研究模式邀请得到的全部自评（研究结束时，FR-DMO-04），返回删了几条。用户主动的自评不动。
+pub fn delete_esm(db: &Db) -> Result<usize, StoreError> {
+    db.self_reports_delete_source(ReportSource::Esm.as_str())
+}
+
 /// 记一次用户自评。`auto_state` 是此刻自动判断的显示状态（还没有窗口时为 `None`）。
 /// 备注去掉首尾空白，空备注按没填处理。
 pub fn record(
@@ -141,6 +164,18 @@ pub fn record(
     note: Option<&str>,
     auto_state: Option<MoodState>,
     ts: i64,
+) -> Result<Recorded, SelfReportError> {
+    record_from(db, weather, note, auto_state, ts, ReportSource::User)
+}
+
+/// 同 [`record`]，指明来源：研究模式邀请后的回答记 [`ReportSource::Esm`]。
+pub fn record_from(
+    db: &Db,
+    weather: SelfWeather,
+    note: Option<&str>,
+    auto_state: Option<MoodState>,
+    ts: i64,
+    source: ReportSource,
 ) -> Result<Recorded, SelfReportError> {
     let note = note.map(str::trim).filter(|n| !n.is_empty());
     if note.is_some_and(|n| n.chars().count() > NOTE_MAX_CHARS) {
@@ -151,7 +186,7 @@ pub fn record(
         weather.as_str(),
         note,
         auto_state.map(MoodState::as_str),
-        "user",
+        source.as_str(),
     )?;
 
     let mut streak = 0;
@@ -354,5 +389,16 @@ mod tests {
         assert_eq!(items[0].ts, at(9) as f64);
         assert_eq!(items[0].auto_state, Some(MoodState::Fluent));
         assert_eq!(items[1].note.as_deref(), Some("测试备注"));
+    }
+    #[test]
+    fn esm_answers_are_tagged_and_deleted_alone() {
+        let db = Db::open_in_memory().unwrap();
+        record(&db, SelfWeather::Sunny, None, None, 1).unwrap();
+        record_from(&db, SelfWeather::Rain, None, None, 2, ReportSource::Esm).unwrap();
+        record_from(&db, SelfWeather::Cloudy, None, None, 3, ReportSource::Esm).unwrap();
+        assert_eq!(delete_esm(&db).unwrap(), 2);
+        let left = db.self_reports_recent(10).unwrap();
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].2, "sunny");
     }
 }

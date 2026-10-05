@@ -325,6 +325,13 @@ impl Db {
         Ok(self.conn.last_insert_rowid())
     }
 
+    /// 删掉某个来源的全部自评，返回删了几条（研究结束时删 `esm`，FR-DMO-04）。
+    pub fn self_reports_delete_source(&self, source: &str) -> Result<usize, StoreError> {
+        Ok(self
+            .conn
+            .execute("DELETE FROM self_report WHERE source = ?1", [source])?)
+    }
+
     /// 最近的 `limit` 条自评，新的在前。
     pub fn self_reports_recent(
         &self,
