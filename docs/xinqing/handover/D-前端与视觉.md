@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（D-08：设置中心“AI 服务”分类，FR-SET-08）
+> 最后更新：2026-10-05（D-08：设置中心“关怀”分类，FR-SET-05）
 
 ## 1. 任务状态
 
@@ -13,10 +13,10 @@
 | D-02 | 小组件（布局、小精灵、一句话区、底栏、交互、贴边） | **进行中** | 第一部分（窗口行为、右键菜单）：[xinqing-ime#14](https://github.com/young8290/xinqing-ime/pull/14)（已合并）；第二部分（悬停解释）：[xinqing-ime#16](https://github.com/young8290/xinqing-ime/pull/16)；第三部分（全屏自动隐藏、首帧位置）、第四部分（“准 / 不准”）：随后的 PR | 见第 3 节 |
 | D-03 | 小精灵插画与 lottie 动画（6 天气 + 3 一次性动作）、logo | **进行中** | `components/WeatherSprite.vue`：SVG + CSS 动画——每种天气 2–4 秒循环（呼吸、眨眼，加上光芒转、云飘、雨落、闪电每 3 秒闪一下、月亮浮、风线摆），一次性动作 `play('shake' \| 'approach')`，“闭眼”即 `eyesClosed`；`WeatherStage.vue` 交叉淡化。应用图标是几何占位（`tools/gen_hub_icons.py`，形状已按 DS-BRAND-02） | 正式插画与 lottie 素材（要设计稿，Claude 做不了插画定稿）；“晃一下 / 靠近”还没接上触发源：打错字要 B / A 给瞬时事件，暖心话要 C-04 的事件；logo 的矢量版已做（`components/AppLogo.vue`，与 `gen_hub_icons.py` 同一套几何），引导页还没用上 |
 | D-04 | 卡片层（日程 / 待办 / 提醒 / 自评 / 小结 / 周信等 8 类） | 未开始 | — | 07 第 2 节的“卡片层”窗口还没在 `tauri.conf.json` 登记；卡片的数据来自 B、C 的事件，事件形状要先定（改 `bindings.ts` 走契约 PR） |
-| D-05 | 首次引导与同意 | 完成（待合并） | `windows/onboarding/`：FR-ONB-01～04；FR-ONB-05（本 PR）——`AiStep.vue`（Jev 与大模型的地址和密钥，已保存的只显示末 4 位、留空不改，“测试连接”先保存再逐个模型测，可跳过进离线模式）、`PrefsStep.vue`（小组件放哪个角、`care.level`、四种休息提醒开关，改了就存）；完成后小组件由晴晴打招呼（`shared/firstRun.ts`） | 引导页不让改大模型的模型列表（沿用已有的或用默认），完整的放设置页“AI 服务”（FR-SET-08）；Jev 没有测试接口，只做说明 |
-| D-06 | 对话窗口（流式、标识、求助卡片 UI） | 第一版完成 | `windows/chat/`：`useChat.ts`（会话、流式事件、先到事件暂存）、`App.vue`（AI 说明、历史抽屉、气泡与 `AI 生成` 标签、复制、停止 / 重试）、`SafetyCard.vue`（求助卡片，折叠成一行不可移除）；与 C-07/C-08 同一个 PR，ADR 0018 | 快捷指令（吐槽 / 理一理 / 呼吸，`BreathingGuide.vue`）与“记住”确认条、消息上的“让晴晴记住”已由 C 补上（[xinqing-ime#57](https://github.com/young8290/xinqing-ime/pull/57)），样式 D 已走查（文字按钮的点击目标、`AI 生成` 标签按 DS-COPY-05、输入中三个点、Esc 先关呼吸引导、抽屉与引导的焦点、高对比度下气泡有边框）；“写成情绪日记”随 C-10；历史搜索（P1）；窗口置顶切换与全局快捷键 `Ctrl+Alt+Q`；学校心理中心电话等设置项 |
+| D-05 | 首次引导与同意 | 完成 | `windows/onboarding/`：FR-ONB-01～04；FR-ONB-05（xinqing-ime#64 已合并）——`AiStep.vue`（Jev 与大模型的地址和密钥，已保存的只显示末 4 位、留空不改，“测试连接”先保存再逐个模型测，可跳过进离线模式）、`PrefsStep.vue`（小组件放哪个角、`care.level`、四种休息提醒开关，改了就存）；完成后小组件由晴晴打招呼（`shared/firstRun.ts`） | 引导页不让改大模型的模型列表（沿用已有的或用默认），完整的放设置页“AI 服务”（FR-SET-08）；Jev 没有测试接口，只做说明 |
+| D-06 | 对话窗口（流式、标识、求助卡片 UI） | 第一版完成 | `windows/chat/`：`useChat.ts`（会话、流式事件、先到事件暂存）、`App.vue`（AI 说明、历史抽屉、气泡与 `AI 生成` 标签、复制、停止 / 重试）、`SafetyCard.vue`（求助卡片，折叠成一行不可移除）；与 C-07/C-08 同一个 PR，ADR 0018 | 快捷指令（吐槽 / 理一理 / 呼吸，`BreathingGuide.vue`）与“记住”确认条、消息上的“让晴晴记住”已由 C 补上（[xinqing-ime#57](https://github.com/young8290/xinqing-ime/pull/57)），样式 D 已走查（文字按钮的点击目标、`AI 生成` 标签按 DS-COPY-05、输入中三个点、Esc 先关呼吸引导、抽屉与引导的焦点、高对比度下气泡有边框）；“写成情绪日记”随 C-10；历史搜索（P1）；窗口置顶切换与全局快捷键 `Ctrl+Alt+Q`（求助卡片上的学校心理中心电话已接设置 `safety.school_phone`，填了就显示并可复制） |
 | D-07 | 情绪看板 | 占位 | `windows/dashboard/`（只显示当前天气） | 全部（P1，计划 W9）；ECharts 未引入 |
-| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“AI 服务”（本 PR：地址与密钥只显示末 4 位、大模型优先级可拖动或按钮排序、测试连接、每日调用上限与今日用量）、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；“输入法”页接这个事件和窗口焦点刷新（xinqing-ime#39 已合并）；本 PR：快捷键录制框、中英切换键改为五选一 | 下一步：其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
+| D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“关怀”（本 PR：关怀频率、说话风格带示例句、同意 ④ 可撤回、安静时段、勿扰应用、学校心理中心电话、晴晴记住的事可改可删；输入先按后端同样的规则校验，说清哪里不对）、“AI 服务”（xinqing-ime#66 已合并：地址与密钥只显示末 4 位、大模型优先级可拖动或按钮排序、测试连接、每日调用上限与今日用量）、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；“输入法”页接这个事件和窗口焦点刷新（xinqing-ime#39 已合并）；本 PR：快捷键录制框、中英切换键改为五选一 | 下一步：其余分类（FR-SET-03、04、06、07、10）按各自后端逐个补；“关怀”里的晚间小结、周信开关等设置键登记（C）；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
 | D-09 | 系统通知、无障碍与高对比度、DPI 走查 | 部分 | 令牌里已有 `forced-colors` 高对比度和 `prefers-reduced-motion`；不可见时暂停动画（`mount.ts` + `base.css`） | 系统通知（FR-NTF-01）、150% 文本大小与 100%–200% DPI 走查都没做 |
 
 ## 2. 代码地图（D 负责的部分）
@@ -57,6 +57,8 @@ xinqing_hub/
 │     ├─ hotkey.ts              快捷键：录制规则、键名与别名（hotkey.test.ts 对照清风 hotkey.rs）、用录制框的配置键清单
 │     ├─ HotkeyRecorder.vue     快捷键录制框：点一下录制，Esc 取消、退格清除，重复时提示
 │     ├─ AppearanceSection.vue  外观
+│     ├─ CareSection.vue        关怀：频率、说话风格、同意 ④、安静时段、勿扰应用、学校电话、晴晴记住的事（FR-SET-05）
+│     ├─ care.ts                关怀页的输入校验（与后端 SettingItem::accepts、memory_entry 同一套规则）
 │     ├─ AiSection.vue          AI 服务：地址与密钥、大模型优先级、测试连接、每日上限与今日用量（FR-SET-08）
 │     ├─ AboutSection.vue       隐私与关于（目前只有“关于”）
 │     └─ licenses.ts            开源许可条目；新增随包分发的组件 / 字体 / 素材 / 图标库时在这里加
@@ -129,14 +131,17 @@ xinqing_hub/
 - `AppState::db_rebuilt`（数据库损坏后已重建）还没有在一句话区提示（文案 `error.db_rebuilt`），等消息优先级队列一起做。
 - 快捷键录制框在 Hub 窗口里录：输入法自己的快捷键（例如 `Ctrl+Shift+E` 轮换方案）可能先被核心吃掉，录不到；`Win` 组合多数被系统占用。都要在 Windows 真机上走一遍。
 - “输入法”分类：wind-rpc 的 schema 没有数值范围和说明文字，高级区只显示键名；方案名来自 ui_copy 的 `[ime.schema]`，核心新增方案时显示原 id，需要补文案。没在真机上连过清风核心。
+- 设置“关怀”缺晚间小结（FR-REV-01）和周信（FR-REV-02）的开关：设置键注册表还没登记这两项（C 的契约），登记后加在“说话风格”下面。
+- “关怀”页的输入校验（`settings/care.ts`）抄了后端 `SettingItem::accepts` 的规则，后端只回笼统的 `settings.out_of_range`；后端规则改了要同步改这里（后端仍会拒绝，只是提示变笼统）。
+- 安静时段用 `<input type="time">`，显示 12 / 24 小时制跟系统区域设置走；存进去的始终是 `HH:MM`。
 - 窗口行为（吸附、贴边隐藏、多显示器）只有纯函数单测和组件测试，还没在 Windows 真机上走查（100%–200% 混合缩放、任务栏在左 / 上）。
 
 ## 6. 下一步（按优先级）
 
 1. D-03 剩余：“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；引导页用上 logo；
-2. D-08：设置页“关怀”（FR-SET-05：关怀频率、说话风格、安静时段、勿扰应用、学校心理中心电话、晴晴记住的事）与“隐私”（出网记录 `ai_net_log_recent`、导出）——后端都有了；
-3. D-08：其余分类（FR-SET-03～08、10）按各自后端补；
-4. `bindings.ts`：设置页做“关怀”“AI 服务”前先提 `settings_schema()`（ADR 0019 评审）；
+2. D-08：设置页“隐私”（FR-SET-09：出网记录 `ai_net_log_recent`、导出、撤回同意）——后端都有了；
+3. D-08：其余分类（FR-SET-03、04、06、07、10）按各自后端补；
+4. D-07：情绪看板（`get_routine` 已有）；
 5. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
 
 ## 7. 修订记录
@@ -162,3 +167,4 @@ xinqing_hub/
 | 2026-10-05 | `bindings.ts` 契约：ADR 0027，不会是 NaN 的 f64（时间戳、设置数值）导出成 number |
 | 2026-10-05 | D-05：首次引导补上 FR-ONB-05（AI 服务、偏好、完成后晴晴打招呼） |
 | 2026-10-05 | D-08：设置中心“AI 服务”分类（FR-SET-08）；AI 服务表单文案与逻辑由引导页、设置页共用 |
+| 2026-10-05 | D-08：设置中心“关怀”分类（FR-SET-05）；求助卡片显示设置里的学校心理中心电话 |
