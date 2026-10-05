@@ -8,7 +8,7 @@
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 完成（暂停 / 单步除外） | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`）；`--baseline`、`--start-at`：[xinqing-ime#46](https://github.com/young8290/xinqing-ime/pull/46)，ADR 0021 | 两个选项由调试构建的 Hub 读环境变量 `XQ_SIM_BASELINE`、`XQ_SIM_START_AT`（`src-tauri/src/sim.rs`），xq-sim 打印启动命令；演示模式见 B-10；暂停 / 单步、Windows 管道客户端版 `--listen` 未做 |
+| B-01 | xq-sim（回放、倍速、暂停 / 单步、监听、--baseline、--start-at） | 完成 | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`）；`--baseline`、`--start-at`：[xinqing-ime#46](https://github.com/young8290/xinqing-ime/pull/46)，ADR 0021 | 两个选项由调试构建的 Hub 读环境变量 `XQ_SIM_BASELINE`、`XQ_SIM_START_AT`（`src-tauri/src/sim.rs`），xq-sim 打印启动命令；不是完整的演示模式（×60、演示库随 B-10）；暂停 / 单步：`--paused` 与标准输入命令（`p` / 回车 / `c`），暂停期间每 5 秒发一次 ts 不前进的心跳（[xinqing-ime#57](https://github.com/young8290/xinqing-ime/pull/57)）；Windows 管道客户端版 `--listen` 未做 |
 | B-02 | 录制 7 个 E-STATE 脚本与双人标注 | 未开始（需要人） | 剧本：`eval/datasets/e_state_scripts.md` | 要全员真人录制，Claude 做不了；剧本待两人评审。现在只有 3 个合成脚本（`tools/xq-sim/scripts/`，由 `gen_synthetic.py` 生成） |
 | B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008；Python 对拍：`eval/tools/features_ref.py` + `tests/features_parity.rs`（[xinqing-ime#45](https://github.com/young8290/xinqing-ime/pull/45)） | — |
 | B-04 | 个人基线、冷启动默认值 | 完成 | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；[xinqing-ime#25](https://github.com/young8290/xinqing-ime/pull/25)，ADR 0014 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准；7 天基线统计已与 Python 对拍（#45） |
@@ -133,7 +133,7 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 ## 6. 下一步（按优先级）
 
 1. B-08 剩余：系统通知（随 D-09）、专注时段（等 C 的自由文本设置类型）；
-2. B-01 的 `--baseline`、`--start-at` 已按这里原先建议的做法实现（#46，ADR 0021，待 A、E 评审）；剩暂停 / 单步；
+2. B-01 已完成：`--baseline`、`--start-at`（#46，ADR 0021，待 A、E 评审），暂停 / 单步；剩 Windows 管道客户端版 `--listen`；
 3. B-10 剩余：ADR 0024 的键合并后，外壳启动读 `dev.demo`；研究模式 FR-DMO-04（定时自评邀请、`source = esm`、关闭时可删研究期间的自评）；跟进 ADR 0023 / 0024 评审；
 4. B-11 评测报告：等 B-02 的真人录制。
 
@@ -150,4 +150,5 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 | 2026-10-05 | B-03 / B-04：窗口切分、特征、基线统计的 Python 参考实现与 Rust 对拍（FR-STA-02/03 验收），CI 校验对拍文件 |
 | 2026-10-05 | B-09：`daily_summary` 的使用时长、停止打字时间、休息提醒计数；作息洞察统计与 `get_routine` 命令（TC-REV-04） |
 | 2026-10-05 | B-10：演示模式（`--demo`、×60 `ScaledClock`、每次重建并预置一周的演示库、`demo_status`）与 ADR 0023 |
+| 2026-10-05 | B-01：xq-sim 暂停 / 单步（C 代做） |
 | 2026-10-05 | 设置键 `dev.demo`、`research.id`、`research.enabled` 与 ADR 0024（C 的注册表，单独 PR） |

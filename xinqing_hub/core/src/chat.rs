@@ -112,7 +112,7 @@ pub enum ChatError {
 }
 
 /// `chat_send` / `chat_retry` 的返回。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sent {
     pub request_id: u32,
     pub session_id: i64,
@@ -122,6 +122,9 @@ pub struct Sent {
     pub new_session: bool,
     /// 本地词表命中，界面应立即显示求助卡片（`safety:triggered` 也会推）
     pub safety: bool,
+    /// 用户明确要求记住的内容，界面先请用户确认，确认后才调 `memory_add`（FR-CHT-07 第 1 条）；
+    /// 求助卡片出现时不问
+    pub memory_candidate: Option<String>,
 }
 
 struct Running {
@@ -227,6 +230,7 @@ impl ChatService {
             user_message_id: Some(user_message_id),
             new_session,
             safety: local,
+            memory_candidate: (!local).then(|| chat::memory_request(text)).flatten(),
         })
     }
 
@@ -263,6 +267,7 @@ impl ChatService {
             user_message_id: None,
             new_session: false,
             safety: false,
+            memory_candidate: None,
         })
     }
 
@@ -868,6 +873,29 @@ mod tests {
         e.settle().await;
         assert!(c.new_session);
         assert_ne!(c.session_id, a.session_id);
+    }
+
+    #[tokio::test]
+    async fn explicit_remember_request_is_offered_for_confirmation_not_saved() {
+        let e = env(true);
+        e.script(Ok(vec![Some("好的。")]));
+        let sent = e.svc.send(None, "帮我记一下：下周三考英语", None).unwrap();
+        e.settle().await;
+        assert_eq!(sent.memory_candidate.as_deref(), Some("下周三考英语"));
+        // 只是给界面去问，记忆表里还没有（FR-CHT-07 第 4 条：不自动保存）
+        assert!(
+            e.port
+                .db
+                .lock()
+                .unwrap()
+                .memories_list()
+                .unwrap()
+                .is_empty()
+        );
+        // 求助卡片出现时不问
+        let sent = e.svc.send(None, "记住，我真的不想活了", None).unwrap();
+        assert!(sent.safety);
+        assert_eq!(sent.memory_candidate, None);
     }
 
     #[tokio::test]

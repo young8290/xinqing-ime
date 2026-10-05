@@ -76,7 +76,8 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
                 extraction_fields[key].append(gold["id"])
         if not isinstance(output.get("flags"), list) or any(not isinstance(flag, str) for flag in output["flags"]):
             raise EvaluationError(f"{gold['id']}: output.flags 必须是字符串数组")
-        if sorted(set(output["flags"])) != sorted(set(expected["flags"])):
+        # `adjusted` 只说明代码改过模型的日期或时刻（FR-SCH-04 校验第 1 条），不是卡片该带的标记，不比
+        if sorted(set(output["flags"]) - {"adjusted"}) != sorted(set(expected["flags"])):
             extraction_fields["flags"].append(gold["id"])
     extraction_rate = rate(extraction_primary, len(extracts))
 
