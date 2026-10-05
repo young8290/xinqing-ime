@@ -112,9 +112,13 @@ pub enum Item {
     TimeRange,
     /// 电话号码：数字、空格与 `+-()`，至少 3 个数字，不超过 [`PHONE_MAX_CHARS`] 字；空串表示没填
     Phone,
+    /// 用户研究的匿名编号（FR-DMO-04、12 第 4 节）：ASCII 字母、数字、`-`、`_`，不超过
+    /// [`RESEARCH_ID_MAX_CHARS`] 字；空串表示没填
+    ResearchId,
 }
 
 pub const PHONE_MAX_CHARS: usize = 24;
+pub const RESEARCH_ID_MAX_CHARS: usize = 16;
 
 impl Item {
     pub fn accepts(self, s: &str) -> bool {
@@ -129,6 +133,11 @@ impl Item {
                             c.is_ascii_digit() || matches!(c, ' ' | '+' | '-' | '(' | ')')
                         })
                         && s.chars().filter(char::is_ascii_digit).count() >= 3)
+            }
+            Item::ResearchId => {
+                s.len() <= RESEARCH_ID_MAX_CHARS
+                    && s.chars()
+                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
             }
         }
     }
@@ -307,6 +316,23 @@ pub const KEYS: &[KeySpec] = &[
     },
     KeySpec {
         key: "dev.mode",
+        kind: Kind::Bool,
+        default: || false.into(),
+    },
+    // 演示模式（FR-DMO-03）：开启后下次启动进入演示模式，切换要重启 Hub（ADR 0023 第 1 条、ADR 0024）
+    KeySpec {
+        key: "dev.demo",
+        kind: Kind::Bool,
+        default: || false.into(),
+    },
+    // 研究模式（FR-DMO-04）：先填研究编号，再打开开关；编号为空时开关不起作用（ADR 0024）
+    KeySpec {
+        key: "research.id",
+        kind: Kind::Text(Item::ResearchId),
+        default: || "".into(),
+    },
+    KeySpec {
+        key: "research.enabled",
         kind: Kind::Bool,
         default: || false.into(),
     },
@@ -577,6 +603,27 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    #[test]
+    fn research_id_is_a_short_anonymous_code() {
+        let ok = |s: &str| Item::ResearchId.accepts(s);
+        assert!(ok(""), "空串表示没填");
+        assert!(ok("P01") && ok("xq-2026_07") && ok("ABCDEFGHIJKLMNOP"));
+        assert!(!ok("ABCDEFGHIJKLMNOPQ"), "超过 16 字");
+        assert!(
+            !ok("张三") && !ok("P 01") && !ok("a@b.com"),
+            "不收姓名、空格、邮箱"
+        );
+        let db = Db::open_in_memory().unwrap();
+        assert_eq!(get(&db, "research.id").unwrap(), SettingValue::from(""));
+        assert_eq!(
+            get(&db, "research.enabled").unwrap(),
+            SettingValue::from(false)
+        );
+        assert_eq!(get(&db, "dev.demo").unwrap(), SettingValue::from(false));
+        assert!(set(&db, "research.id", &"张三".into()).is_err());
+        assert!(set(&db, "research.id", &"P07".into()).is_ok());
     }
 
     #[test]
