@@ -15,6 +15,7 @@ use xinqing_hub_gateway::{
 use crate::error::UiError;
 use crate::gateway::{Ai, Source};
 use crate::secrets::SecretsStoreError;
+use crate::state::AppState;
 
 /// 当前 AI 配置从哪里来。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
@@ -95,6 +96,20 @@ pub struct UsageRow {
     pub cap: u32,
 }
 
+/// 设置页展示的出网记录；只包含接口、模型、字段名和计量信息，不含请求或响应正文。
+#[derive(Debug, Clone, PartialEq, Serialize, Type)]
+pub struct NetLogView {
+    /// Unix 毫秒；前端用 number 展示即可，时间不会超过 JavaScript 安全整数范围。
+    pub ts: f64,
+    pub api: String,
+    pub model: Option<String>,
+    pub fields: Vec<String>,
+    pub latency_ms: Option<u32>,
+    pub status: String,
+    pub tokens_in: Option<u32>,
+    pub tokens_out: Option<u32>,
+}
+
 /// 网关自己计数的几类；日程初筛（C-05）和周信（C-10）的次数由各自的服务计，接入后再加进来。
 const USAGE_KINDS: [BudgetKind; 4] = [
     BudgetKind::Jev,
@@ -148,6 +163,28 @@ pub fn ai_usage_today(ai: State<'_, Arc<Ai>>) -> Result<Vec<UsageRow>, UiError> 
             kind,
             used: gw.budget_used(kind),
             cap: gw.budget_cap(kind),
+        })
+        .collect())
+}
+
+/// 返回设置页需要的最近出网记录（FR-SET-09、09 D-20）。数据库本身只保留最近 200 条，
+/// 界面再取最近 20 条；记录不含用户输入、提示词或模型回复。
+#[tauri::command]
+#[specta::specta]
+pub fn ai_net_log_recent(state: State<'_, AppState>) -> Result<Vec<NetLogView>, UiError> {
+    Ok(state
+        .db()
+        .net_log_recent(20)?
+        .into_iter()
+        .map(|entry| NetLogView {
+            ts: entry.ts as f64,
+            api: entry.api,
+            model: entry.model,
+            fields: entry.fields,
+            latency_ms: entry.latency_ms.and_then(|n| u32::try_from(n).ok()),
+            status: entry.status,
+            tokens_in: entry.tokens_in,
+            tokens_out: entry.tokens_out,
         })
         .collect())
 }
