@@ -3,8 +3,9 @@
 // 密钥只进不出：已保存的只显示末 4 位，密钥框留空就沿用旧的。“测试连接”先保存再逐个模型发一条最小请求；
 // Jev 没有测试接口，只说明怎么看。模型列表引导页不让改，沿用已有的（没有就用默认），完整的放设置页“AI 服务”。
 import { computed, onMounted, ref } from 'vue'
-import { commands, unwrap, type AiConfigInput, type AiConfigView, type ModelProbeView } from '@/api'
+import { commands, unwrap, type AiConfigView, type ModelProbeView } from '@/api'
 import { errorText, t } from '@/i18n'
+import { aiFormDirty, devHint as hintFor, keyPlaceholder, toAiInput } from '../shared/aiConfig'
 
 const emit = defineEmits<{ next: []; back: [] }>()
 
@@ -18,26 +19,16 @@ const testing = ref(false)
 const results = ref<ModelProbeView[] | null>(null)
 const error = ref<string | null>(null)
 
-const devHint = computed(() =>
-  view.value?.source === 'dev_file'
-    ? t('onboarding.ai.dev_file')
-    : view.value?.source === 'dev_mock'
-      ? t('onboarding.ai.dev_mock')
-      : null,
-)
+const form = () => ({
+  jevUrl: jevUrl.value,
+  jevKey: jevKey.value,
+  llmUrl: llmUrl.value,
+  llmKey: llmKey.value,
+})
+const devHint = computed(() => hintFor(view.value?.source))
 /** 填过东西（或改了已保存的地址）才需要保存 */
-const dirty = computed(
-  () =>
-    jevKey.value.trim() !== '' ||
-    llmKey.value.trim() !== '' ||
-    jevUrl.value.trim() !== (view.value?.jev?.base_url ?? '') ||
-    llmUrl.value.trim() !== (view.value?.llm?.base_url ?? ''),
-)
+const dirty = computed(() => aiFormDirty(form(), view.value))
 const filled = computed(() => jevUrl.value.trim() !== '' || llmUrl.value.trim() !== '')
-
-function keyPlaceholder(tail: string | null | undefined): string {
-  return tail ? t('onboarding.ai.key_saved', { tail }) : ''
-}
 
 onMounted(async () => {
   try {
@@ -50,26 +41,13 @@ onMounted(async () => {
   }
 })
 
-function input(): AiConfigInput {
-  const jev = jevUrl.value.trim()
-  const llm = llmUrl.value.trim()
-  return {
-    jev: jev
-      ? { base_url: jev, api_key: jevKey.value.trim() || null, model: view.value?.jev?.model ?? null }
-      : null,
-    llm: llm
-      ? { base_url: llm, api_key: llmKey.value.trim() || null, models: view.value?.llm?.models ?? [] }
-      : null,
-  }
-}
-
 /** 保存；失败时显示原因并返回 false。保存后密钥框清空，占位里显示新的末 4 位。 */
 async function save(): Promise<boolean> {
   if (!dirty.value) return true
   error.value = null
   busy.value = true
   try {
-    view.value = await unwrap(commands.secretsSet(input()))
+    view.value = await unwrap(commands.secretsSet(toAiInput(form(), view.value)))
     jevKey.value = ''
     llmKey.value = ''
     return true
@@ -106,13 +84,13 @@ async function next(): Promise<void> {
     <p v-if="devHint" class="dev">{{ devHint }}</p>
 
     <fieldset data-service="jev">
-      <legend>{{ t('onboarding.ai.jev') }}</legend>
+      <legend>{{ t('ai_service.jev') }}</legend>
       <label>
-        <span>{{ t('onboarding.ai.url') }}</span>
+        <span>{{ t('ai_service.url') }}</span>
         <input v-model="jevUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" />
       </label>
       <label>
-        <span>{{ t('onboarding.ai.key') }}</span>
+        <span>{{ t('ai_service.key') }}</span>
         <input
           v-model="jevKey"
           type="password"
@@ -123,13 +101,13 @@ async function next(): Promise<void> {
     </fieldset>
 
     <fieldset data-service="llm">
-      <legend>{{ t('onboarding.ai.llm') }}</legend>
+      <legend>{{ t('ai_service.llm') }}</legend>
       <label>
-        <span>{{ t('onboarding.ai.url') }}</span>
+        <span>{{ t('ai_service.url') }}</span>
         <input v-model="llmUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" />
       </label>
       <label>
-        <span>{{ t('onboarding.ai.key') }}</span>
+        <span>{{ t('ai_service.key') }}</span>
         <input
           v-model="llmKey"
           type="password"
@@ -141,18 +119,18 @@ async function next(): Promise<void> {
 
     <div class="test">
       <button :disabled="busy || testing || !filled" @click="test">
-        {{ testing ? t('onboarding.ai.testing') : t('onboarding.ai.test') }}
+        {{ testing ? t('ai_service.testing') : t('ai_service.test') }}
       </button>
       <ul v-if="results" class="results" role="status">
-        <li v-if="results.length === 0">{{ t('onboarding.ai.no_llm') }}</li>
+        <li v-if="results.length === 0">{{ t('ai_service.no_llm') }}</li>
         <li v-for="r in results" :key="r.model" :class="r.ok ? 'ok' : 'fail'">
           {{
             r.ok
-              ? t('onboarding.ai.test_ok', { model: r.model, ms: r.latency_ms })
-              : t('onboarding.ai.test_fail', { model: r.model, status: r.status })
+              ? t('ai_service.test_ok', { model: r.model, ms: r.latency_ms })
+              : t('ai_service.test_fail', { model: r.model, status: r.status })
           }}
         </li>
-        <li v-if="jevUrl.trim()" class="muted">{{ t('onboarding.ai.jev_untested') }}</li>
+        <li v-if="jevUrl.trim()" class="muted">{{ t('ai_service.jev_untested') }}</li>
       </ul>
     </div>
 

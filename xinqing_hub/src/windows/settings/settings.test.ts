@@ -10,8 +10,25 @@ const mocks = vi.hoisted(() => ({
   /** 最近一次订阅 `ime_config:changed` 的回调 */
   imeChanged: undefined as ((e: { payload: unknown }) => void) | undefined,
   imeUnlisten: vi.fn(),
+  aiConfigGet: vi.fn(),
+  secretsSet: vi.fn(),
+  aiTestConnection: vi.fn(),
+  aiUsageToday: vi.fn(),
+  settingsSet: vi.fn(),
 }))
 const ok = (data: unknown) => Promise.resolve({ status: 'ok', data })
+const CAPS: Record<string, number> = {
+  'ai.cap.jev': 3000,
+  'ai.cap.llm': 200,
+  'ai.cap.chat': 100,
+  'ai.cap.schedule': 50,
+  'ai.cap.rewrite': 100,
+}
+const AI_VIEW = {
+  source: 'saved',
+  jev: { base_url: 'https://jev.example', key_tail: '••••a1b2', model: 'jev-latest' },
+  llm: { base_url: 'https://llm.example', key_tail: '••••c3d4', models: ['m1', 'm2', 'm3'] },
+}
 const SCHEMA = [
   { key: 'schema.active', kind: 'string', options: null },
   { key: 'schema.available', kind: 'string_list', options: null },
@@ -39,8 +56,19 @@ const CONFIG = {
 vi.mock('@/api', async (orig) => ({
   ...(await orig<typeof import('@/api')>()),
   commands: {
-    settingsGet: async (key: string) => ({ status: 'ok', data: key === 'ui.theme' ? 'system' : 1 }),
-    settingsSet: async () => ({ status: 'ok', data: null }),
+    settingsGet: async (key: string) => ({
+      status: 'ok',
+      data: key === 'ui.theme' ? 'system' : key.startsWith('ai.cap.') ? CAPS[key] : 1,
+    }),
+    settingsSet: mocks.settingsSet,
+    settingsSchema: async () => [
+      { key: 'ai.cap.llm', kind: { type: 'int', min: 0, max: 2000 }, default: 200 },
+      { key: 'ui.theme', kind: { type: 'choice', options: ['system'] }, default: 'system' },
+    ],
+    aiConfigGet: mocks.aiConfigGet,
+    secretsSet: mocks.secretsSet,
+    aiTestConnection: mocks.aiTestConnection,
+    aiUsageToday: mocks.aiUsageToday,
     imeSchema: mocks.imeSchema,
     imeConfigGet: mocks.imeConfigGet,
     imeConfigSet: mocks.imeConfigSet,
@@ -83,13 +111,18 @@ describe('设置中心', () => {
       .mockImplementation(() => ok({ needs_restart: false, applied: 1, skipped: [] }))
     mocks.imeChanged = undefined
     mocks.imeUnlisten.mockReset()
+    mocks.aiConfigGet.mockReset().mockImplementation(() => ok(AI_VIEW))
+    mocks.secretsSet.mockReset().mockImplementation(() => ok(AI_VIEW))
+    mocks.aiTestConnection.mockReset().mockImplementation(() => ok([]))
+    mocks.aiUsageToday.mockReset().mockImplementation(() => ok([{ kind: 'llm', used: 12, cap: 200 }]))
+    mocks.settingsSet.mockReset().mockImplementation(() => ok(null))
   })
 
   it('左侧分类按 FR-SET-01 命名，当前分类有 aria-current', async () => {
     const w = mount(App)
     await flushPromises()
     const nav = w.findAll('nav button')
-    expect(nav.map((b) => b.text())).toEqual(['输入法', '外观', '隐私与关于'])
+    expect(nav.map((b) => b.text())).toEqual(['输入法', '外观', 'AI 服务', '隐私与关于'])
     expect(nav[0]!.attributes('aria-current')).toBe('page')
     expect(w.find('h1').text()).toBe('输入法')
   })
@@ -379,6 +412,90 @@ describe('设置中心', () => {
       await flushPromises()
       expect(row(w, 'schema.active').exists()).toBe(true)
       w.unmount()
+    })
+  })
+
+  describe('AI 服务（FR-SET-08）', () => {
+    async function openAi() {
+      const w = mount(App, { attachTo: document.body })
+      await flushPromises()
+      await w
+        .findAll('nav button')
+        .find((b) => b.text() === 'AI 服务')!
+        .trigger('click')
+      await flushPromises()
+      return w
+    }
+    const models = (w: Awaited<ReturnType<typeof openAi>>) => w.findAll('.model .name').map((n) => n.text())
+
+    it('地址填好，密钥只显示末 4 位；没改动时“保存”不可点', async () => {
+      const w = await openAi()
+      expect(w.find('h1').text()).toBe('AI 服务')
+      const llm = w.find('[data-service=llm]')
+      expect((llm.find('input[type=url]').element as HTMLInputElement).value).toBe('https://llm.example')
+      expect(llm.find('input[type=password]').attributes('placeholder')).toBe('已保存 ••••c3d4，留空就不改')
+      expect(models(w)).toEqual(['m1', 'm2', 'm3'])
+      expect(w.find('.row-actions button.primary').attributes('disabled')).toBeDefined()
+    })
+
+    it('调整大模型顺序、增删模型后保存，按新顺序提交', async () => {
+      const w = await openAi()
+      await w.findAll('.model')[0]!.findAll('button')[1]!.trigger('click') // m1 往后挪
+      expect(models(w)).toEqual(['m2', 'm1', 'm3'])
+      await w.findAll('.model')[2]!.findAll('button')[2]!.trigger('click') // 删掉 m3
+      await w.find('.add input').setValue('m9')
+      await w.find('.add input').trigger('keydown', { key: 'Enter' })
+      expect(models(w)).toEqual(['m2', 'm1', 'm9'])
+      await w.find('.row-actions button.primary').trigger('click')
+      await flushPromises()
+      expect(mocks.secretsSet).toHaveBeenCalledWith({
+        jev: { base_url: 'https://jev.example', api_key: null, model: 'jev-latest' },
+        llm: { base_url: 'https://llm.example', api_key: null, models: ['m2', 'm1', 'm9'] },
+      })
+      expect(w.find('.row-actions [role=status]').text()).toBe('已保存')
+    })
+
+    it('拖动排序：把第三个拖到最前', async () => {
+      const w = await openAi()
+      const items = w.findAll('.model')
+      await items[2]!.trigger('dragstart')
+      await items[0]!.trigger('drop')
+      expect(models(w)).toEqual(['m3', 'm1', 'm2'])
+    })
+
+    it('测试连接：没改动时不保存，逐个模型显示结果', async () => {
+      mocks.aiTestConnection.mockImplementation(() =>
+        ok([
+          { model: 'm1', ok: true, latency_ms: 300, status: 'ok' },
+          { model: 'm2', ok: false, latency_ms: 0, status: '401' },
+        ]),
+      )
+      const w = await openAi()
+      await w.findAll('.row-actions button')[1]!.trigger('click')
+      await flushPromises()
+      expect(mocks.secretsSet).not.toHaveBeenCalled()
+      expect(w.findAll('.results li').map((li) => li.text())).toEqual([
+        'm1：可以用，300 毫秒',
+        'm2：连不上（401）',
+        '情绪识别没有测试接口，用起来以后看小组件上有没有“离线”角标',
+      ])
+    })
+
+    it('每日上限显示今日用量；改了就存并刷新用量，范围取自 settings_schema', async () => {
+      const w = await openAi()
+      const llm = w.find('[data-kind=llm]')
+      expect(llm.find('.usage').text()).toBe('今天已用 12 / 200')
+      expect(llm.find('input').attributes('max')).toBe('2000')
+      await llm.find('input').setValue('150')
+      await flushPromises()
+      expect(mocks.settingsSet).toHaveBeenCalledWith('ai.cap.llm', 150)
+      expect(mocks.aiUsageToday).toHaveBeenCalledTimes(2)
+    })
+
+    it('没有配置时说明是离线模式', async () => {
+      mocks.aiConfigGet.mockImplementation(() => ok({ source: 'none', jev: null, llm: null }))
+      const w = await openAi()
+      expect(w.find('.note').text()).toBe('现在是离线模式：没填 AI 服务，只有本机的功能。')
     })
   })
 })

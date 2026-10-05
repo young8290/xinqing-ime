@@ -274,6 +274,21 @@ llm_summary = "把状态摘要（统计数据，不含任何文字）发给大�
 enhanced = "增强模式：发送上屏文字判断文字情绪"
 rewrite = "温柔改写：按快捷键时，把那段文字发送给 AI 服务改写"
 
+[ai_service]                 # 引导页（FR-ONB-05）与设置页“AI 服务”（FR-SET-08）共用；密钥只进不出（ADR 0012）
+jev = "情绪识别（Jev）"
+llm = "大模型（聊天和小结）"
+url = "服务地址"
+key = "密钥"
+key_saved = "已保存 {tail}，留空就不改"
+test = "测试连接"
+testing = "正在测试…"
+test_ok = "{model}：可以用，{ms} 毫秒"
+test_fail = "{model}：连不上（{status}）"
+no_llm = "还没填大模型，没有可以测试的"
+jev_untested = "情绪识别没有测试接口，用起来以后看小组件上有没有“离线”角标"
+dev_file = "开发版：正在用仓库里的 secrets.toml"
+dev_mock = "开发版：正在连本机的 mock-ai"
+
 [onboarding]
 age = "心晴目前只面向年满 18 周岁的用户。"
 not_medical = "心晴不是医疗产品，也不是心理咨询服务，不做任何诊断或治疗。"
@@ -293,23 +308,10 @@ btn_back = "上一步"
 btn_done = "开始使用"
 btn_close = "关闭"
 
-[onboarding.ai]              # 07 FR-ONB-05 第 1 条：AI 服务（可跳过，跳过即离线模式）；密钥只进不出（ADR 0012）
+[onboarding.ai]              # 07 FR-ONB-05 第 1 条：AI 服务（可跳过，跳过即离线模式）；表单文案共用 [ai_service]
 title = "AI 服务"
 intro = "填上 AI 服务的地址和密钥，晴晴才能聊天、听懂你说的话。不填也能用，离线模式下只有本机的功能。"
-jev = "情绪识别（Jev）"
-llm = "大模型（聊天和小结）"
-url = "服务地址"
-key = "密钥"
-key_saved = "已保存 {tail}，留空就不改"
-test = "测试连接"
-testing = "正在测试…"
-test_ok = "{model}：可以用，{ms} 毫秒"
-test_fail = "{model}：连不上（{status}）"
-no_llm = "还没填大模型，没有可以测试的"
-jev_untested = "情绪识别没有测试接口，用起来以后看小组件上有没有“离线”角标"
 skip = "跳过，先用离线模式"
-dev_file = "开发版：正在用仓库里的 secrets.toml"
-dev_mock = "开发版：正在连本机的 mock-ai"
 
 [onboarding.prefs]           # 07 FR-ONB-05 第 2 条：小组件位置、关怀频率、提醒开关
 title = "再选几样就好"
@@ -364,8 +366,27 @@ theme_dark = "深色"
 widget_opacity = "小组件不透明度"
 privacy_about = "隐私与关于"           # 07 FR-SET-01 的分类名
 ime = "输入法"
+ai_service = "AI 服务"
 saved = "已保存"                        # FR-SET-01：修改即保存后底部短暂提示
 
+
+[settings.ai]                # 07 FR-SET-08“AI 服务”
+offline = "现在是离线模式：没填 AI 服务，只有本机的功能。"
+models = "大模型（按顺序先用前面的）"
+models_hint = "前面的连不上时依次换下一个；一个都不填就用默认模型。"
+model_add = "添加模型"
+model_up = "把 {model} 往前挪"
+model_down = "把 {model} 往后挪"
+model_remove = "删掉 {model}"
+save = "保存"
+caps = "每天最多调用几次"
+caps_hint = "到了次数今天就先不用这一类，明天再接着用；填 0 表示今天不用。"
+usage = "今天已用 {used} / {cap}"
+kind_jev = "情绪识别"
+kind_llm = "大模型（不含聊天）"
+kind_chat_turn = "聊天轮数"
+kind_schedule_prefilter = "日程识别"
+kind_rewrite = "温柔改写"
 [common]
 close = "关闭"
 retry = "重试"
