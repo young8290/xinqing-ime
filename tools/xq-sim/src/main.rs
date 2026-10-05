@@ -396,7 +396,9 @@ impl Gate {
                             break;
                         }
                     }
-                    None => eprintln!("xq-sim：不认识的命令 {line:?}（p 暂停/继续，回车或 n 单步，c 继续）"),
+                    None => eprintln!(
+                        "xq-sim：不认识的命令 {line:?}（p 暂停/继续，回车或 n 单步，c 继续）"
+                    ),
                 }
             }
         });
@@ -418,7 +420,14 @@ impl Gate {
             Cmd::Step => {}
         }
         if c != Cmd::Step {
-            eprintln!("xq-sim：{}", if self.paused { "已暂停" } else { "继续回放" });
+            eprintln!(
+                "xq-sim：{}",
+                if self.paused {
+                    "已暂停"
+                } else {
+                    "继续回放"
+                }
+            );
         }
     }
 
