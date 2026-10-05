@@ -19,7 +19,7 @@
 | C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
 | C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | 未开始 | `prompts/rewrite.md`、`eval/datasets/e_rewrite.jsonl`；`sense.rs` 收到 `rewrite_req` 时先回 `RewriteFail::Offline` | 计划 W8–W9；依赖 A-08 改写模式；V8 校验、可还原占位符 `[号码1]` |
 | C-10 | 情绪日记、晚间小结、周信 | 未开始 | `hub_templates/evening.toml`、`letter_fallback.md`、`prompts/diary.md`、`letter.md` | 16 第 3 节建议移给 B，W1 评审会还没定（B 的交接文档也记了“未认领”） |
-| C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表 | E-COMFORT 没有脚本；报告（`eval/reports/`）要等各服务做完、用真实接口跑出预测文件 |
+| C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表、E-COMFORT | E-COMFORT：`eval_comfort.py` 与评测集 `e_comfort.jsonl`（6 种状态摘要 × 若干次，共 50 条），[xinqing-ime#50](https://github.com/young8290/xinqing-ime/pull/50)；报告（`eval/reports/`）仍要等真实接口生成预测文件 |
 
 ## 2. 代码地图（C 负责的部分）
 
@@ -70,7 +70,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 负面自评立即回应，不受冷却与上限限制，不占名额 | FR-STA-10 第 2 条 | 完成（#27）：订阅 `HubEvent::SelfReport`。“和晴晴聊聊”按钮是界面（D），对话是 C-07 |
 | 频率档位 `care.level`（多一些 8 次 / 20 分钟、适中 5 / 30、少一些 2 / 60、关闭） | FR-CMF-06 | 完成（#27），新增设置键 |
 | 反馈 👍 / 👎 / 🔕、模板句屏蔽、连续 3 天负反馈自动降档并告知 | FR-CMF-05、FR-CMF-06 第 2 条 | 完成（#29）：`domain::comfort_feedback`、命令 `comfort_feedback(id, verdict)`（ADR 0015 第 9 条，没有并进 `submit_feedback`）；🔕 到当天 24:00；降档最低到“少一些”，推 `care:reduced` 与 `settings:changed`。等 D 在一句话区悬停时接三个按钮 |
-| E-COMFORT 评测（50 次生成、人工违规率 < 5%） | 08 第 8 节、C-11 | 未做：要真实接口 |
+| E-COMFORT 评测（50 次生成、人工违规率 < 5%） | 08 第 8 节、C-11 | 脚本完成（[xinqing-ime#50](https://github.com/young8290/xinqing-ime/pull/50)）：`eval/tools/eval_comfort.py`；评测集 `eval/datasets/e_comfort.jsonl` 是状态摘要，不是用户原话；报告待真实接口预测文件 |
 
 ### 3.2 C-03 剩余
 
@@ -155,3 +155,4 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 2026-10-05 | C-07 对话（P0 部分）与 C-08 危机安全的对话部分、D-06 对话窗口第一版，ADR 0018 |
 | 2026-10-05 | C-07/C-08 已合并（#40）；设置值扩展（列表、整数、格式文本）、`care.dnd_apps` / `care.quiet_hours` 接进暖心话、`safety.school_phone`、`ai.cap.*` 接进网关，ADR 0019 |
 | 2026-10-05 | #44 已合并；单写入口 `DbWriter`（一个写连接 + 只读连接，普通数据 5 秒 / 100 条批量，用户确认类同步写），ADR 0020 |
+| 2026-10-05 | C-11 补 E-COMFORT 评测集（6 种状态摘要）、结构/长度/禁用词/人工违规率脚本与单测（#50） |
