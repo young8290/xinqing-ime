@@ -19,8 +19,9 @@
 # 注意：本文件不写 version 键——version 是用户文件的迁移状态锚点。
 
 [schema]
-active = "wubi86"
-available = ["wubi86", "wubi86_pinyin"]
+# 心晴：出厂默认 26 键全拼（目标用户多用拼音），五笔与五笔拼音混输仍在切换列表里
+active = "pinyin"
+available = ["pinyin", "wubi86", "wubi86_pinyin"]
 # 主码表方案 ID（拼音反查码源），留空时按 available 顺序自动选第一个码表方案
 primary_codetable = ""
 # 主拼音方案 ID（临时拼音的目标方案，如双拼方案 id），留空 = 全拼 "pinyin"
