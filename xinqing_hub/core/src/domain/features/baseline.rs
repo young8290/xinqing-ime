@@ -64,6 +64,19 @@ impl Baseline {
         }
     }
 
+    /// 回放用的固定基线（FR-DMO-01 `--baseline`）：把文件里的值当作个人基线，并越过冷启动，
+    /// 结果只取决于文件，不读写真实基线。`xq-replay` 与 Hub 的 `XQ_SIM_BASELINE` 共用（ADR 0020）。
+    pub fn fixed(d: &BaselineDefault) -> Self {
+        let mut b = Self::from_defaults(d);
+        for (bucket, map) in [(Bucket::Day, &d.day), (Bucket::Night, &d.night)] {
+            for (f, v) in map {
+                b.set_personal(bucket, f, *v);
+            }
+        }
+        b.windows = u32::MAX / 2;
+        b
+    }
+
     /// 换上一次重算的结果：个人统计值整体替换，有效窗口数取重算时的样本数（FR-STA-03 第 4 条）。
     pub fn apply(&mut self, stats: &BaselineStats) {
         self.personal.clear();

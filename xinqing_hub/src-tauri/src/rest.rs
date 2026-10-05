@@ -11,7 +11,6 @@ use tauri_specta::Event;
 use tokio::sync::mpsc;
 use xinqing_hub_core::domain::rest::{Due, KindCfg, RestAction, RestConfig, RestKind, parse_hhmm};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
-use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::rest::{RestCmd, RestPort, RestService};
 use xqp::Down;
 
@@ -34,7 +33,7 @@ pub fn start(app: &AppHandle) {
     app.manage(Rest { cmds });
     let service = RestService::new(
         Arc::new(ShellPort { app: app.clone() }),
-        Arc::new(SystemClock),
+        crate::sim::clock(),
     );
     tauri::async_runtime::spawn(service.run(bus, cmd_rx));
 }

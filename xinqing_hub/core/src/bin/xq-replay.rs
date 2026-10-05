@@ -8,12 +8,13 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use chrono::{Local, NaiveTime, TimeZone};
+use chrono::Local;
 use clap::Parser;
 use xinqing_hub_core::domain::explain::{self, Evidence, ExplainCopy, ExplainSource};
-use xinqing_hub_core::domain::features::{Baseline, Bucket};
+use xinqing_hub_core::domain::features::Baseline;
 use xinqing_hub_core::domain::fusion::JevVerdict;
 use xinqing_hub_core::domain::rules::{Hint, Hints};
+use xinqing_hub_core::infra::clock;
 use xinqing_hub_core::infra::templates::{AppCategories, BaselineDefault, TemplateDirs, read_toml};
 use xinqing_hub_core::pipeline::{StatePipeline, replay};
 use xqp::{MoodState, Up};
@@ -79,28 +80,16 @@ fn main() -> Result<()> {
         Some(p) => read_toml::<BaselineDefault>(p)?,
         None => BaselineDefault::load(&dirs)?,
     };
-    let mut baseline = Baseline::from_defaults(&defaults);
-    if args.baseline.is_some() {
-        // 指定基线文件时把它当作个人基线使用，保证回放可复现
-        for (bucket, map) in [
-            (Bucket::Day, &defaults.day),
-            (Bucket::Night, &defaults.night),
-        ] {
-            for (f, v) in map {
-                baseline.set_personal(bucket, f, *v);
-            }
-        }
-        baseline.windows = u32::MAX / 2;
-    }
+    // 指定基线文件时把它当作个人基线使用，保证回放可复现
+    let baseline = if args.baseline.is_some() {
+        Baseline::fixed(&defaults)
+    } else {
+        Baseline::from_defaults(&defaults)
+    };
     let apps = AppCategories::load(&dirs)?;
     let start = match &args.start_at {
         Some(s) => {
-            let t = NaiveTime::parse_from_str(s, "%H:%M").context("--start-at 格式应为 HH:MM")?;
-            let naive = Local::now().date_naive().and_time(t);
-            Local
-                .from_local_datetime(&naive)
-                .earliest()
-                .context("无效的本地时间")?
+            clock::today_at(s, Local::now().date_naive()).context("--start-at 格式应为 HH:MM")?
         }
         None => Local::now(),
     };

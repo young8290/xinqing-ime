@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
-use chrono::{Local, Timelike};
 use clap::Parser;
 use serde::Deserialize;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -21,10 +20,12 @@ struct Args {
     /// 回放脚本（每行一条上行消息，ts 为相对毫秒，seq 可省略）
     #[arg(long)]
     script: Option<PathBuf>,
-    /// 固定基线 TOML；仅用于校验并记录本次模拟参数，XQP v1 不在 cfg 中传输基线
+    /// 固定基线 TOML（格式同 baseline_default.toml）。由 Hub 读取：xq-sim 校验后打印设好
+    /// `XQ_SIM_BASELINE` 的 Hub 启动命令（ADR 0020）
     #[arg(long)]
     baseline: Option<PathBuf>,
-    /// 模拟会话的本地起始时刻（HH:MM）；回放时间轴会平移到该时刻
+    /// 模拟的起始本地时刻 HH:MM。由 Hub 读取：打印设好 `XQ_SIM_START_AT` 的 Hub 启动命令
+    /// （ADR 0020）。XQP 的 ts 是相对时间，Hub 以收到第一条消息的时刻为起点，平移 ts 没有作用
     #[arg(long)]
     start_at: Option<String>,
     /// 倍速（1 / 5 / 20 …）；0 表示不等待，尽快发完
@@ -50,24 +51,12 @@ struct Args {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    if let Some(path) = &args.baseline {
-        let baseline = load_baseline(path).await?;
-        eprintln!(
-            "xq-sim：使用基线 v{}（{}） {}",
-            baseline.version,
-            if baseline.calibrated {
-                "已校准"
-            } else {
-                "未校准"
-            },
-            path.display()
-        );
-    }
+    hub_env_hint(&args).await?;
     if let Some(out) = &args.listen {
         return listen(&args, out).await;
     }
     let script = args.script.as_ref().context("需要 --script")?;
-    let msgs = load_script(script, args.start_at.as_deref()).await?;
+    let msgs = load_script(script).await?;
     if args.check {
         println!("{}：{} 条消息，校验通过", script.display(), msgs.len());
         return Ok(());
@@ -118,7 +107,7 @@ async fn serve_pipe(_name: &str, _msgs: Vec<Up>, _speed: f64) -> Result<()> {
     bail!("命名管道只在 Windows 上可用；请改用 --tcp 127.0.0.1:<端口> 或 --stdout")
 }
 
-async fn load_script(path: &PathBuf, start_at: Option<&str>) -> Result<Vec<Up>> {
+async fn load_script(path: &PathBuf) -> Result<Vec<Up>> {
     let text = tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("读取 {}", path.display()))?;
@@ -138,14 +127,6 @@ async fn load_script(path: &PathBuf, start_at: Option<&str>) -> Result<Vec<Up>> 
             last_ts = ts;
         }
         out.push(m);
-    }
-    if let Some(start_at) = start_at {
-        let shift = start_offset_ms(start_at)?;
-        for msg in &mut out {
-            if let Some(ts) = msg.ts() {
-                msg.set_ts(ts.saturating_add(shift));
-            }
-        }
     }
     Ok(out)
 }
@@ -185,19 +166,48 @@ async fn load_baseline(path: &PathBuf) -> Result<BaselineFile> {
     Ok(baseline)
 }
 
-fn start_offset_ms(value: &str) -> Result<u64> {
+fn check_start_at(value: &str) -> Result<()> {
     let (hour, minute) = value.split_once(':').context("--start-at 格式应为 HH:MM")?;
-    let hour: u32 = hour.parse().context("--start-at 小时无效")?;
-    let minute: u32 = minute.parse().context("--start-at 分钟无效")?;
-    if hour >= 24 || minute >= 60 {
-        bail!("--start-at 格式应为 00:00 到 23:59");
+    let ok = hour.len() == 2
+        && minute.len() == 2
+        && hour.parse::<u32>().is_ok_and(|h| h < 24)
+        && minute.parse::<u32>().is_ok_and(|m| m < 60);
+    if !ok {
+        bail!("--start-at 应为 00:00 到 23:59");
     }
-    let now = Local::now();
-    let now_ms = (now.hour() * 60 + now.minute()) as u64 * 60_000
-        + now.second() as u64 * 1_000
-        + now.nanosecond() as u64 / 1_000_000;
-    let target_ms = (hour * 60 + minute) as u64 * 60_000;
-    Ok(now_ms.saturating_sub(target_ms))
+    Ok(())
+}
+
+/// `--baseline` / `--start-at` 要由 Hub 读取（ADR 0020）：校验参数，打印调试构建 Hub 的启动方式。
+async fn hub_env_hint(args: &Args) -> Result<()> {
+    let mut vars = Vec::new();
+    if let Some(path) = &args.baseline {
+        let baseline = load_baseline(path).await?;
+        let abs = std::path::absolute(path).unwrap_or_else(|_| path.clone());
+        eprintln!(
+            "xq-sim：基线 v{}（{}）{}",
+            baseline.version,
+            if baseline.calibrated { "已校准" } else { "未校准" },
+            abs.display()
+        );
+        vars.push(("XQ_SIM_BASELINE", abs.display().to_string()));
+    }
+    if let Some(start_at) = &args.start_at {
+        check_start_at(start_at)?;
+        vars.push(("XQ_SIM_START_AT", start_at.clone()));
+    }
+    if vars.is_empty() {
+        return Ok(());
+    }
+    if let Some(addr) = &args.tcp {
+        vars.push(("XQ_XQP_TCP", addr.clone()));
+    }
+    eprintln!("xq-sim：这些选项由 Hub 读取，请用调试构建的 Hub 并设置环境变量后启动：");
+    let ps: Vec<String> = vars.iter().map(|(k, v)| format!("$env:{k}='{v}'")).collect();
+    eprintln!("  PowerShell：{}; pnpm tauri dev", ps.join("; "));
+    let sh: Vec<String> = vars.iter().map(|(k, v)| format!("{k}='{v}'")).collect();
+    eprintln!("  sh：{} pnpm tauri dev", sh.join(" "));
+    Ok(())
 }
 
 async fn read_frame<R: AsyncRead + Unpin>(r: &mut R) -> Result<Option<Vec<u8>>> {

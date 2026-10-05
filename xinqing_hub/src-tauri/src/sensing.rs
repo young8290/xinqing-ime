@@ -14,7 +14,6 @@ use xinqing_hub_core::domain::features::persist;
 use xinqing_hub_core::domain::features::{Baseline, BaselineStats};
 use xinqing_hub_core::domain::feedback;
 use xinqing_hub_core::domain::status::StatusSnapshot;
-use xinqing_hub_core::infra::clock::SystemClock;
 use xinqing_hub_core::infra::templates::{AppCategories, BaselineDefault, TemplateDirs};
 use xinqing_hub_core::infra::xqp::{Connector, LinkOptions, TcpConnector, XqpHandle, XqpLink};
 use xinqing_hub_core::pipeline::StatePipeline;
@@ -23,6 +22,7 @@ use xqp::{Down, OpenTarget};
 
 use crate::commands::emit_status;
 use crate::paths;
+use crate::sim;
 use crate::state::AppState;
 use crate::windows::{self, WindowTarget};
 
@@ -35,6 +35,8 @@ pub struct Sensing {
     pub bus: broadcast::Sender<HubEvent>,
     /// 与感知任务同一份基线（启动和每次重算、重置后更新），重建历史状态的解释时用；模板加载失败时为 `None`。
     baseline: RwLock<Option<Baseline>>,
+    /// 调试构建设了 `XQ_SIM_BASELINE`：基线固定，不重算也不重置（ADR 0020）
+    pub fixed_baseline: bool,
 }
 
 impl Sensing {
@@ -90,13 +92,20 @@ pub fn start(app: &AppHandle, cfg: Down) -> Sensing {
         }
     };
     let mut baseline = None;
-    match load_pipeline() {
+    let fixed = sim::fixed_baseline();
+    let fixed_baseline = fixed.is_some();
+    match load_pipeline(fixed) {
         Ok(mut p) => {
             restore_unfit(app, &mut p);
-            recompute_baseline(app, &mut p);
+            if !fixed_baseline {
+                recompute_baseline(app, &mut p);
+            }
             baseline = Some(p.baseline().clone());
-            let port = Arc::new(ShellPort { app: app.clone() });
-            let sense = Sense::new(p, port, xqp.clone(), bus.clone(), Arc::new(SystemClock));
+            let port = Arc::new(ShellPort {
+                app: app.clone(),
+                fixed_baseline,
+            });
+            let sense = Sense::new(p, port, xqp.clone(), bus.clone(), sim::clock());
             tauri::async_runtime::spawn(sense.run(link_rx, cmd_rx));
         }
         Err(e) => eprintln!("状态识别不可用：{e}"),
@@ -106,6 +115,7 @@ pub fn start(app: &AppHandle, cfg: Down) -> Sensing {
         cmds,
         bus,
         baseline: RwLock::new(baseline),
+        fixed_baseline,
     }
 }
 
@@ -136,17 +146,21 @@ fn connector() -> Option<Box<dyn Connector>> {
     None
 }
 
-fn load_pipeline() -> anyhow::Result<StatePipeline> {
+/// `fixed` 是 `XQ_SIM_BASELINE` 的固定基线；没有时先用出厂默认值。
+fn load_pipeline(fixed: Option<Baseline>) -> anyhow::Result<StatePipeline> {
     let dir = paths::templates_dir().ok_or_else(|| {
         anyhow::anyhow!("找不到 hub_templates（可设置 {}）", paths::TEMPLATES_ENV)
     })?;
     let dirs = TemplateDirs::factory_only(dir);
     // 先用出厂默认值，随后 `recompute_baseline` 用库里最近 7 天的窗口换上个人值
-    let baseline = Baseline::from_defaults(&BaselineDefault::load(&dirs)?);
+    let baseline = match fixed {
+        Some(b) => b,
+        None => Baseline::from_defaults(&BaselineDefault::load(&dirs)?),
+    };
     Ok(StatePipeline::new(
         baseline,
         AppCategories::load(&dirs)?,
-        chrono::Local::now(),
+        sim::clock().now(),
     ))
 }
 
@@ -174,6 +188,7 @@ fn restore_unfit(app: &AppHandle, p: &mut StatePipeline) {
 
 struct ShellPort {
     app: AppHandle,
+    fixed_baseline: bool,
 }
 
 impl SensePort for ShellPort {
@@ -231,6 +246,9 @@ impl SensePort for ShellPort {
     }
 
     fn recompute_baseline(&self, now_ms: i64) -> Option<BaselineStats> {
+        if self.fixed_baseline {
+            return None;
+        }
         let state = self.app.state::<AppState>();
         match persist::recompute(&state.db(), now_ms) {
             Ok(stats) => {

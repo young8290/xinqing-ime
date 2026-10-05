@@ -8,7 +8,7 @@
 
 | 编号 | 任务 | 状态 | 代码 / PR | 还差什么 |
 |---|---|---|---|---|
-| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 大部分完成 | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`） | `--baseline`、`--start-at` 目前只在 `xq-replay` 里。要让 `xq-sim` 也支持，得把参数送到 Hub：`hello.caps` 是枚举，需要改 XQP 契约（A），或者改由 Hub 的开发者选项读取；`--start-at` 还依赖演示时钟（B-10）。方案见第 6 节 |
+| B-01 | xq-sim（回放、倍速、监听、--baseline、--start-at） | 完成（暂停 / 单步除外） | `tools/xq-sim/`；回放评测用 `xq-replay`（`xinqing_hub/core/src/bin/xq-replay.rs`）；`--baseline`、`--start-at`：[xinqing-ime#46](https://github.com/young8290/xinqing-ime/pull/46)，ADR 0020 | 两个选项由调试构建的 Hub 读环境变量 `XQ_SIM_BASELINE`、`XQ_SIM_START_AT`（`src-tauri/src/sim.rs`），xq-sim 打印启动命令；不是完整的演示模式（×60、演示库随 B-10）；暂停 / 单步、Windows 管道客户端版 `--listen` 未做 |
 | B-02 | 录制 7 个 E-STATE 脚本与双人标注 | 未开始（需要人） | 剧本：`eval/datasets/e_state_scripts.md` | 要全员真人录制，Claude 做不了；剧本待两人评审。现在只有 3 个合成脚本（`tools/xq-sim/scripts/`，由 `gen_synthetic.py` 生成） |
 | B-03 | 窗口切分、特征计算 | 完成 | `domain/features/{window,calc,typo}.rs`，ADR 0008；Python 对拍：`eval/tools/features_ref.py` + `tests/features_parity.rs`（[xinqing-ime#45](https://github.com/young8290/xinqing-ime/pull/45)） | — |
 | B-04 | 个人基线、冷启动默认值 | 完成 | `domain/features/baseline.rs`（分桶统计、`compute_stats`、`next_recompute_after`）、`domain/features/persist.rs`（读库重算、重置）、`hub_templates/baseline_default.toml`；[xinqing-ime#25](https://github.com/young8290/xinqing-ime/pull/25)，ADR 0014 | 默认值 `calibrated = false`，等 B-02 录制后用真实数据校准；7 天基线统计已与 Python 对拍（#45） |
@@ -96,8 +96,8 @@ hub_templates/        baseline_default.toml、app_categories.toml、explain.toml
 ## 6. 下一步（按优先级）
 
 1. B-08 剩余：系统通知（随 D-09）、专注时段、`daily_summary` 统计；
-2. B-01 剩余：`xq-sim` 的 `--baseline`、`--start-at`。建议做法：不改 XQP，改为 Hub 在调试构建里读环境变量 `XQ_SIM_BASELINE`（固定基线文件，不读写真实基线）和 `XQ_SIM_START_AT`（演示时钟起点，和 B-10 一起做）；`xq-sim` 收到这两个参数时打印对应的 Hub 启动命令。另一种做法是在 `hello` 里加可选字段，那要先写 ADR，请 A 评审契约。和 A、E 商量后再定；
-3. B-10 演示模式（时钟替换、演示数据库），与上一条的 `--start-at` 一起做。
+2. B-01 的 `--baseline`、`--start-at` 已按这里原先建议的做法实现（#46，ADR 0020，待 A、E 评审）；剩暂停 / 单步；
+3. B-10 演示模式（×60 加速、演示数据库）：`sim::clock()` 已是各服务共用的时钟入口，换成加速时钟即可。
 
 ## 7. 修订记录
 
