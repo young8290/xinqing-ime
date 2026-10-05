@@ -145,6 +145,34 @@ ai_config_invalid = "地址要以 http:// 或 https:// 开头，模型名也不�
 ai_secrets_unsupported = "这台电脑上没法加密保存密钥，晴晴先用离线模式陪着你。"
 ime_unavailable = "输入法还没启动，启动后就能在这里改输入法设置。"
 
+[ime]                        # 设置中心“输入法”分类（07 FR-SET-02、ADR 0016）；常用项清单在 xinqing_hub/src/windows/settings/imeForm.ts
+common = "常用"
+advanced = "高级"
+advanced_hint = "以下是输入法的全部其他配置项，名称就是配置键名；改动会立即保存。"
+readonly = "这一项在这里只能查看"
+list_add = "添加"
+list_remove = "删除 {item}"
+
+[ime.field]                  # 常用项名称，键名为配置键把点换成下划线
+schema_active = "输入方案"
+ui_candidate_per_page = "候选个数"
+ui_candidate_layout = "候选排列"
+keys_toggle_mode_keys = "中英切换键"
+ui_theme_name = "主题"
+ui_candidate_font_size = "候选字号"
+
+[ime.schema]                 # 输入方案的显示名；没有列出的方案显示方案 ID
+pinyin = "全拼"
+shuangpin = "双拼"
+wubi86 = "五笔 86"
+wubi86_pinyin = "五笔拼音混输"
+stroke = "笔画"
+english = "英文"
+
+[ime.option.ui_candidate_layout]
+horizontal = "横排"
+vertical = "竖排"
+
 [about]                      # 07 FR-SET-09“关于”；开源许可的条目在 xinqing_hub/src/windows/settings/licenses.ts
 title = "关于"
 tagline = "懂你心情的 AI 输入陪伴"      # DS-BRAND-01 定位语
@@ -217,9 +245,12 @@ theme_light = "浅色"
 theme_dark = "深色"
 widget_opacity = "小组件不透明度"
 privacy_about = "隐私与关于"           # 07 FR-SET-01 的分类名
+ime = "输入法"
+saved = "已保存"                        # FR-SET-01：修改即保存后底部短暂提示
 
 [common]
 close = "关闭"
+retry = "重试"
 coming_soon = "这里还在准备中，很快就来。"
 
 [routine]

@@ -2,13 +2,37 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
-const mocks = vi.hoisted(() => ({ getVersion: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  getVersion: vi.fn(),
+  imeSchema: vi.fn(),
+  imeConfigGet: vi.fn(),
+  imeConfigSet: vi.fn(),
+}))
+const ok = (data: unknown) => Promise.resolve({ status: 'ok', data })
+const SCHEMA = [
+  { key: 'schema.active', kind: 'string', options: null },
+  { key: 'schema.available', kind: 'string_list', options: null },
+  { key: 'ui.candidate.per_page', kind: 'int', options: null },
+  { key: 'ui.candidate.layout', kind: 'enum', options: ['horizontal', 'vertical'] },
+  { key: 'keys.toggle_mode_keys', kind: 'string_list', options: null },
+  { key: 'input.emoji.enabled', kind: 'bool', options: null },
+  { key: 'ui.font.scripts', kind: 'map', options: null },
+]
+const CONFIG = {
+  schema: { active: 'pinyin', available: ['pinyin', 'wubi86'] },
+  ui: { candidate: { per_page: 7, layout: 'horizontal' }, font: { scripts: { han: 'YaHei' } } },
+  keys: { toggle_mode_keys: ['lshift'] },
+  input: { emoji: { enabled: false } },
+}
 
 vi.mock('@/api', async (orig) => ({
   ...(await orig<typeof import('@/api')>()),
   commands: {
     settingsGet: async (key: string) => ({ status: 'ok', data: key === 'ui.theme' ? 'system' : 1 }),
     settingsSet: async () => ({ status: 'ok', data: null }),
+    imeSchema: mocks.imeSchema,
+    imeConfigGet: mocks.imeConfigGet,
+    imeConfigSet: mocks.imeConfigSet,
   },
   events: { settingsChanged: { listen: async () => () => {} } },
 }))
@@ -30,15 +54,20 @@ describe('设置中心', () => {
     setActivePinia(createPinia())
     location.hash = ''
     mocks.getVersion.mockReset().mockResolvedValue('0.1.0')
+    mocks.imeSchema.mockReset().mockImplementation(() => ok(SCHEMA))
+    mocks.imeConfigGet.mockReset().mockImplementation(() => ok({ values: CONFIG }))
+    mocks.imeConfigSet
+      .mockReset()
+      .mockImplementation(() => ok({ needs_restart: false, applied: 1, skipped: [] }))
   })
 
   it('左侧分类按 FR-SET-01 命名，当前分类有 aria-current', async () => {
     const w = mount(App)
     await flushPromises()
     const nav = w.findAll('nav button')
-    expect(nav.map((b) => b.text())).toEqual(['外观', '隐私与关于'])
+    expect(nav.map((b) => b.text())).toEqual(['输入法', '外观', '隐私与关于'])
     expect(nav[0]!.attributes('aria-current')).toBe('page')
-    expect(w.find('h1').text()).toBe('外观')
+    expect(w.find('h1').text()).toBe('输入法')
   })
 
   it('“关于”写明非官方分支、免责声明和版本号（FR-SET-09、C-LAW-08）', async () => {
@@ -74,5 +103,107 @@ describe('设置中心', () => {
     const w = mount(App)
     await flushPromises()
     expect(w.find('h1').text()).toBe('隐私与关于')
+  })
+
+  describe('输入法（FR-SET-02、ADR 0016）', () => {
+    async function openIme() {
+      const w = mount(App, { attachTo: document.body })
+      await flushPromises()
+      return w
+    }
+    const row = (w: Awaited<ReturnType<typeof openIme>>, key: string) => w.find(`[data-key="${key}"]`)
+
+    it('默认打开输入法；常用项有中文名称，输入方案用 schema.available 做下拉、显示方案名', async () => {
+      const w = await openIme()
+      const common = w
+        .findAll('.row')
+        .slice(0, 4)
+        .map((r) => r.find('label').text())
+      expect(common).toEqual(['输入方案', '候选个数', '候选排列', '中英切换键'])
+      const opts = row(w, 'schema.active')
+        .findAll('option')
+        .map((o) => o.text())
+      expect(opts).toEqual(['全拼', '五笔 86'])
+      expect((row(w, 'ui.candidate.per_page').find('input').element as HTMLInputElement).value).toBe('7')
+      w.unmount()
+    })
+
+    it('修改即保存：提交这一项、显示“已保存”、再取一次配置', async () => {
+      const w = await openIme()
+      const input = row(w, 'ui.candidate.per_page').find('input')
+      await input.setValue('9')
+      await flushPromises()
+      expect(mocks.imeConfigSet).toHaveBeenCalledTimes(1)
+      expect(mocks.imeConfigSet).toHaveBeenCalledWith([{ key: 'ui.candidate.per_page', value: 9 }])
+      expect(w.find('.saved').text()).toBe('已保存')
+      expect(mocks.imeConfigGet).toHaveBeenCalledTimes(2)
+      w.unmount()
+    })
+
+    it('核心跳过的项把原因显示在控件下方；需要重启时显示横幅', async () => {
+      mocks.imeConfigSet.mockImplementation(() =>
+        ok({
+          needs_restart: true,
+          applied: 0,
+          skipped: [{ key: 'ui.candidate.layout', reason: '取值不对' }],
+        }),
+      )
+      const w = await openIme()
+      await row(w, 'ui.candidate.layout').find('select').setValue('vertical')
+      await flushPromises()
+      expect(row(w, 'ui.candidate.layout').find('[role=alert]').text()).toBe('取值不对')
+      expect(w.find('.banner').text()).toBe('部分设置需要重启输入法后生效')
+      expect(w.find('.saved').exists()).toBe(false)
+      w.unmount()
+    })
+
+    it('字符串列表可以添加和删除，整份提交', async () => {
+      const w = await openIme()
+      const r = row(w, 'keys.toggle_mode_keys')
+      await r.find('input.add').setValue('rshift')
+      await r.find('input.add').trigger('keydown', { key: 'Enter' })
+      expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([
+        { key: 'keys.toggle_mode_keys', value: ['lshift', 'rshift'] },
+      ])
+      await r.find('button.remove').trigger('click')
+      expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([{ key: 'keys.toggle_mode_keys', value: [] }])
+      w.unmount()
+    })
+
+    it('高级区按键名第一段分组，展开才渲染；map 类型只读显示 JSON', async () => {
+      const w = await openIme()
+      const groups = w.findAll('details.group')
+      expect(groups.map((g) => g.find('.prefix').text())).toEqual(['input', 'schema', 'ui'])
+      expect(row(w, 'input.emoji.enabled').exists()).toBe(false)
+      const input = groups[0]!.element as HTMLDetailsElement
+      input.open = true
+      input.dispatchEvent(new Event('toggle'))
+      await flushPromises()
+      await row(w, 'input.emoji.enabled').find('input[type=checkbox]').setValue(true)
+      expect(mocks.imeConfigSet).toHaveBeenLastCalledWith([{ key: 'input.emoji.enabled', value: true }])
+      const ui = groups[2]!.element as HTMLDetailsElement
+      ui.open = true
+      ui.dispatchEvent(new Event('toggle'))
+      await flushPromises()
+      expect(row(w, 'ui.font.scripts').find('pre').text()).toContain('YaHei')
+      expect(row(w, 'ui.font.scripts').text()).toContain('只能查看')
+      w.unmount()
+    })
+
+    it('输入法核心没运行：说明原因并给“重试”', async () => {
+      mocks.imeSchema.mockImplementation(() =>
+        ok(null).then(() => ({
+          status: 'error',
+          error: { code: 'ime.unavailable', message_key: 'error.ime_unavailable' },
+        })),
+      )
+      const w = await openIme()
+      expect(w.find('[role=status]').text()).toContain('输入法还没启动')
+      mocks.imeSchema.mockImplementation(() => ok(SCHEMA))
+      await w.find('[role=status] button').trigger('click')
+      await flushPromises()
+      expect(row(w, 'schema.active').exists()).toBe(true)
+      w.unmount()
+    })
   })
 })
