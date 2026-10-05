@@ -567,7 +567,10 @@ mod tests {
         assert!(!draft.all_day);
         assert_eq!(draft.source, "ai");
         assert!(draft.flags.is_empty());
-        assert_eq!(schedule(serde_json::json!({ "has_event": false })), Ok(None));
+        assert_eq!(
+            schedule(serde_json::json!({ "has_event": false })),
+            Ok(None)
+        );
     }
 
     #[test]
