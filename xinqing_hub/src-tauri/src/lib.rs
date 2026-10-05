@@ -45,6 +45,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::self_report_set,
             commands::self_report_list,
             commands::baseline_reset,
+            commands::get_routine,
             commands::pause_set,
             commands::settings_get,
             commands::settings_set,
@@ -148,13 +149,17 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("心晴 Hub 启动失败")
-        .run(|_app, event| {
+        .run(|app, event| match event {
             // Hub 是常驻后台进程（03 第 3.1 节）：关掉最后一个窗口不退出，只有显式退出才结束
-            if let tauri::RunEvent::ExitRequested {
+            tauri::RunEvent::ExitRequested {
                 code: None, api, ..
-            } = event
-            {
-                api.prevent_exit();
+            } => api.prevent_exit(),
+            // 托管状态在退出时不一定会被析构，这里把排队中的写入提交掉（ADR 0020）
+            tauri::RunEvent::Exit => {
+                if let Some(state) = app.try_state::<state::AppState>() {
+                    state.writer().flush();
+                }
             }
+            _ => {}
         });
 }
