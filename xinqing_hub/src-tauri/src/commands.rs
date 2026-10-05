@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
+use xinqing_hub_core::HUB_VERSION;
 use xinqing_hub_core::bus::HubEvent;
 use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::explain::Explanation;
@@ -20,6 +21,7 @@ use xinqing_hub_core::domain::routine::{self, Routine};
 use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
+use xinqing_hub_core::infra::store::export;
 use xinqing_hub_core::sense::SenseCmd;
 
 use crate::error::UiError;
@@ -40,6 +42,28 @@ pub(crate) fn emit_status(app: &AppHandle, snap: StatusSnapshot) {
 #[specta::specta]
 pub fn get_status(state: State<'_, AppState>) -> Result<StatusSnapshot, UiError> {
     Ok(state.status())
+}
+
+/// 导出用户数据（FR-DAT-03），写到前端文件选择器给的 `path`（已存在则覆盖）。
+/// 1 年数据量要几秒，放进 `spawn_blocking`，不占主线程。先提交排队中的数据（ADR 0020 第 3 条最多晚 5 秒），
+/// 再在只读连接上导出，导出期间不挡写入。
+#[tauri::command]
+#[specta::specta]
+pub async fn data_export(app: AppHandle, path: String) -> Result<(), UiError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        state.writer().flush();
+        export::export(
+            &state.db(),
+            std::path::Path::new(&path),
+            HUB_VERSION,
+            chrono::Local::now(),
+        )
+    })
+    .await
+    .map_err(|e| UiError::internal("data.export.join", e))?
+    .map(|_| ())
+    .map_err(|e| UiError::internal("data.export", e))
 }
 
 /// 状态解释（FR-STA-09）。不带 `mood_state_id` 时是当前显示状态的解释（还没切换过时为 `null`）；
