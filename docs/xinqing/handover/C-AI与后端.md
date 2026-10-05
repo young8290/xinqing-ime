@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：AIG 网关、CMF 暖心话、CHT 对话、DIA 日记、SAF 危机安全、SCH 日程与待办、RWR 温柔改写的 Hub 部分、REV-01/02 晚间小结与周信、评测脚本；
 > 另是数据库迁移（`xinqing_hub/core/migrations/`）与设置键注册表（`xinqing_hub/core/src/domain/settings.rs`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.3 节。本文件随 C 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（C-09 温柔改写的 Hub 服务，ADR 0028）
+> 最后更新：2026-10-05（认领 C-10，第一部分：晚间小结，ADR 0029）
 
 ## 1. 任务状态
 
@@ -17,8 +17,8 @@
 | C-06 | 待办识别与清单、提醒 | 本地初筛与结构化存储完成 | #42（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；`prompts/todo.md`、评测集 `eval/datasets/e_todo.jsonl` | AI 抽取的网关接线、提醒调度与前端清单待做（P1）；`validate_todo_json` 已按原句算截止日期（ADR 0024） |
 | C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P1 部分完成** | [xinqing-ime#40](https://github.com/young8290/xinqing-ime/pull/40)（已合并）：纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018。记忆增删改、历史搜索、`chat.retention_days`：[xinqing-ime#49](https://github.com/young8290/xinqing-ime/pull/49)。快捷指令的对话方式：[xinqing-ime#51](https://github.com/young8290/xinqing-ime/pull/51)，ADR 0022 | 见第 3.3 节：两段快捷指令提示词待 E 评审；“写成情绪日记”随 C-10；设置页“晴晴记住的事”与历史搜索界面等 D |
 | C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
-| C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | **后端完成** | [xinqing-ime#65](https://github.com/young8290/xinqing-ime/pull/65)：纯函数 `core/src/domain/rewrite.rs`（占位符、V1、V4/V8、提示词）、服务 `core/src/rewrite.rs`、外壳 `src-tauri/src/rewrite.rs`、`gateway/tests/rewrite_mock_ai.rs`；ADR 0028 | 见第 3.4 节：危机入口的界面（D）、首次使用说明（A/C/D 待定）、E-REWRITE 评测（真实接口）；禁用词表第九类 `abuse` 待 E 评审 |
-| C-10 | 情绪日记、晚间小结、周信 | 未开始 | `hub_templates/evening.toml`、`letter_fallback.md`、`prompts/diary.md`、`letter.md` | 16 第 3 节建议移给 B，W1 评审会还没定（B 的交接文档也记了“未认领”） |
+| C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | **后端完成** | [xinqing-ime#65](https://github.com/young8290/xinqing-ime/pull/65)（已合并）：纯函数 `core/src/domain/rewrite.rs`（占位符、V1、V4/V8、提示词）、服务 `core/src/rewrite.rs`、外壳 `src-tauri/src/rewrite.rs`、`gateway/tests/rewrite_mock_ai.rs`；ADR 0028 | 见第 3.4 节：危机入口的界面（D）、首次使用说明（A/C/D 待定）、E-REWRITE 评测（真实接口）；禁用词表第九类 `abuse` 待 E 评审 |
+| C-10 | 情绪日记、晚间小结、周信 | **进行中（C 认领）** | 第一部分晚间小结：本 PR，纯函数 `core/src/domain/evening.rs`、服务 `core/src/evening.rs`、外壳 `src-tauri/src/evening.rs`，ADR 0029；模板 `hub_templates/evening.toml`；周信、日记还要用 `letter_fallback.md`、`prompts/diary.md`、`letter.md` | 见第 3.5 节：卡片界面（D-04）；周信（FR-REV-02）、情绪日记（FR-DIA）。16 第 3 节建议移给 B，W1 评审会没定，C 先认领（ADR 0029 第 1 条），定给 B 时按本节交接 |
 | C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表、E-COMFORT | E-COMFORT：`eval_comfort.py` 与评测集 `e_comfort.jsonl`（6 种状态摘要 × 若干次，共 50 条），[xinqing-ime#50](https://github.com/young8290/xinqing-ime/pull/50)；报告（`eval/reports/`）仍要等真实接口生成预测文件 |
 
 ## 2. 代码地图（C 负责的部分）
@@ -31,9 +31,11 @@ xinqing_hub/
 │  ├─ comfort.rs             暖心话：频率档位、触发判断 Trigger、状态摘要、P-COMFORT 拼装、V1–V7 校验、模板选句
 │  ├─ validate.rs            08 第 5 节输出校验（V1、V3 计数、V4 禁用词、V5 重复、V7 语言；V2/V6/V8/V9 随功能补）
 │  ├─ safety.rs              危机词表本地通道
+│  ├─ evening.rs             晚间小结：何时出 due、主导状态与模板分组、天气色带 band、卡片内容 summarize
 │  ├─ rewrite.rs             温柔改写：可还原占位符 mask/restore、V1 解析、V4/V8/长度校验 check/accept、P-REWRITE 拼装
 │  ├─ dnd.rs                 勿扰应用与安静时段的解析、判断（暖心话用，休息提醒也可用）
 │  └─ settings.rs            设置键注册表（契约）：值的四种形态与格式校验（ADR 0019）、`schema()`（给 `settings_schema`）、`cap_key` / `caps`
+├─ core/src/evening.rs       晚间小结服务 EveningService：记最近输入，每 5 秒看一次该不该出 → EveningPort::show（review:evening）
 ├─ core/src/rewrite.rs       温柔改写服务 RewriteService：rewrite_req → 同意 ⑥ / 危机词表 / 占位符 / P-REWRITE / V8 → rewrite_result；rewrite_done → rewrite_log
 ├─ core/src/care.rs          暖心话服务 ComfortService：订阅总线 → 触发 → 大模型（重试 1 次）或模板 → comfort_log → ComfortPort::show
 ├─ core/src/infra/store/     Db：迁移、只读连接 open_reader、单写入口 writer.rs（DbWriter）、窗口与状态、反馈、net_log（只留最近 200 条）；comfort.rs 是 comfort_log 的读写；schedule.rs 写结构化日程/待办并去重
@@ -112,7 +114,21 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 首次使用说明 | FR-RWR-06 第 3 条 | 未做：归属待 A、C、D 商定 |
 | E-REWRITE 评测 | 08 第 8 节 | 未做：要真实接口 |
 
+### 3.5 C-10 晚间小结（第一部分）
+
+| 部分 | 需求 | 状态 |
+|---|---|---|
+| 到设置的时刻、当天活跃 ≥ 30 分钟、人在电脑前（2 分钟内有按键或上屏）才出；人不在就等到凌晨 3 点前的下一次输入；每天一次 | FR-REV-01 第 1 条 | 完成（ADR 0029 第 2 条）；内部键 `review.evening.shown_on` |
+| 打字时长、喝水、休息完成 / 出现、完成日程、完成待办、天气色带 | FR-REV-01 第 2 条 | 完成（ADR 0029 第 3 条）；日程没有“完成”状态，按“已加入且已开始”计 |
+| 结束语按主导状态从 `evening.toml` 选，不调 AI、不加标识；23:30 以后用 `late` 组 | FR-REV-01 第 3 条 | 完成（ADR 0029 第 4 条） |
+| 设置 `review.evening.enabled`、`review.evening.time`（21:00–23:30） | FR-REV-01 第 4 条、FR-SET-05 | 完成；设置页控件按 `settings_schema` 出（D） |
+| 卡片（“看看今天的看板”“今天不用了”） | FR-WGT-07 | **D 的界面**：收 `review:evening`（内容 `EveningSummary`），后端不需要按钮回调 |
+
 ## 4. 关键决定与待评审
+
+- **ADR 0029（晚间小结的实现解释，6 条）**：提议，待 D（`review:evening` 与卡片）、E（文案与验收）评审，B 知会。要点：C 先认领 C-10；
+  “在电脑前”= 2 分钟内有按键或上屏；以凌晨 3 点为界；完成日程 = 已加入且已开始；主导状态占比 ≥ 40%，`late` 组按出小结的时刻；
+  新增 `review.evening.*` 两个设置键和内部键 `review.evening.shown_on`。
 
 - **ADR 0028（温柔改写 Hub 服务的实现解释，9 条）**：提议，待 E（隐私、危机安全、禁用词表第九类）、D（`safety:invite` 与界面）评审，A 知会。
   要点：Hub 不另做缓存（核心已做）；占位符种类与写法；危机只用本地词表、不出网、推 `safety:invite`，界面在一句话区给求助入口（E 的方案 ②），
@@ -164,11 +180,12 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 ## 6. 下一步（按优先级）
 
-1. 跟进 ADR 0028 的评审（E、D）；D 做一句话区的求助入口时按 `safety:invite` 接；与 A、D 定首次使用说明放哪；
-2. 跟进 ADR 0019 的评审（D 已同意，待 E）；D 做设置页“关怀”“AI 服务”分类时用 `settings_schema` 出控件，如需改形状在本 ADR 上改；
-3. 跟进 ADR 0020 的评审（B、D、E）；
-4. C-07 剩余：设置页“晴晴记住的事”与历史搜索的界面（D）；日记的危机识别与“写成情绪日记”随 C-10；
-5. C-05 日程剩余（P0，W7–W8）：本地初筛、存储、抽取结果校验（含代码日期校验）都有了，还差 L2/L3 的网关接线、提醒调度 `scheduler` 与冲突处理。
+1. C-10 第二部分：周信（FR-REV-02，P-LETTER + V9 + 兜底模板，周日 20:00，复用晚间小结的统计）；第三部分：情绪日记（FR-DIA）；
+2. 跟进 ADR 0028 的评审（E、D）；D 做一句话区的求助入口时按 `safety:invite` 接；与 A、D 定首次使用说明放哪；
+3. 跟进 ADR 0019 的评审（D 已同意，待 E）；D 做设置页“关怀”“AI 服务”分类时用 `settings_schema` 出控件，如需改形状在本 ADR 上改；
+4. 跟进 ADR 0020 的评审（B、D、E）；
+5. C-07 剩余：设置页“晴晴记住的事”与历史搜索的界面（D）；日记的危机识别与“写成情绪日记”随 C-10；
+6. C-05 日程剩余（P0，W7–W8）：本地初筛、存储、抽取结果校验（含代码日期校验）都有了，还差 L2/L3 的网关接线、提醒调度 `scheduler` 与冲突处理。
 
 ## 7. 修订记录
 
@@ -185,3 +202,4 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 2026-10-05 | C-05 FR-SCH-04 校验第 1 条（`domain/when.rs`）、标题截断与 V4 口径（ADR 0024）；C-07 “记住”先确认、记忆的专门提示、快捷指令按钮与呼吸引导（#57） |
 | 2026-10-05 | #54 已合并；按 D 在 ADR 0019 评审中的提议加只读命令 `settings_schema`（`SettingField` / `SettingFieldKind` / `SettingItem`），ADR 0019 第 9 条 |
 | 2026-10-05 | #62 已合并；C-09 温柔改写的 Hub 服务（占位符、V8、危机入口事件 `safety:invite`、`rewrite_log`）、网关脱敏查询参数规则收紧、禁用词表第九类 `abuse`，ADR 0028 |
+| 2026-10-05 | #65 已合并；认领 C-10，第一部分晚间小结（`review:evening`、`review.evening.*`），ADR 0029 |

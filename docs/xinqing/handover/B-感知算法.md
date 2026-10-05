@@ -19,7 +19,7 @@
 | B-09 | 作息洞察统计 | 后端完成 | 统计 `domain/routine.rs`、写库 `infra/store/summary.rs`；`get_routine(days)` 命令；见第 3.2 节 | 看板周报的折线和数字归 D-07；周信 / 晚间小结引用等 C-10 认领 |
 | B-10 | 演示模式（clock 替换、演示数据库） | 后端完成 | `ScaledClock`（`infra/clock.rs`）、预置数据 `domain/demo.rs`、外壳 `src-tauri/src/sim.rs`（`--demo`、`open_demo_state`）、`demo_status` 命令；ADR 0023；见第 3.3 节 | 标题栏“演示模式”和演示者视图归 D；设置键见 ADR 0025（#58 已合并）；外壳启动读 `dev.demo`、研究模式（FR-DMO-04）后端完成（PR 合并后，ADR 0026，见第 3.3 节）；邀请面板、研究模式标识、删除确认归 D |
 | B-11 | E-STATE 评测与报告 | 未开始 | — | 依赖 B-02 的录制数据；`xq-replay --json` 已能输出每个窗口的特征、状态和解释 |
-| （C-10） | 情绪日记、晚间小结、周信 | 未认领 | — | 16 第 3 节建议从 C 移给 B，W1 评审会还没定 |
+| （C-10） | 情绪日记、晚间小结、周信 | C 已认领（2026-10-05，ADR 0029） | 见 C 交接文档 C-10 | 16 第 3 节建议从 C 移给 B，W1 评审会没定；C 先认领，晚间小结已用 B-09 的 `daily_summary` |
 
 ## 2. 代码地图（B 负责的部分）
 
