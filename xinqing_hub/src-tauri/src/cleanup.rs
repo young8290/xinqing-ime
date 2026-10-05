@@ -8,6 +8,8 @@ use std::time::Duration;
 use chrono::Local;
 use tauri::{AppHandle, Manager};
 use xinqing_hub_core::domain::retention::{self, Policy};
+use xinqing_hub_core::domain::settings;
+use xinqing_hub_core::infra::store::Db;
 
 use crate::state::AppState;
 
@@ -34,12 +36,29 @@ pub fn start(app: &AppHandle) {
 }
 
 fn run_once(app: &AppHandle) {
-    // 对话保留期的设置键 `chat.retention_days`（FR-CHT-08）登记后从设置读，现在用默认 90 天
-    let policy = Policy::default();
-    let report = app
-        .state::<AppState>()
+    let state = app.state::<AppState>();
+    // 设置从只读连接读，清理走写入口（ADR 0020）
+    let policy = Policy {
+        chat_days: chat_retention_days(&state.db()),
+        ..Policy::default()
+    };
+    let report = state
         .writer()
         .write_sync(|db| retention::run(db, &policy, Local::now()));
     // 报告只有表名、条数和错误信息，不含用户内容（NFR-LOG-01）
     eprintln!("{}", report.summary());
+}
+
+/// `chat.retention_days`（FR-CHT-08）：30 / 90 / 365 天，`permanent` 不清理；读不到时按默认 90 天。
+fn chat_retention_days(db: &Db) -> Option<u32> {
+    match settings::get(db, "chat.retention_days")
+        .ok()
+        .as_ref()
+        .and_then(|v| v.as_str())
+    {
+        Some("30") => Some(30),
+        Some("365") => Some(365),
+        Some("permanent") => None,
+        _ => Some(90),
+    }
 }

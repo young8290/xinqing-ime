@@ -7,7 +7,7 @@ use serde::Serialize;
 use specta::Type;
 use tauri::State;
 use xinqing_hub_core::chat::{ChatError, ChatService, Sent};
-use xinqing_hub_core::domain::chat::{ChatMode, SafeMode};
+use xinqing_hub_core::domain::chat::{self, ChatMode, SafeMode};
 
 use crate::chat::Chat;
 use crate::error::UiError;
@@ -35,6 +35,23 @@ pub struct ChatMessageItem {
     pub ts: f64,
     /// 为真时显示 `AI 生成` 标签（FR-CHT-04 第 4 条）
     pub ai_generated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct MemoryItem {
+    pub id: u32,
+    pub content: String,
+    pub created_ts: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct ChatSearchItem {
+    pub id: u32,
+    pub session_id: u32,
+    pub title: String,
+    pub role: String,
+    pub content: String,
+    pub ts: f64,
 }
 
 /// `chat_send` / `chat_retry` 的结果；回复经 `chat:*` 事件推送。
@@ -129,6 +146,89 @@ pub fn chat_set_mode(
     mode: ChatMode,
 ) -> Result<(), UiError> {
     Ok(service(&chat)?.set_mode(i64::from(session_id), mode)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn chat_search(
+    state: State<'_, AppState>,
+    query: String,
+) -> Result<Vec<ChatSearchItem>, UiError> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    Ok(state
+        .db()
+        .chat_search(query, 50)?
+        .into_iter()
+        .map(|m| ChatSearchItem {
+            id: m.id as u32,
+            session_id: m.session_id as u32,
+            title: m.title,
+            role: m.role,
+            content: m.content,
+            ts: m.ts as f64,
+        })
+        .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_list(state: State<'_, AppState>) -> Result<Vec<MemoryItem>, UiError> {
+    Ok(state
+        .db()
+        .memories_list()?
+        .into_iter()
+        .map(|m| MemoryItem {
+            id: m.id as u32,
+            content: m.content,
+            created_ts: m.created_ts as f64,
+        })
+        .collect())
+}
+
+fn validate_memory(content: &str) -> Result<&str, UiError> {
+    chat::memory_entry(content).ok_or_else(|| UiError::new("chat.memory_invalid", "error.generic"))
+}
+
+/// 记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。
+/// 记忆是用户确认类数据，同步写（ADR 0020 第 4 条）。
+#[tauri::command]
+#[specta::specta]
+pub fn memory_add(state: State<'_, AppState>, content: String) -> Result<u32, UiError> {
+    let content = validate_memory(&content)?;
+    let now = chrono::Utc::now().timestamp_millis();
+    state
+        .writer()
+        .write_sync(|db| db.memory_insert(content, now, chat::MEMORY_MAX))?
+        .map(|id| id as u32)
+        .ok_or_else(|| UiError::new("chat.memory_full", "error.generic"))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_update(state: State<'_, AppState>, id: u32, content: String) -> Result<(), UiError> {
+    let content = validate_memory(&content)?;
+    if !state
+        .writer()
+        .write_sync(|db| db.memory_update(i64::from(id), content))?
+    {
+        return Err(UiError::new("chat.memory_missing", "error.generic"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn memory_delete(state: State<'_, AppState>, id: u32) -> Result<(), UiError> {
+    if !state
+        .writer()
+        .write_sync(|db| db.memory_delete(i64::from(id)))?
+    {
+        return Err(UiError::new("chat.memory_missing", "error.generic"));
+    }
+    Ok(())
 }
 
 /// 发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。

@@ -93,6 +93,15 @@ export const commands = {
 	 *  还没有会话时不调这个，在 `chat_send` 里带上 `mode`。“写成情绪日记”“陪我呼吸”是窗口的本地动作。
 	 */
 	chatSetMode: (sessionId: number, mode: ChatMode) => typedError<null, UiError>(__TAURI_INVOKE("chat_set_mode", { sessionId, mode })),
+	chatSearch: (query: string) => typedError<ChatSearchItem[], UiError>(__TAURI_INVOKE("chat_search", { query })),
+	memoryList: () => typedError<MemoryItem[], UiError>(__TAURI_INVOKE("memory_list")),
+	/**
+	 *  记住一件事（FR-CHT-07）。已有 50 条时返回 `chat.memory_full`，前端提示先删掉几条。
+	 *  记忆是用户确认类数据，同步写（ADR 0020 第 4 条）。
+	 */
+	memoryAdd: (content: string) => typedError<number, UiError>(__TAURI_INVOKE("memory_add", { content })),
+	memoryUpdate: (id: number, content: string) => typedError<null, UiError>(__TAURI_INVOKE("memory_update", { id, content })),
+	memoryDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("memory_delete", { id })),
 	/**
 	 *  发一条消息（FR-CHT-02/04/09）。`session_id` 为空或上一条消息已超过 6 小时就开新会话。
 	 *  `mode` 不为空时先把会话切到这种对话方式（快捷指令后发的第一句，ADR 0022）。
@@ -242,6 +251,15 @@ export type ChatMode =
 "vent" | 
 /**  🧭 帮我理一理：引导说清“发生了什么 / 我的感受 / 我能做的一小步” */
 "organize";
+
+export type ChatSearchItem = {
+	id: number,
+	session_id: number,
+	title: string,
+	role: string,
+	content: string,
+	ts: number | null,
+};
 
 /**  `chat_send` / `chat_retry` 的结果；回复经 `chat:*` 事件推送。 */
 export type ChatSent = {
@@ -431,6 +449,12 @@ export type LlmView = {
 	key_tail: string | null,
 	/**  按优先级排列 */
 	models: string[],
+};
+
+export type MemoryItem = {
+	id: number,
+	content: string,
+	created_ts: number | null,
 };
 
 /**  “测试连接”里一个模型的结果（FR-AIG-04 第 4 条）。 */
