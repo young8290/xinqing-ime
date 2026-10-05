@@ -166,7 +166,7 @@ fn load_pipeline(fixed: Option<Baseline>) -> anyhow::Result<StatePipeline> {
 
 /// 启动时重算一次基线（FR-STA-03 第 4 条）：关机期间错过的 04:00 也能补上，冷启动进度也从库里接上。
 fn recompute_baseline(app: &AppHandle, p: &mut StatePipeline) {
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = sim::clock().now_ms();
     match app
         .state::<AppState>()
         .writer()
@@ -179,7 +179,7 @@ fn recompute_baseline(app: &AppHandle, p: &mut StatePipeline) {
 
 /// 重放最近 7 天的“不准”，恢复个人阈值上调（FR-STA-07，上调状态只在内存里）。
 fn restore_unfit(app: &AppHandle, p: &mut StatePipeline) {
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = sim::clock().now_ms();
     match feedback::recent_unfit(&app.state::<AppState>().db(), now) {
         Ok(rows) => {
             for (state, ts) in rows {

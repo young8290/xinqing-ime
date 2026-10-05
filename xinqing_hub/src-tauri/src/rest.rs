@@ -109,7 +109,7 @@ impl RestPort for ShellPort {
             text: tip.into(),
             ms: TIP_MS,
         });
-        let now = Local::now();
+        let now = crate::sim::clock().now();
         self.app
             .state::<AppState>()
             .writer()

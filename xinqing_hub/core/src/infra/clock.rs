@@ -89,6 +89,36 @@ impl Clock for OffsetClock {
     }
 }
 
+/// 加速时钟（演示模式 FR-DMO-03 第 1 条，ADR 0023）：从 `start` 起，真实时间每过 1 秒，它走 `speed` 秒。
+/// 用单调时钟计真实流逝，系统改时间不影响它。
+#[derive(Debug, Clone, Copy)]
+pub struct ScaledClock {
+    start: DateTime<Local>,
+    real_start: std::time::Instant,
+    speed: u32,
+}
+
+impl ScaledClock {
+    pub fn new(start: DateTime<Local>, speed: u32) -> Self {
+        Self {
+            start,
+            real_start: std::time::Instant::now(),
+            speed: speed.max(1),
+        }
+    }
+
+    pub fn speed(&self) -> u32 {
+        self.speed
+    }
+}
+
+impl Clock for ScaledClock {
+    fn now(&self) -> DateTime<Local> {
+        let real = Duration::from_std(self.real_start.elapsed()).unwrap_or_default();
+        self.start + real * self.speed as i32
+    }
+}
+
 /// 把 `HH:MM` 解析成 `today` 那天的本地时刻（`--start-at` / `XQ_SIM_START_AT`）。
 /// 格式不对或该时刻因夏令时不存在时返回 `None`。
 pub fn today_at(hhmm: &str, today: chrono::NaiveDate) -> Option<DateTime<Local>> {
@@ -106,6 +136,17 @@ mod tests {
         let c = OffsetClock::starting_at(start);
         let drift = (c.now() - start).num_milliseconds();
         assert!((0..1_000).contains(&drift), "drift {drift}");
+    }
+
+    #[test]
+    fn scaled_clock_runs_faster() {
+        let start = Local::now() - Duration::hours(3);
+        let c = ScaledClock::new(start, 60);
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let ran = (c.now() - start).num_milliseconds();
+        // 真实 ≥100 ms → 演示 ≥6 s；给慢机器留余量
+        assert!((6_000..60_000).contains(&ran), "ran {ran}");
+        assert_eq!(ScaledClock::new(start, 0).speed(), 1);
     }
 
     #[test]

@@ -1,4 +1,5 @@
-//! 启动参数（17 第 2.1 节）：`--background`（核心拉起）、`--open <target>`（打开某个窗口）。
+//! 启动参数（17 第 2.1 节）：`--background`（核心拉起）、`--open <target>`（打开某个窗口）、
+//! `--demo`（演示模式，FR-DMO-03，ADR 0023；只在第一个实例启动时生效）。
 
 use crate::windows::WindowTarget;
 
@@ -6,6 +7,7 @@ use crate::windows::WindowTarget;
 pub struct LaunchArgs {
     pub background: bool,
     pub open: Option<WindowTarget>,
+    pub demo: bool,
 }
 
 impl LaunchArgs {
@@ -20,6 +22,7 @@ impl LaunchArgs {
         while let Some(a) = it.next() {
             match a.as_ref() {
                 "--background" => out.background = true,
+                "--demo" => out.demo = true,
                 "--open" => out.open = it.next().and_then(|t| WindowTarget::from_label(t.as_ref())),
                 other => {
                     if let Some(t) = other.strip_prefix("--open=") {
@@ -44,6 +47,8 @@ mod tests {
         );
         let a = LaunchArgs::parse(["--background", "--open", "dashboard", "--future-flag"]);
         assert!(a.background);
+        assert!(!a.demo);
+        assert!(LaunchArgs::parse(["--demo"]).demo);
         assert_eq!(a.open, Some(WindowTarget::Dashboard));
         assert_eq!(
             LaunchArgs::parse(["--open=chat"]).open,

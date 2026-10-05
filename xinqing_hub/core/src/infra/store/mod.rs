@@ -18,6 +18,7 @@ use crate::infra::templates::AppCat;
 
 mod chat;
 mod comfort;
+pub mod demo;
 pub mod export;
 mod rest;
 mod schedule;
