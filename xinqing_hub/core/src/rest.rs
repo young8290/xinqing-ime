@@ -8,6 +8,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use chrono::{DateTime, Local};
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::MissedTickBehavior;
 use xqp::{CompOp, MoodState, Up};
@@ -41,6 +42,8 @@ pub trait RestPort: Send + Sync {
     fn show(&self, due: &Due);
     /// 写入 `reminder_log`（FR-RST-08）。
     fn log(&self, ts: i64, kind: RestKind, action: RestAction);
+    /// 记了一个新的活跃分钟（FR-RST-01），外壳写入 `daily_summary` 的使用时长和停止打字时间（FR-REV-03）。
+    fn active_minute(&self, _local: DateTime<Local>) {}
     /// 运行日志，只会传入不含用户数据的内容（NFR-LOG）。
     fn note(&self, _msg: &str) {}
 }
@@ -141,7 +144,10 @@ impl RestService {
             },
             _ => return,
         };
-        self.engine.on_input(input, self.clock.now());
+        let now = self.clock.now();
+        if self.engine.on_input(input, now) {
+            self.port.active_minute(now);
+        }
     }
 
     pub fn on_cmd(&mut self, cmd: RestCmd) {
@@ -167,8 +173,10 @@ impl RestService {
         if system {
             idle = self.port.system_idle_ms();
             let counting = !self.paused || self.port.count_when_paused();
-            if let (true, true, Some(ms)) = (slow, counting, idle) {
-                self.engine.on_system_idle(ms, now);
+            if let (true, true, Some(ms)) = (slow, counting, idle)
+                && self.engine.on_system_idle(ms, now)
+            {
+                self.port.active_minute(now);
             }
         }
         let ctx = Ctx {
@@ -198,6 +206,7 @@ mod tests {
         idle: Mutex<Option<u64>>,
         linked: Mutex<bool>,
         cfg: Mutex<RestConfig>,
+        minutes: Mutex<u32>,
     }
 
     impl RestPort for FakePort {
@@ -218,6 +227,9 @@ mod tests {
         }
         fn log(&self, _ts: i64, kind: RestKind, action: RestAction) {
             self.logged.lock().unwrap().push((kind, action));
+        }
+        fn active_minute(&self, _local: DateTime<Local>) {
+            *self.minutes.lock().unwrap() += 1;
         }
     }
 
@@ -261,9 +273,11 @@ mod tests {
         let (mut svc, port, clock) = setup();
         for _ in 0..20 {
             svc.on_event(&key());
+            svc.on_event(&key());
             assert_eq!(svc.on_tick(), None);
             clock.advance_ms(60_000);
         }
+        assert_eq!(*port.minutes.lock().unwrap(), 20, "同一分钟只记一次");
         // 最后一次按键已过去 1 分钟（5 秒空闲早满足）
         let due = svc.on_tick().expect("护眼到期");
         assert_eq!(due.kind, RestKind::Eye);
@@ -289,6 +303,11 @@ mod tests {
             assert_eq!(svc.on_tick(), None, "还在操作电脑，不显示");
             clock.advance_ms(1_000);
         }
+        assert_eq!(
+            *port.minutes.lock().unwrap(),
+            20,
+            "按系统空闲记的分钟也进统计"
+        );
         *port.idle.lock().unwrap() = Some(6_000);
         clock.advance_ms(ChronoDuration::seconds(1).num_milliseconds());
         assert_eq!(svc.on_tick().map(|d| d.kind), Some(RestKind::Eye));
