@@ -135,16 +135,33 @@ pub const COMFORT_REPLIES: [&str; 3] = [
     r#"{"text":"慢慢来，你已经做得很好了。","kind":"cheer"}"#,
 ];
 
-/// 请求的是 P-COMFORT（提示词要求输出 `{"text":...,"kind":"comfort|rest|cheer"}`）时回 JSON，否则回固定的一句话。
-fn reply_for(req: &ChatReq, n: usize) -> &'static str {
-    let comfort = req
-        .messages
-        .iter()
-        .any(|m| m.content.contains(r#""kind":"comfort|rest|cheer""#));
-    if comfort {
-        COMFORT_REPLIES[n % COMFORT_REPLIES.len()]
+/// P-REWRITE 的回复：在原文（提示词最后一行“原文：”之后，已是占位符形式）前后加几个客气字，
+/// 原文里的数字、`@某人`、占位符都原样保留，能过 V8。
+pub fn rewrite_reply(original: &str) -> String {
+    let cands = [
+        format!("你好，{original}"),
+        format!("麻烦看一下：{original}"),
+        format!("{original}，谢谢"),
+    ];
+    serde_json::json!({ "candidates": cands }).to_string()
+}
+
+/// 请求的是 P-COMFORT（提示词要求输出 `{"text":...,"kind":"comfort|rest|cheer"}`）或 P-REWRITE（`{"candidates":...}`）
+/// 时回 JSON，否则回固定的一句话。
+fn reply_for(req: &ChatReq, n: usize) -> String {
+    let has = |marker: &str| req.messages.iter().any(|m| m.content.contains(marker));
+    if has(r#""kind":"comfort|rest|cheer""#) {
+        COMFORT_REPLIES[n % COMFORT_REPLIES.len()].to_string()
+    } else if has(r#"{"candidates":"#) {
+        let original = req
+            .messages
+            .iter()
+            .rev()
+            .find_map(|m| m.content.rsplit_once("原文：").map(|(_, t)| t.trim()))
+            .unwrap_or_default();
+        rewrite_reply(original)
     } else {
-        REPLY
+        REPLY.to_string()
     }
 }
 

@@ -11,6 +11,7 @@ pub mod infra;
 pub mod pipeline;
 pub mod research;
 pub mod rest;
+pub mod rewrite;
 pub mod sense;
 
 /// Hub 版本（XQP 下行 hello 的 `hub_ver`）。

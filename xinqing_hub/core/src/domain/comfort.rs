@@ -412,6 +412,11 @@ impl ComfortPrompt {
         Self { version, body }
     }
 
+    /// 去掉注释行后的正文（其他提示词模板共用这套解析）。
+    pub fn body(&self) -> &str {
+        &self.body
+    }
+
     /// 记录在 `comfort_log.prompt_ver`、`CompleteRequest.prompt_ver`。
     pub fn ver(&self) -> String {
         format!("P-COMFORT v{}", self.version)

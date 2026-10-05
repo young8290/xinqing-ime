@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::{Instant, MissedTickBehavior};
-use xqp::{ByeReason, Down, MoodState, OpenTarget, RewriteFailReason, Scope, Up};
+use xqp::{ByeReason, Down, MoodState, OpenTarget, Scope, Up};
 
 use crate::bus::{HubEvent, MoodEvent};
 use crate::domain::explain::{self, Evidence, ExplainSource, Explanation};
@@ -349,13 +349,6 @@ impl Sense {
             Up::Hb { dropped, .. } if *dropped > 0 => {
                 self.port
                     .note(&format!("核心队列满，丢弃了 {dropped} 条事件（FR-SEN-07）"));
-            }
-            Up::RewriteReq { req_id, .. } => {
-                // 改写服务（C-09）接入前直接告诉核心不可用，避免候选框一直等待
-                self.xqp.send(Down::RewriteFail {
-                    req_id: *req_id,
-                    reason: RewriteFailReason::Offline,
-                });
             }
             _ => {}
         }
@@ -873,7 +866,7 @@ mod tests {
     }
 
     #[test]
-    fn open_requests_and_rewrite_fallback() {
+    fn open_requests_and_rewrite_left_to_the_rewrite_service() {
         let mut r = rig();
         r.sense.on_link(connected("s1"), r.t0);
         r.up(Up::Open {
@@ -891,13 +884,8 @@ mod tests {
             style: xqp::RewriteStyle::Gentle,
             replace_len: Some(2),
         });
-        assert_eq!(
-            downs(&mut r.down),
-            vec![Down::RewriteFail {
-                req_id: 7,
-                reason: RewriteFailReason::Offline
-            }]
-        );
+        // 改写请求经总线交给改写服务（`crate::rewrite`），感知任务自己不回
+        assert!(downs(&mut r.down).is_empty());
     }
 
     #[test]

@@ -492,6 +492,26 @@ impl Db {
         Ok(())
     }
 
+    /// 写一行 `rewrite_log`（D-28）：只有来源、风格、第几个、长度和结果，不含文字（FR-RWR-04）。
+    #[allow(clippy::too_many_arguments)]
+    pub fn rewrite_log_insert(
+        &self,
+        ts: i64,
+        source: &str,
+        style: &str,
+        chosen: Option<u8>,
+        len_in: u32,
+        len_out: Option<u32>,
+        outcome: &str,
+    ) -> Result<(), StoreError> {
+        self.conn.execute(
+            "INSERT INTO rewrite_log (ts, source, style, chosen, len_in, len_out, outcome)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![ts, source, style, chosen, len_in, len_out, outcome],
+        )?;
+        Ok(())
+    }
+
     /// 写一条出网记录，并删掉最近 [`NET_LOG_KEEP`] 条以外的旧记录。
     pub fn net_log_insert(&self, e: &NetLogEntry) -> Result<(), StoreError> {
         self.conn.execute(

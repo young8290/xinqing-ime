@@ -157,6 +157,7 @@ export const events = {
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
 	researchInvite: makeEvent<ResearchInvite>("research:invite"),
 	restDue: makeEvent<RestDue>("rest:due"),
+	safetyInvite: makeEvent<SafetyInvite>("safety:invite"),
 	safetyTriggered: makeEvent<SafetyTriggered>("safety:triggered"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
@@ -565,6 +566,18 @@ export type SafeMode =
 "on" | 
 /**  用户点了“我说的不是这个意思”：回到普通模式、词表阈值提高，求助信息仍折叠显示一行（FR-SAF-06） */
 "dismissed";
+
+/**
+ *  `safety:invite`：改写时原文命中危机词表（FR-RWR-05 第 3 条，ADR 0028 第 4 条）。核心已退出改写模式并在光标旁
+ *  显示气泡；界面在小组件一句话区给出最高优先级的求助入口（`rewrite.crisis_bubble`），点了打开对话并显示求助卡片。
+ *  不自动弹出对话窗口：用户正在别的应用里打字。
+ */
+export type SafetyInvite = {
+	source: SafetyInviteSource,
+};
+
+/**  `safety:invite` 的来源。目前只有温柔改写。 */
+export type SafetyInviteSource = "rewrite";
 
 /**
  *  `safety:triggered`：危机识别命中（FR-SAF-01）。对话窗口立即在顶部固定显示求助卡片（FR-SAF-02），

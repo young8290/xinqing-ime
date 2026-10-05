@@ -33,6 +33,8 @@ struct RawBanned {
     #[serde(default)]
     chat_allow: Vec<String>,
     #[serde(default)]
+    abuse: Vec<String>,
+    #[serde(default)]
     exempt_copy_ids: Vec<String>,
 }
 
@@ -43,6 +45,8 @@ pub struct BannedWords {
     patterns: Vec<Regex>,
     chat_allow: HashSet<String>,
     exempt: HashSet<String>,
+    /// 辱骂词（第九类），只给温柔改写的 V8 用（ADR 0028）
+    abuse: Vec<String>,
 }
 
 const FILE: &str = "banned_words.toml";
@@ -78,6 +82,7 @@ impl BannedWords {
             patterns,
             chat_allow: raw.chat_allow.iter().map(|w| normalize(w)).collect(),
             exempt: raw.exempt_copy_ids.into_iter().collect(),
+            abuse: raw.abuse.iter().map(|w| normalize(w)).collect(),
         })
     }
 
@@ -115,6 +120,15 @@ impl BannedWords {
             .iter()
             .find(|p| p.is_match(&t) && !p.is_match(&src))
             .map(|p| p.as_str().to_string())
+    }
+
+    /// V8：`source` 里没有、`text` 里新出现的辱骂词（温柔改写，ADR 0028）。
+    pub fn find_new_abuse(&self, text: &str, source: &str) -> Option<String> {
+        let (t, src) = (normalize(text), normalize(source));
+        self.abuse
+            .iter()
+            .find(|w| t.contains(w.as_str()) && !src.contains(w.as_str()))
+            .cloned()
     }
 
     /// 固定文案校验：`exempt_copy_ids` 中的键跳过（AI 输出永不豁免）。

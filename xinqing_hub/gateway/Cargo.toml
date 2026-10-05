@@ -24,3 +24,4 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 [dev-dependencies]
 chrono.workspace = true
 mock-ai = { path = "../../tools/mock-ai" }
+xqp = { path = "../../crates/xqp" }
