@@ -67,7 +67,7 @@ struct ShellPort {
 
 impl ChatPort for ShellPort {
     fn db(&self) -> Box<dyn Deref<Target = Db> + '_> {
-        Box::new(self.app.state::<AppState>().inner().db())
+        Box::new(self.app.state::<AppState>().inner().writer().lock())
     }
 
     fn style(&self) -> Style {

@@ -11,6 +11,7 @@ pub mod feedback;
 pub mod fusion;
 pub mod rest;
 pub mod retention;
+pub mod routine;
 pub mod rules;
 pub mod safety;
 pub mod schedule;

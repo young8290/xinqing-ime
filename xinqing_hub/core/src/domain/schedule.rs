@@ -2,9 +2,11 @@
 //!
 //! 原句仅保留在返回值中供后续显式同意后的单句确认使用；调用方不得持久化它。
 
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use regex::Regex;
 use serde::Deserialize;
 
+use crate::domain::validate;
 use crate::infra::templates::{TemplateDirs, TemplateError};
 
 const FILE: &str = "schedule_patterns.toml";
@@ -42,6 +44,190 @@ pub struct TodoDraft {
     pub title: String,
     pub due_date: Option<String>,
     pub source: String,
+}
+
+/// AI 抽取结果没通过校验的原因（08 第 5 节）。调用方按 08 重新生成 1 次，仍失败转本地抽取
+/// （FR-SCH-03 第 2 条）。
+#[derive(Debug, Clone, Copy, thiserror::Error, PartialEq, Eq)]
+pub enum ExtractError {
+    /// V1：去掉代码块后仍不是 JSON
+    #[error("AI 抽取结果不是有效 JSON")]
+    Json,
+    /// V2：缺字段或类型不对
+    #[error("AI 抽取结果字段类型或值不合法")]
+    Shape,
+    /// V2：日期或时刻不是合法的日历值
+    #[error("AI 抽取结果日期或时间不合法")]
+    DateTime,
+    /// V3：标题为空或超长
+    #[error("AI 抽取结果标题超长或为空")]
+    Title,
+}
+
+/// 日程标题上限（FR-SCH-03 第 3 条、08 第 5 节 V3）。
+const SCHEDULE_TITLE_MAX: usize = 12;
+/// 待办标题上限（FR-SCH-12、08 第 5 节 V3）。
+const TODO_TITLE_MAX: usize = 16;
+/// 地点上限：产品书没有规定，超过这个长度多半是模型把整句抄了进来（FR-SCH-04 补充规则 7）。
+const LOCATION_MAX: usize = 40;
+/// 截止类没有时刻时的默认时刻（FR-SCH-04 校验第 5 条）。
+const DEADLINE_TIME: NaiveTime = NaiveTime::from_hms_opt(23, 59, 0).unwrap();
+/// 晚于这么多天以后标注“请确认日期”（FR-SCH-04 校验第 3 条）。
+const CONFIRM_DATE_DAYS: i64 = 365;
+
+/// `schedule.flags` 的取值（09 D-12）。
+pub const FLAG_MAYBE_PAST: &str = "maybe_past";
+pub const FLAG_CONFIRM_DATE: &str = "confirm_date";
+
+#[derive(Debug, Deserialize)]
+struct ScheduleOutput {
+    has_event: bool,
+    title: Option<String>,
+    date: Option<String>,
+    time: Option<String>,
+    end_time: Option<String>,
+    /// 只校验类型；是否全天由有没有时刻决定（FR-SCH-04 时刻规则、补充规则 2、6）
+    #[allow(dead_code)]
+    all_day: bool,
+    location: Option<String>,
+    is_deadline: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct TodoOutput {
+    is_todo: bool,
+    title: Option<String>,
+    due_date: Option<String>,
+}
+
+/// V1 + V2：按 08 第 5 节去掉代码块、截取 `{…}` 后再按字段反序列化。
+fn parse_output<T: serde::de::DeserializeOwned>(raw: &str) -> Result<T, ExtractError> {
+    let value = validate::extract_json(raw).ok_or(ExtractError::Json)?;
+    serde_json::from_value(value).map_err(|_| ExtractError::Shape)
+}
+
+/// V3：去掉首尾空白后非空且不超过 `max` 个字。
+fn checked_title(title: Option<String>, max: usize) -> Result<String, ExtractError> {
+    let title = title.as_deref().map(str::trim).unwrap_or_default();
+    if title.is_empty() || title.chars().count() > max {
+        return Err(ExtractError::Title);
+    }
+    Ok(title.to_owned())
+}
+
+fn optional_date(value: Option<String>) -> Result<Option<NaiveDate>, ExtractError> {
+    value
+        .map(|date| {
+            NaiveDate::parse_from_str(date.trim(), "%Y-%m-%d").map_err(|_| ExtractError::DateTime)
+        })
+        .transpose()
+}
+
+fn optional_time(value: Option<String>) -> Result<Option<NaiveTime>, ExtractError> {
+    value
+        .map(|time| {
+            NaiveTime::parse_from_str(time.trim(), "%H:%M").map_err(|_| ExtractError::DateTime)
+        })
+        .transpose()
+}
+
+fn format_date(date: NaiveDate) -> String {
+    date.format("%Y-%m-%d").to_string()
+}
+
+fn format_time(time: NaiveTime) -> String {
+    time.format("%H:%M").to_string()
+}
+
+/// 校验并规范化 P-SCHEDULE 的输出（08 第 5 节、FR-SCH-03、FR-SCH-04 校验第 2～5 条）。
+/// `now` 是本地时间；`has_event=false` 返回 `Ok(None)`，不写入数据库。
+///
+/// 日期、时刻统一写成 `YYYY-MM-DD`、`HH:MM`，去重哈希（FR-SCH-06）才不会因为 `9:30` 和
+/// `09:30` 算成两条。FR-SCH-04 校验第 1 条（模型日期与代码日期不一致时采用代码结果并标
+/// `adjusted`）要用原句，由接 L3 的调用方做。
+pub fn validate_schedule_json(
+    raw: &str,
+    now: NaiveDateTime,
+) -> Result<Option<ScheduleDraft>, ExtractError> {
+    let output: ScheduleOutput = parse_output(raw)?;
+    if !output.has_event {
+        return Ok(None);
+    }
+    let title = checked_title(output.title, SCHEDULE_TITLE_MAX)?;
+    let location = output
+        .location
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned);
+    if location
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > LOCATION_MAX)
+    {
+        return Err(ExtractError::Shape);
+    }
+    let mut date = optional_date(output.date)?;
+    let mut time = optional_time(output.time)?;
+    let end_time = optional_time(output.end_time)?;
+
+    // 校验第 5 条：截止类没有时刻默认 23:59。连日期也没有时不补，留给卡片让用户补充
+    if output.is_deadline && date.is_some() && time.is_none() {
+        time = Some(DEADLINE_TIME);
+    }
+    // 校验第 4 条：有时刻没有日期默认今天，时刻已过顺延到明天
+    if let (None, Some(start)) = (date, time) {
+        let today = now.date();
+        date = Some(if start <= now.time() {
+            today.succ_opt().unwrap_or(today)
+        } else {
+            today
+        });
+    }
+    // 结束时刻只在有开始时刻且晚于它时才有意义，否则丢掉，不连累其余字段
+    let end_time = end_time.filter(|end| time.is_some_and(|start| *end > start));
+
+    let mut flags = Vec::new();
+    if let Some(day) = date {
+        // 校验第 2 条：全天日程按日期比，带时刻的按时刻比
+        let past = match time {
+            Some(start) => day.and_time(start) < now,
+            None => day < now.date(),
+        };
+        if past {
+            flags.push(FLAG_MAYBE_PAST.to_owned());
+        }
+        // 校验第 3 条
+        if (day - now.date()).num_days() > CONFIRM_DATE_DAYS {
+            flags.push(FLAG_CONFIRM_DATE.to_owned());
+        }
+    }
+
+    Ok(Some(ScheduleDraft {
+        title,
+        date: date.map(format_date),
+        all_day: time.is_none(),
+        time: time.map(format_time),
+        end_time: end_time.map(format_time),
+        location,
+        is_deadline: output.is_deadline,
+        remind_offsets: Vec::new(),
+        source: "ai".into(),
+        flags,
+    }))
+}
+
+/// 校验并规范化 P-TODO 的输出（08 第 5 节、FR-SCH-12）。`is_todo=false` 返回 `Ok(None)`，
+/// 不写入数据库。
+pub fn validate_todo_json(raw: &str) -> Result<Option<TodoDraft>, ExtractError> {
+    let output: TodoOutput = parse_output(raw)?;
+    if !output.is_todo {
+        return Ok(None);
+    }
+    Ok(Some(TodoDraft {
+        title: checked_title(output.title, TODO_TITLE_MAX)?,
+        due_date: optional_date(output.due_date)?.map(format_date),
+        source: "ai".into(),
+    }))
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -338,5 +524,187 @@ mod tests {
     fn rejects_out_of_range_calendar_dates() {
         assert!(!recognizer().has_date("19月99号要面试"));
         assert!(recognizer().has_date("10月15号上午面试"));
+    }
+
+    /// FR-SCH-04 验收用的“今天”：2026-10-03（周六）上午 10 点。
+    fn now() -> NaiveDateTime {
+        NaiveDate::from_ymd_opt(2026, 10, 3)
+            .unwrap()
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+    }
+
+    /// 以 P-SCHEDULE 的一条合法输出为底，用 `patch` 改其中几个字段。
+    fn schedule_output(patch: serde_json::Value) -> String {
+        let mut output = serde_json::json!({
+            "has_event": true, "title": "组会", "date": "2026-10-09", "time": "15:00",
+            "end_time": null, "all_day": false, "location": "实验楼", "is_deadline": false,
+        });
+        for (key, value) in patch.as_object().unwrap() {
+            output[key] = value.clone();
+        }
+        output.to_string()
+    }
+
+    fn schedule(patch: serde_json::Value) -> Result<Option<ScheduleDraft>, ExtractError> {
+        validate_schedule_json(&schedule_output(patch), now())
+    }
+
+    #[test]
+    fn schedule_strips_code_fence_and_normalizes_fields() {
+        let raw = format!(
+            "```json\n{}\n```",
+            schedule_output(serde_json::json!({
+                "title": " 组会 ", "time": "9:30", "end_time": "10:00", "location": " 实验楼 ",
+            }))
+        );
+        let draft = validate_schedule_json(&raw, now()).unwrap().unwrap();
+        assert_eq!(draft.title, "组会");
+        assert_eq!(draft.date.as_deref(), Some("2026-10-09"));
+        assert_eq!(draft.time.as_deref(), Some("09:30"));
+        assert_eq!(draft.end_time.as_deref(), Some("10:00"));
+        assert_eq!(draft.location.as_deref(), Some("实验楼"));
+        assert!(!draft.all_day);
+        assert_eq!(draft.source, "ai");
+        assert!(draft.flags.is_empty());
+        assert_eq!(
+            schedule(serde_json::json!({ "has_event": false })),
+            Ok(None)
+        );
+    }
+
+    #[test]
+    fn schedule_follows_fr_sch_04_examples() {
+        // 明晚八点前交数据库作业 → 2026-10-04 20:00，截止
+        let draft = schedule(serde_json::json!({
+            "title": "交数据库作业", "date": "2026-10-04", "time": "20:00",
+            "location": null, "is_deadline": true,
+        }))
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            (draft.time.as_deref(), draft.is_deadline, draft.flags.len()),
+            (Some("20:00"), true, 0)
+        );
+        // 下周二和室友去看电影 → 全天；模型把 all_day 填成 false 也按全天
+        let draft = schedule(serde_json::json!({
+            "title": "看电影", "date": "2026-10-06", "time": null, "location": null,
+        }))
+        .unwrap()
+        .unwrap();
+        assert!(draft.all_day);
+        assert_eq!(draft.time, None);
+        // 这周五交报告 → 2026-10-02，截止类默认 23:59，标注时间可能已过
+        let draft = schedule(serde_json::json!({
+            "title": "交报告", "date": "2026-10-02", "time": null,
+            "all_day": true, "location": null, "is_deadline": true,
+        }))
+        .unwrap()
+        .unwrap();
+        assert_eq!(draft.time.as_deref(), Some("23:59"));
+        assert!(!draft.all_day);
+        assert_eq!(draft.flags, [FLAG_MAYBE_PAST]);
+    }
+
+    #[test]
+    fn schedule_fills_missing_date_and_flags_far_dates() {
+        let date_of = |time: &str| {
+            schedule(serde_json::json!({ "date": null, "time": time }))
+                .unwrap()
+                .unwrap()
+                .date
+        };
+        assert_eq!(date_of("15:00").as_deref(), Some("2026-10-03"));
+        assert_eq!(date_of("09:00").as_deref(), Some("2026-10-04"));
+        let far = schedule(serde_json::json!({ "date": "2027-10-05" }))
+            .unwrap()
+            .unwrap();
+        assert_eq!(far.flags, [FLAG_CONFIRM_DATE]);
+        let today_all_day = schedule(serde_json::json!({ "date": "2026-10-03", "time": null }))
+            .unwrap()
+            .unwrap();
+        assert!(today_all_day.flags.is_empty());
+    }
+
+    #[test]
+    fn schedule_drops_end_time_without_valid_start() {
+        let end_of = |time: serde_json::Value| {
+            schedule(serde_json::json!({ "time": time, "end_time": "15:00" }))
+                .unwrap()
+                .unwrap()
+                .end_time
+        };
+        assert_eq!(end_of(serde_json::json!("16:00")), None);
+        assert_eq!(end_of(serde_json::json!("15:00")), None);
+        assert_eq!(end_of(serde_json::Value::Null), None);
+        assert_eq!(end_of(serde_json::json!("14:00")).as_deref(), Some("15:00"));
+    }
+
+    #[test]
+    fn schedule_rejects_invalid_output() {
+        assert_eq!(
+            validate_schedule_json("好的，我来抽取", now()),
+            Err(ExtractError::Json)
+        );
+        assert_eq!(
+            validate_schedule_json(r#"{"has_event":true,"title":"组会"}"#, now()),
+            Err(ExtractError::Shape)
+        );
+        assert_eq!(
+            schedule(serde_json::json!({ "has_event": "true" })),
+            Err(ExtractError::Shape)
+        );
+        assert_eq!(
+            schedule(serde_json::json!({ "date": "2026-02-30" })),
+            Err(ExtractError::DateTime)
+        );
+        assert_eq!(
+            schedule(serde_json::json!({ "time": "25:00" })),
+            Err(ExtractError::DateTime)
+        );
+        assert_eq!(
+            schedule(serde_json::json!({ "title": "  " })),
+            Err(ExtractError::Title)
+        );
+        assert_eq!(
+            schedule(serde_json::json!({ "title": "一二三四五六七八九十一二三" })),
+            Err(ExtractError::Title)
+        );
+        assert!(
+            schedule(serde_json::json!({ "title": " 一二三四五六七八九十一二 " }))
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(
+            schedule(serde_json::json!({ "location": "很".repeat(LOCATION_MAX + 1) })),
+            Err(ExtractError::Shape)
+        );
+    }
+
+    #[test]
+    fn validates_todo_route_and_title_limit() {
+        assert!(
+            validate_todo_json(r#"{"is_todo":false,"title":null,"due_date":null}"#)
+                .unwrap()
+                .is_none()
+        );
+        let todo = validate_todo_json(
+            "```json\n{\"is_todo\":true,\"title\":\" 打印简历 \",\"due_date\":\"2026-10-09\"}\n```",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(todo.title, "打印简历");
+        assert_eq!(todo.due_date.as_deref(), Some("2026-10-09"));
+        assert_eq!(todo.source, "ai");
+        assert_eq!(
+            validate_todo_json(
+                r#"{"is_todo":true,"title":"这是一条超过十六个汉字长度的待办事项标题","due_date":null}"#
+            ),
+            Err(ExtractError::Title)
+        );
+        assert_eq!(
+            validate_todo_json(r#"{"is_todo":true,"title":"打印简历","due_date":"10月9日"}"#),
+            Err(ExtractError::DateTime)
+        );
     }
 }
