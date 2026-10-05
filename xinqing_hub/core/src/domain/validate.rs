@@ -99,6 +99,24 @@ impl BannedWords {
             .map(|p| p.as_str().to_string())
     }
 
+    /// 只找 `source` 里没有的禁用词或正则：从用户原句里抽出来的字段（日程标题等）用，
+    /// 用户自己说的词照常保留，模型带进来的才算命中（ADR 0023）。
+    pub fn find_new(&self, text: &str, source: &str, scene: Scene) -> Option<String> {
+        let (t, src) = (normalize(text), normalize(source));
+        for w in &self.words {
+            if scene == Scene::Chat && self.chat_allow.contains(w) {
+                continue;
+            }
+            if t.contains(w.as_str()) && !src.contains(w.as_str()) {
+                return Some(w.clone());
+            }
+        }
+        self.patterns
+            .iter()
+            .find(|p| p.is_match(&t) && !p.is_match(&src))
+            .map(|p| p.as_str().to_string())
+    }
+
     /// 固定文案校验：`exempt_copy_ids` 中的键跳过（AI 输出永不豁免）。
     pub fn find_in_copy(&self, key: &str, text: &str) -> Option<String> {
         if self.exempt.contains(key) {

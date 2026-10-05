@@ -50,7 +50,7 @@
 | `expected.all_day` | 没有具体时刻的非截止日程为 `true` |
 | `expected.location` | 句中明确说出的地点，否则 `null`，不推测 |
 | `expected.is_deadline` | 含“截止 / DDL / deadline / 之前交 / 前提交”或“X点前…交”时为 `true` |
-| `expected.flags` | 卡片应带的标记：`maybe_past`（结果早于当前时刻，“时间可能已过”）、`need_time`（全天、提示补充时刻）、`check_date`（超过 365 天，本集没有用到） |
+| `expected.flags` | 卡片应带的标记：`maybe_past`（结果早于当前时刻，“时间可能已过”）、`need_time`（全天、提示补充时刻）、`confirm_date`（超过 365 天，“请确认日期”，本集没有用到；名称与 09 D-12 一致）。预测里多出的 `adjusted`（代码改过模型的日期或时刻）评测时不比 |
 | `weekday` / `note` | 辅助核对用：期望日期是星期几，以及标注说明 |
 
 适用的规范化规则（FR-SCH-04，含 V1.2 补充规则）：
