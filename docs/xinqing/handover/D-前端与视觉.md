@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（`bindings.ts` 契约：不会是 NaN 的 f64 导出成 number，ADR 0027）
+> 最后更新：2026-10-05（D-05：首次引导的 AI 服务与偏好，FR-ONB-05）
 
 ## 1. 任务状态
 
@@ -13,7 +13,7 @@
 | D-02 | 小组件（布局、小精灵、一句话区、底栏、交互、贴边） | **进行中** | 第一部分（窗口行为、右键菜单）：[xinqing-ime#14](https://github.com/young8290/xinqing-ime/pull/14)（已合并）；第二部分（悬停解释）：[xinqing-ime#16](https://github.com/young8290/xinqing-ime/pull/16)；第三部分（全屏自动隐藏、首帧位置）、第四部分（“准 / 不准”）：随后的 PR | 见第 3 节 |
 | D-03 | 小精灵插画与 lottie 动画（6 天气 + 3 一次性动作）、logo | **进行中** | `components/WeatherSprite.vue`：SVG + CSS 动画——每种天气 2–4 秒循环（呼吸、眨眼，加上光芒转、云飘、雨落、闪电每 3 秒闪一下、月亮浮、风线摆），一次性动作 `play('shake' \| 'approach')`，“闭眼”即 `eyesClosed`；`WeatherStage.vue` 交叉淡化。应用图标是几何占位（`tools/gen_hub_icons.py`，形状已按 DS-BRAND-02） | 正式插画与 lottie 素材（要设计稿，Claude 做不了插画定稿）；“晃一下 / 靠近”还没接上触发源：打错字要 B / A 给瞬时事件，暖心话要 C-04 的事件；logo 的矢量版已做（`components/AppLogo.vue`，与 `gen_hub_icons.py` 同一套几何），引导页还没用上 |
 | D-04 | 卡片层（日程 / 待办 / 提醒 / 自评 / 小结 / 周信等 8 类） | 未开始 | — | 07 第 2 节的“卡片层”窗口还没在 `tauri.conf.json` 登记；卡片的数据来自 B、C 的事件，事件形状要先定（改 `bindings.ts` 走契约 PR） |
-| D-05 | 首次引导与同意 | 大部分完成 | `windows/onboarding/`（FR-ONB-01～04，有测试） | FR-ONB-05（AI 地址与密钥、“测试连接”、小组件位置、关怀频率、晴晴打招呼）未做，“测试连接”依赖 C 的网关（xinqing-ime#7） |
+| D-05 | 首次引导与同意 | 完成（待合并） | `windows/onboarding/`：FR-ONB-01～04；FR-ONB-05（本 PR）——`AiStep.vue`（Jev 与大模型的地址和密钥，已保存的只显示末 4 位、留空不改，“测试连接”先保存再逐个模型测，可跳过进离线模式）、`PrefsStep.vue`（小组件放哪个角、`care.level`、四种休息提醒开关，改了就存）；完成后小组件由晴晴打招呼（`shared/firstRun.ts`） | 引导页不让改大模型的模型列表（沿用已有的或用默认），完整的放设置页“AI 服务”（FR-SET-08）；Jev 没有测试接口，只做说明 |
 | D-06 | 对话窗口（流式、标识、求助卡片 UI） | 第一版完成 | `windows/chat/`：`useChat.ts`（会话、流式事件、先到事件暂存）、`App.vue`（AI 说明、历史抽屉、气泡与 `AI 生成` 标签、复制、停止 / 重试）、`SafetyCard.vue`（求助卡片，折叠成一行不可移除）；与 C-07/C-08 同一个 PR，ADR 0018 | 快捷指令（吐槽 / 理一理 / 呼吸，`BreathingGuide.vue`）与“记住”确认条、消息上的“让晴晴记住”已由 C 补上（[xinqing-ime#57](https://github.com/young8290/xinqing-ime/pull/57)），样式 D 已走查（文字按钮的点击目标、`AI 生成` 标签按 DS-COPY-05、输入中三个点、Esc 先关呼吸引导、抽屉与引导的焦点、高对比度下气泡有边框）；“写成情绪日记”随 C-10；历史搜索（P1）；窗口置顶切换与全局快捷键 `Ctrl+Alt+Q`；学校心理中心电话等设置项 |
 | D-07 | 情绪看板 | 占位 | `windows/dashboard/`（只显示当前天气） | 全部（P1，计划 W9）；ECharts 未引入 |
 | D-08 | 设置中心（schema 表单生成器 + 9 个分类） | **进行中** | `windows/settings/`：左侧分类 + 每个分类一个组件；“输入法”（xinqing-ime#36 已合并：常用项中文名称 + 其余按 schema 生成、分组放进“高级”，修改即保存、重启横幅）、“外观”、“隐私与关于”里的“关于”。契约（#35 已合并）：ADR 0016 + `core/src/infra/imeconf.rs`（wind-rpc 客户端，只用标准库）+ 命令 `ime_schema` / `ime_config_get` / `ime_config_set`。契约（xinqing-ime#38 已合并）：ADR 0017 + 事件通道读线程 `src-tauri/src/ime_events.rs` + 事件 `ime_config:changed`；“输入法”页接这个事件和窗口焦点刷新（xinqing-ime#39 已合并）；本 PR：快捷键录制框、中英切换键改为五选一 | 下一步：其余分类（FR-SET-03～08、10）按各自后端逐个补；“隐私”部分随 E 的 FR-DAT 任务；开源许可的完整依赖清单要用工具生成 |
@@ -42,6 +42,11 @@ xinqing_hub/
 │     ├─ SelfReportPanel.vue    “我现在…”面板
 │     ├─ placement.ts           位置计算纯函数：默认位置、吸附、按显示器记住、小标签
 │     └─ useWidgetWindow.ts     调 Tauri 窗口接口：恢复位置、拖动后吸附、贴边隐藏、置顶
+│  └─ onboarding/
+│     ├─ App.vue                引导步骤：年龄 → 告知 → 同意 → 增强模式 → AI 服务 → 偏好
+│     ├─ AiStep.vue             AI 服务：地址与密钥、测试连接、可跳过（ADR 0012）
+│     └─ PrefsStep.vue          偏好：小组件的角、关怀频率、休息提醒
+│  └─ shared/firstRun.ts        引导交给小组件的偏好：放哪个角、要不要打招呼（localStorage）
 │  └─ settings/
 │     ├─ App.vue                左侧分类（FR-SET-01 的顺序），默认“输入法”，#about 直接打开“隐私与关于”
 │     ├─ ImeSection.vue         输入法：取 schema 和配置、修改即保存、跳过原因 / 重启横幅 / 核心没运行；
@@ -127,7 +132,7 @@ xinqing_hub/
 ## 6. 下一步（按优先级）
 
 1. D-03 剩余：“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；引导页用上 logo；
-2. D-05：FR-ONB-05，等 C 的网关 PR（xinqing-ime#7）合并后接“测试连接”；
+2. D-08：设置页“AI 服务”（FR-SET-08）——`ai_config_get` / `secrets_set` / `ai_test_connection` / `ai_net_log_recent` 都有了，模型列表排序、出网记录在这里做；
 3. D-08：其余分类（FR-SET-03～08、10）按各自后端补；
 4. `bindings.ts`：设置页做“关怀”“AI 服务”前先提 `settings_schema()`（ADR 0019 评审）；
 5. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
@@ -153,3 +158,4 @@ xinqing_hub/
 | 2026-10-05 | D-06 走查：对话窗口的点击目标、AI 标签样式、输入中动画、键盘焦点与高对比度 |
 | 2026-10-05 | `bindings.ts` 契约评审：ADR 0018 / 0019 / 0022 / 0023 / 0026 写入 D 的意见 |
 | 2026-10-05 | `bindings.ts` 契约：ADR 0027，不会是 NaN 的 f64（时间戳、设置数值）导出成 number |
+| 2026-10-05 | D-05：首次引导补上 FR-ONB-05（AI 服务、偏好、完成后晴晴打招呼） |

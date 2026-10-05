@@ -23,6 +23,7 @@ import {
   type SavedPlacement,
   type Screen,
 } from './placement'
+import { loadCorner } from '../shared/firstRun'
 
 /** 窗口位置只是本机的界面偏好，不是用户数据，放 WebView 的 localStorage（读不到就当没记过）。 */
 const STORAGE_KEY = 'xq.widget.placement'
@@ -151,7 +152,7 @@ export function useWidgetWindow(opts: WidgetWindowOptions) {
         w.outerSize(),
       ])
       const screens = monitors.map((m) => toScreen(m, primary))
-      const pos = restore(load(), screens, { w: size.width, h: size.height })
+      const pos = restore(load(), screens, { w: size.width, h: size.height }, loadCorner())
       if (pos) await w.setPosition(new PhysicalPosition(pos.x, pos.y))
     } finally {
       // 外壳建小组件时不显示（tauri.conf.json 的 visible: false），挪到位再露面，免得闪一下；定位失败也照样显示

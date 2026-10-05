@@ -1,5 +1,6 @@
 // 小组件窗口的位置计算（07 FR-WGT-01）：默认位置、贴边吸附、按显示器记住位置、贴边隐藏的小标签。
 // 纯函数，坐标一律是物理像素（与 Tauri 的 outerPosition / Monitor.workArea 一致），规范里的逻辑像素乘 scale。
+import type { Corner } from '../shared/firstRun'
 
 export interface Point {
   x: number
@@ -37,10 +38,15 @@ export interface SavedPlacement {
   byScreen: Record<string, Point>
 }
 
-/** 主显示器工作区右下角，距边缘 16 px。 */
-export function defaultPosition(work: Rect, size: Size, scale: number): Point {
+/** 主显示器工作区的一个角（默认右下角，首次引导可以改，FR-ONB-05），距边缘 16 px。 */
+export function defaultPosition(work: Rect, size: Size, scale: number, corner: Corner = 'br'): Point {
   const m = Math.round(DEFAULT_MARGIN * scale)
-  return { x: work.x + work.w - size.w - m, y: work.y + work.h - size.h - m }
+  const left = corner === 'bl' || corner === 'tl'
+  const top = corner === 'tr' || corner === 'tl'
+  return {
+    x: left ? work.x + m : work.x + work.w - size.w - m,
+    y: top ? work.y + m : work.y + work.h - size.h - m,
+  }
 }
 
 /** 把窗口整个挪回工作区内（分辨率或任务栏变了以后，记住的位置可能已经出界）。 */
@@ -84,14 +90,19 @@ export function tabRect(win: Rect, work: Rect, edge: Edge, scale: number): Rect 
 
 /**
  * 启动时放在哪里：最后所在的显示器还在，就回到在那台显示器上记住的位置（挪回工作区内）；
- * 否则（显示器拔掉了、从没记过）回到主显示器的默认位置。
+ * 否则（显示器拔掉了、从没记过）回到主显示器的默认位置（`corner` 那个角）。
  */
-export function restore(saved: SavedPlacement | null, screens: Screen[], size: Size): Point | null {
+export function restore(
+  saved: SavedPlacement | null,
+  screens: Screen[],
+  size: Size,
+  corner: Corner = 'br',
+): Point | null {
   const last = saved && screens.find((s) => s.id === saved.last)
   const pos = last && saved.byScreen[last.id]
   if (last && pos) return clampInto(pos, size, last.work)
   const primary = screens.find((s) => s.primary) ?? screens[0]
-  return primary ? defaultPosition(primary.work, size, primary.scale) : null
+  return primary ? defaultPosition(primary.work, size, primary.scale, corner) : null
 }
 
 /** 记下窗口在某台显示器上的位置，返回新的记录（不改原对象）。 */

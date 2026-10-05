@@ -1,13 +1,16 @@
 <script setup lang="ts">
-// 首次引导（07 FR-ONB-01～04）：年龄确认 → 告知 → 单独同意 → 增强模式单独一页。
+// 首次引导（07 FR-ONB-01～05）：年龄确认 → 告知 → 单独同意 → 增强模式单独一页 → AI 服务（可跳过）→ 偏好。
 // 每项同意都是独立复选框、默认不勾选，勾选即调用 consent_set 落库（带版本号和时间）。
-// FR-ONB-05（AI 配置与偏好）随 16 D-05 补上。
+// 完成后显示小组件，晴晴打招呼（firstRun.ts 交给小组件）。
 import { computed, onMounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { commands, unwrap, type ConsentItem, type ConsentState } from '@/api'
 import { errorText, t, type CopyKey } from '@/i18n'
+import { requestGreeting } from '../shared/firstRun'
+import AiStep from './AiStep.vue'
+import PrefsStep from './PrefsStep.vue'
 
-type Step = 'age' | 'minor' | 'notice' | 'consent' | 'enhanced'
+type Step = 'age' | 'minor' | 'notice' | 'consent' | 'enhanced' | 'ai' | 'prefs'
 
 const NUMBER: Record<ConsentItem, string> = {
   sense: '①',
@@ -50,6 +53,7 @@ async function toggle(item: ConsentItem, on: boolean): Promise<void> {
 }
 
 async function finish(): Promise<void> {
+  requestGreeting()
   try {
     await unwrap(commands.openWindow('widget'))
     await getCurrentWindow().close()
@@ -125,6 +129,10 @@ function close(): void {
       </div>
     </section>
 
+    <AiStep v-else-if="step === 'ai'" @back="step = 'enhanced'" @next="step = 'prefs'" />
+
+    <PrefsStep v-else-if="step === 'prefs'" @back="step = 'ai'" @done="finish" />
+
     <section v-else>
       <!-- FR-ONB-04：增强模式单独一页，加粗提示 -->
       <label class="consent enhanced" data-item="enhanced">
@@ -138,8 +146,8 @@ function close(): void {
       </label>
       <div class="actions">
         <button @click="step = 'consent'">{{ t('onboarding.btn_back') }}</button>
-        <button class="primary" :disabled="!canContinue" @click="finish">
-          {{ t('onboarding.btn_done') }}
+        <button class="primary" :disabled="!canContinue" @click="step = 'ai'">
+          {{ t('onboarding.btn_next') }}
         </button>
       </div>
     </section>

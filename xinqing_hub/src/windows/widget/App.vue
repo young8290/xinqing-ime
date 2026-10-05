@@ -16,6 +16,7 @@ import { menuEntries, type MenuAction } from './menu'
 import RestCard from './RestCard.vue'
 import SelfReportPanel from './SelfReportPanel.vue'
 import { statusLine } from './statusLine'
+import { takeGreeting } from '../shared/firstRun'
 import { useExplain } from './useExplain'
 import { useRest } from './useRest'
 import { useSelfReport } from './useSelfReport'
@@ -34,7 +35,8 @@ const setting = <T,>(key: string, fallback: T) =>
 const opacity = setting('widget.opacity', 1)
 const autohide = setting('widget.autohide', false)
 const topmost = setting('widget.topmost', true)
-const message = ref(t('greeting.idle'))
+// 刚走完首次引导：晴晴先打个招呼（FR-ONB-05）
+const message = ref(takeGreeting() ? t('greeting.first_run') : t('greeting.idle'))
 const menuOpen = ref(false)
 
 // 菜单、自评面板或休息提醒开着时不贴边收起
