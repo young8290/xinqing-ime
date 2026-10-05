@@ -3,6 +3,7 @@
 //! 领域逻辑都在 `xinqing-hub-core`，这里只做参数校验 → 调用领域服务 → 转成 `UiError`（ADR 0007）。
 
 mod args;
+mod chat;
 mod cleanup;
 mod comfort;
 mod commands;
@@ -56,6 +57,15 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::ai::ai_test_connection,
             commands::ai::ai_usage_today,
             commands::comfort::comfort_feedback,
+            commands::chat::chat_list_sessions,
+            commands::chat::chat_get_messages,
+            commands::chat::chat_send,
+            commands::chat::chat_retry,
+            commands::chat::chat_stop,
+            commands::chat::chat_copy,
+            commands::chat::chat_delete,
+            commands::chat::chat_delete_all,
+            commands::chat::safety_dismiss,
             commands::ime::ime_schema,
             commands::ime::ime_config_get,
             commands::ime::ime_config_set,
@@ -69,6 +79,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::CareReduced,
             events::RestDue,
             events::ImeConfigChanged,
+            events::ChatDelta,
+            events::ChatDone,
+            events::ChatErrorEvent,
+            events::SafetyTriggered,
         ])
 }
 
@@ -108,6 +122,8 @@ pub fn run() {
             comfort::start(app.handle());
             // 休息提醒：使用时长计时与四类提醒（B-08）
             rest::start(app.handle());
+            // 对话与对话里的危机安全（C-07、C-08）
+            chat::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。
