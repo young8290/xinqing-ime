@@ -118,14 +118,13 @@ impl RestPort for ShellPort {
     }
 
     fn log(&self, ts: i64, kind: RestKind, action: RestAction) {
-        if let Err(e) =
-            self.app
-                .state::<AppState>()
-                .db()
-                .reminder_insert(ts, kind.as_str(), action.as_str())
-        {
-            eprintln!("写入休息提醒记录失败：{e}");
-        }
+        let (kind, action) = (kind.as_str(), action.as_str());
+        self.app
+            .state::<AppState>()
+            .writer()
+            .enqueue("reminder_log", move |db| {
+                db.reminder_insert(ts, kind, action).map(drop)
+            });
     }
 
     fn note(&self, msg: &str) {
