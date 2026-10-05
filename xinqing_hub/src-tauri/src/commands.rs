@@ -2,6 +2,7 @@
 //! 这里只做取参 → 调领域服务 → 推送事件，不写业务规则。
 
 pub mod ai;
+pub mod chat;
 pub mod comfort;
 pub mod ime;
 
