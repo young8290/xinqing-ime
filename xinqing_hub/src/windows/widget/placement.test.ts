@@ -24,6 +24,15 @@ describe('defaultPosition', () => {
   })
 })
 
+describe('defaultPosition 的四个角（首次引导可选，FR-ONB-05）', () => {
+  it('右上、左下、左上都距边缘 16 px；restore 没记过位置时用选的角', () => {
+    expect(defaultPosition(work, size, 1, 'tr')).toEqual({ x: 1920 - 320 - 16, y: 16 })
+    expect(defaultPosition(work, size, 1, 'bl')).toEqual({ x: 16, y: 1040 - 168 - 16 })
+    expect(defaultPosition(work, size, 1, 'tl')).toEqual({ x: 16, y: 16 })
+    expect(restore(null, [primary], size, 'tl')).toEqual({ x: 16, y: 16 })
+  })
+})
+
 describe('snap', () => {
   it('距边缘 24 px 以内吸附到左边，记下边缘', () => {
     expect(snap({ ...size, x: 20, y: 400 }, work, 1)).toEqual({ x: 0, y: 400, edge: 'left' })
