@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：WGT 小组件、DSH 看板、SET 设置、ONB 引导、NTF 系统通知、REV-04 晴天收集的界面、设计规范；
 > 另是前后端绑定 `xinqing_hub/src/api/bindings.ts` 的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.4 节。本文件随 D 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（`bindings.ts` 契约评审：ADR 0018 / 0019 / 0022 / 0023 / 0026）
+> 最后更新：2026-10-05（`bindings.ts` 契约：不会是 NaN 的 f64 导出成 number，ADR 0027）
 
 ## 1. 任务状态
 
@@ -55,6 +55,7 @@ xinqing_hub/
 │     └─ licenses.ts            开源许可条目；新增随包分发的组件 / 字体 / 素材 / 图标库时在这里加
 ├─ core/src/infra/imeconf.rs   wind-rpc 客户端（读写输入法配置，ADR 0016）
 ├─ src-tauri/src/commands/ime.rs  ime_schema / ime_config_get / ime_config_set
+├─ src/api/bindings.test.ts      守住生成的绑定：时间戳导出成 number（ADR 0027）
 ├─ src-tauri/src/ime_events.rs  常驻线程读 wind-rpc 事件通道，转成 ime_config:changed（ADR 0017）
 └─ src-tauri/
    ├─ capabilities/              default.json（各窗口共用）、widget.json（只给小组件：挪动、缩放、显示、置顶）
@@ -94,10 +95,13 @@ xinqing_hub/
 - **小组件位置存在 WebView 的 localStorage**，没有进 Hub 数据库：它是本机界面偏好，不是用户数据，也不需要随导出导入走；放进 `settings` 表要新增设置键（C 的契约）。以后要让“删除全部数据”也清掉它，再挪进数据库。
 - **ADR 0016（输入法设置的读写与表单生成，D 提议）**：心晴不带清风的设置程序（托盘“设置”打开的是 Hub），而 wind-rpc 的 `config.schema` 只有键名、类型和枚举值、没有中文名称和范围，所以“输入法”分类改为常用项手写名称、其余按 schema 放进“高级”；客户端不依赖清风的 crate，协议版本号由测试核对。待 A、C 评审，接受后改产品书 07 FR-SET-02、10 第 5.1 节、17 第 3.4 节。
 - **ADR 0017（输入法配置变更事件，D 提议）**：外壳常驻一个线程连 `xinqing_rpc{后缀}_events`（后缀在 `_events` 之前，和控制通道相反），把 `config.changed` 转成 `ime_config:changed {reason, needs_restart}`；每次连上先推一条 `connected`，核心没运行时 1～30 秒退避重连。核心自己的语言栏 / 菜单写配置不广播，所以设置窗口获得焦点时也要重新取。待 A、C 评审，接受后改产品书 10 第 5.2 节、07 FR-SET-02。
+- **ADR 0027（前端绑定的数字类型，D 提议）**：specta 把所有 `f64` 导出成 `number | null`（`serde_json` 把 NaN 写成 `null`）。不会是 NaN 的字段（时间戳、`SettingValue::Number`）
+  标 `#[specta(type = specta_typescript::Number)]` 导出成 `number`，真的可空的 `Option` 保持 `| null`；`src/api/bindings.test.ts` 守住 `ts` / `*_ts` 字段。
+  `SettingValue` 属 C 的注册表契约、`SelfReportItem` 属 B，待 C、B 评审。**新加 `f64` 字段时按 ADR 0027 第 3 条处理。**
 - **`bindings.ts` 契约评审（2026-10-05）**：ADR 0017 之后别的 PR 往绑定里加了对话、记忆、快捷指令、数据导出、出网记录、作息洞察、演示 / 研究模式的命令和事件，
   共约 240 行，D 逐项对照 10 第 5.1 / 5.2 节和各 ADR 看过，在 ADR 0018 / 0019 / 0022 / 0023 / 0026 的“评审”里写了**同意**和不阻塞的建议。
   `chat_search`、`ai_net_log_recent` 没有 ADR 登记，D 同意它们的形状，改 10 第 5.1 节时补上。D 自己的后续：① 所有 `f64` 导出成 `number | null`
-  （时间戳其实不会为空），另提契约 PR 统一；② 设置页做“关怀”“AI 服务”前，提 `settings_schema()` 只读命令（ADR 0019 评审）。
+  （时间戳其实不会为空）——已由 ADR 0027 处理；② 设置页做“关怀”“AI 服务”前，提 `settings_schema()` 只读命令（ADR 0019 评审）。
 - **ADR 0012（AI 服务配置，C 提议）D 的评审意见：同意**（写在 ADR 的“评审”一节）。E 要求 release 只收 `https://`，落地时 `error.ai_config_invalid` 文案要同改；建议 `ai_config_get` 带上两侧健康状态，FR-SET-08 页面要用。
 - **ADR 0010（状态解释的信号挑选与拼句）D 的评审意见：同意**（B 在 xinqing-ime#11 请 D 看界面拼句）。结构化的
   `Explanation { state, prob, signals[{kind, value}], source, cold_start }` 够界面用：`kind` 的序列化名就是
@@ -125,7 +129,7 @@ xinqing_hub/
 1. D-03 剩余：“晃一下 / 靠近”等事件到位后接上（`play()` 已备好）；引导页用上 logo；
 2. D-05：FR-ONB-05，等 C 的网关 PR（xinqing-ime#7）合并后接“测试连接”；
 3. D-08：其余分类（FR-SET-03～08、10）按各自后端补；
-4. `bindings.ts`：`f64` 导出成 `number | null` 的统一处理（契约 PR）；设置页做“关怀”“AI 服务”前先提 `settings_schema()`；
+4. `bindings.ts`：设置页做“关怀”“AI 服务”前先提 `settings_schema()`（ADR 0019 评审）；
 5. D-04：卡片层窗口与事件形状（契约 PR），先做休息提醒卡片（配合 B-08）。
 
 ## 7. 修订记录
@@ -148,3 +152,4 @@ xinqing_hub/
 | 2026-10-05 | D-06：C 补上快捷指令按钮、呼吸引导与“记住”确认条（FR-CHT-06/07），待 D 评审样式 |
 | 2026-10-05 | D-06 走查：对话窗口的点击目标、AI 标签样式、输入中动画、键盘焦点与高对比度 |
 | 2026-10-05 | `bindings.ts` 契约评审：ADR 0018 / 0019 / 0022 / 0023 / 0026 写入 D 的意见 |
+| 2026-10-05 | `bindings.ts` 契约：ADR 0027，不会是 NaN 的 f64（时间戳、设置数值）导出成 number |

@@ -248,7 +248,7 @@ export type ChatMessageItem = {
 	/**  `user` / `assistant` / `system_notice` */
 	role: string,
 	content: string,
-	ts: number | null,
+	ts: number,
 	/**  为真时显示 `AI 生成` 标签（FR-CHT-04 第 4 条） */
 	ai_generated: boolean,
 };
@@ -271,7 +271,7 @@ export type ChatSearchItem = {
 	title: string,
 	role: string,
 	content: string,
-	ts: number | null,
+	ts: number,
 };
 
 /**  `chat_send` / `chat_retry` 的结果；回复经 `chat:*` 事件推送。 */
@@ -291,8 +291,8 @@ export type ChatSent = {
 export type ChatSessionItem = {
 	id: number,
 	title: string,
-	created_ts: number | null,
-	last_ts: number | null,
+	created_ts: number,
+	last_ts: number,
 	/**  `on` / `dismissed` 时窗口顶部要有求助信息（展开或折叠成一行） */
 	safe_mode: SafeMode,
 	/**  快捷指令切换的对话方式（FR-CHT-06，ADR 0022），窗口据此显示“只倾听中”等提示 */
@@ -476,7 +476,7 @@ export type LlmView = {
 export type MemoryItem = {
 	id: number,
 	content: string,
-	created_ts: number | null,
+	created_ts: number,
 };
 
 /**  “测试连接”里一个模型的结果（FR-AIG-04 第 4 条）。 */
@@ -494,7 +494,7 @@ export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "
 /**  设置页展示的出网记录；只包含接口、模型、字段名和计量信息，不含请求或响应正文。 */
 export type NetLogView = {
 	/**  Unix 毫秒；前端用 number 展示即可，时间不会超过 JavaScript 安全整数范围。 */
-	ts: number | null,
+	ts: number,
 	api: string,
 	model: string | null,
 	fields: string[],
@@ -509,7 +509,7 @@ export type NetLogView = {
  *  `answer_until_ts`（Unix 毫秒）之前提交的自评记为研究数据（`source = esm`），过了就按普通自评记。
  */
 export type ResearchInvite = {
-	answer_until_ts: number | null,
+	answer_until_ts: number,
 };
 
 /**  用户对提醒卡片的操作（FR-RST-06 第 2 条），也是 `reminder_log.action` 的取值。 */
@@ -581,14 +581,14 @@ export type SafetyTriggered = {
 export type SelfReportChanged = {
 	weather: SelfWeather,
 	/**  Unix 毫秒（前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的） */
-	until_ts: number | null,
+	until_ts: number,
 };
 
 /**  `self_report_list` 的一行（10 第 5.1 节）。 */
 export type SelfReportItem = {
 	id: number,
 	/**  Unix 毫秒。用 f64 是因为前端绑定不导出 i64，毫秒时间戳在 f64 中是精确的。 */
-	ts: number | null,
+	ts: number,
 	weather: SelfWeather,
 	/**  只存本地（NFR-PRI-09） */
 	note: string | null,
@@ -649,7 +649,7 @@ export type SettingItem =
 "research_id";
 
 /**  设置项的值。只有这四种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"` / `["22:00-07:00"]`）。 */
-export type SettingValue = boolean | number | null | string | string[];
+export type SettingValue = boolean | number | string | string[];
 
 /**  `settings:changed`：只带键名，窗口自行重新读取。 */
 export type SettingsChanged = {

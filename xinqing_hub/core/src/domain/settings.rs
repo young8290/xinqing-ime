@@ -18,7 +18,8 @@ use crate::infra::store::{Db, StoreError};
 #[serde(untagged)]
 pub enum SettingValue {
     Bool(bool),
-    Number(f64),
+    // 从 JSON 读进来的数不会是 NaN，导出成 `number`（ADR 0027）
+    Number(#[cfg_attr(feature = "specta", specta(type = specta_typescript::Number))] f64),
     Text(String),
     // 字符串列表（ADR 0019）
     List(Vec<String>),

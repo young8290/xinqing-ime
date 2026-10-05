@@ -25,10 +25,12 @@ zeroize = "1"
 zip = { version = "8.6", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 sha2 = "0.10"
 specta = { version = "=2.0.0-rc.25", features = ["derive"], optional = true }
+# 时间戳等不会是 NaN 的 f64 导出成 `number` 而不是 `number | null`（ADR 0027）
+specta-typescript = { version = "0.0.12", optional = true }
 
 [features]
 # 给 Tauri 外壳导出 TypeScript 类型用（10 第 5.1 节）
-specta = ["dep:specta", "xqp/specta"]
+specta = ["dep:specta", "dep:specta-typescript", "xqp/specta"]
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
