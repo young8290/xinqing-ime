@@ -36,7 +36,10 @@ pub fn start(app: &AppHandle) {
 fn run_once(app: &AppHandle) {
     // 对话保留期的设置键 `chat.retention_days`（FR-CHT-08）登记后从设置读，现在用默认 90 天
     let policy = Policy::default();
-    let report = retention::run(&app.state::<AppState>().db(), &policy, Local::now());
+    let report = app
+        .state::<AppState>()
+        .writer()
+        .write_sync(|db| retention::run(db, &policy, Local::now()));
     // 报告只有表名、条数和错误信息，不含用户内容（NFR-LOG-01）
     eprintln!("{}", report.summary());
 }
