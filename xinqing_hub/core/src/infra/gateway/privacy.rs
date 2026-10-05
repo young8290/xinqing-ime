@@ -16,7 +16,11 @@ fn rules() -> &'static Rules {
     R.get_or_init(|| Rules {
         digits: Regex::new(r"[0-9]+[Xx]?").unwrap(),
         email: Regex::new(r"[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9.]+").unwrap(),
-        query: Regex::new(r"\?[^\s]+").unwrap(),
+        // 只认紧跟在域名或路径后面的 `?`：单独一个半角问号（“你在哪?我等你”）不是查询参数
+        query: Regex::new(
+            r"([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?:/[^\s?]*)?)\?[^\s]+",
+        )
+        .unwrap(),
     })
 }
 
@@ -43,7 +47,7 @@ pub fn redact(text: &str) -> String {
         let run = &c[0];
         classify_digits(run).map_or_else(|| run.to_string(), str::to_string)
     });
-    r.query.replace_all(&s, "?[已省略]").into_owned()
+    r.query.replace_all(&s, "$1?[已省略]").into_owned()
 }
 
 #[cfg(test)]
@@ -61,6 +65,17 @@ mod tests {
             redact("看 https://x.cn/p?id=1&t=2 这个"),
             "看 https://x.cn/p?[已省略] 这个"
         );
+        assert_eq!(
+            redact("x.cn/p?id=1 和 example.com?a=b"),
+            "x.cn/p?[已省略] 和 example.com?[已省略]"
+        );
+        assert_eq!(
+            redact("你在哪?我等你"),
+            "你在哪?我等你",
+            "半角问号不是查询参数"
+        );
+        assert_eq!(redact("ok?好的"), "ok?好的");
+        assert_eq!(redact("版本1.2?可以吗"), "版本1.2?可以吗");
         assert_eq!(redact("周五下午三点开会"), "周五下午三点开会");
         assert_eq!(redact("12345678901"), "12345678901", "不是 1[3-9] 开头");
         assert_eq!(redact("10月9日15点"), "10月9日15点");
