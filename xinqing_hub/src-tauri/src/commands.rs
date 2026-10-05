@@ -12,6 +12,7 @@ use xinqing_hub_core::domain::consent::{self, ConsentItem, ConsentState};
 use xinqing_hub_core::domain::explain::Explanation;
 use xinqing_hub_core::domain::features::persist;
 use xinqing_hub_core::domain::feedback::{self, FeedbackTarget, Verdict};
+use xinqing_hub_core::domain::rest::{RestAction, RestKind};
 use xinqing_hub_core::domain::self_report::{self, SelfReportItem, SelfWeather};
 use xinqing_hub_core::domain::settings::{self, SettingValue};
 use xinqing_hub_core::domain::status::StatusSnapshot;
@@ -19,6 +20,7 @@ use xinqing_hub_core::sense::SenseCmd;
 
 use crate::error::UiError;
 use crate::events::{SelfReportChanged, SettingsChanged, StatusChanged};
+use crate::rest::Rest;
 use crate::sensing::Sensing;
 use crate::state::AppState;
 use crate::windows::{self, WindowTarget};
@@ -212,4 +214,23 @@ pub fn consent_set(
 #[specta::specta]
 pub async fn open_window(app: AppHandle, target: WindowTarget) -> Result<(), UiError> {
     windows::open(&app, target)
+}
+
+/// 用户点了休息提醒卡片上的按钮（FR-RST-06 第 2 条）：完成或关闭后该类计时清零，“5 分钟后”顺延；
+/// 每次操作记一条 `reminder_log`（FR-RST-08）。服务没在运行时忽略。
+#[tauri::command]
+#[specta::specta]
+pub fn rest_action(
+    rest: State<'_, Rest>,
+    kind: RestKind,
+    action: RestAction,
+) -> Result<(), UiError> {
+    if rest
+        .cmds
+        .try_send(xinqing_hub_core::rest::RestCmd::Act { kind, action })
+        .is_err()
+    {
+        eprintln!("休息提醒服务没有在运行，操作未处理");
+    }
+    Ok(())
 }

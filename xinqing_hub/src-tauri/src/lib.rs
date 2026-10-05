@@ -11,6 +11,7 @@ mod events;
 mod fullscreen;
 mod gateway;
 mod paths;
+mod rest;
 mod secrets;
 mod sensing;
 mod state;
@@ -48,6 +49,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::consent_get,
             commands::consent_set,
             commands::open_window,
+            commands::rest_action,
             commands::ai::ai_config_get,
             commands::ai::secrets_set,
             commands::ai::ai_test_connection,
@@ -64,6 +66,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::GatewayHealthChanged,
             events::ComfortNew,
             events::CareReduced,
+            events::RestDue,
         ])
 }
 
@@ -101,6 +104,8 @@ pub fn run() {
             cleanup::start(app.handle());
             // 暖心话：订阅总线，主动关怀与自评回应（C-04）
             comfort::start(app.handle());
+            // 休息提醒：使用时长计时与四类提醒（B-08）
+            rest::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。
