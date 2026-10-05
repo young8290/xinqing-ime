@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：AIG 网关、CMF 暖心话、CHT 对话、DIA 日记、SAF 危机安全、SCH 日程与待办、RWR 温柔改写的 Hub 部分、REV-01/02 晚间小结与周信、评测脚本；
 > 另是数据库迁移（`xinqing_hub/core/migrations/`）与设置键注册表（`xinqing_hub/core/src/domain/settings.rs`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.3 节。本文件随 C 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-05（`settings_schema` 命令，ADR 0019 第 9 条）
+> 最后更新：2026-10-05（C-09 温柔改写的 Hub 服务，ADR 0028）
 
 ## 1. 任务状态
 
@@ -17,7 +17,7 @@
 | C-06 | 待办识别与清单、提醒 | 本地初筛与结构化存储完成 | #42（已合并）：`core/src/domain/schedule.rs`、`core/src/infra/store/schedule.rs`；`prompts/todo.md`、评测集 `eval/datasets/e_todo.jsonl` | AI 抽取的网关接线、提醒调度与前端清单待做（P1）；`validate_todo_json` 已按原句算截止日期（ADR 0024） |
 | C-07 | AI 对话：会话、上下文、流式、记忆、历史、快捷指令 | **P1 部分完成** | [xinqing-ime#40](https://github.com/young8290/xinqing-ime/pull/40)（已合并）：纯函数 `core/src/domain/chat.rs`、服务 `core/src/chat.rs`、读写 `infra/store/chat.rs`、外壳 `src-tauri/src/chat.rs` 与 `commands/chat.rs`；`gateway/tests/chat_mock_ai.rs`；ADR 0018。记忆增删改、历史搜索、`chat.retention_days`：[xinqing-ime#49](https://github.com/young8290/xinqing-ime/pull/49)。快捷指令的对话方式：[xinqing-ime#51](https://github.com/young8290/xinqing-ime/pull/51)，ADR 0022 | 见第 3.3 节：两段快捷指令提示词待 E 评审；“写成情绪日记”随 C-10；设置页“晴晴记住的事”与历史搜索界面等 D |
 | C-08 | 危机安全：双通道、求助卡片、安全模式、记录、误报处理 | **对话部分完成** | #40（已合并）：本地通道 `core/src/domain/safety.rs`（与 Python 对拍）；对话里的双通道、安全模式、固定回应、`safety_log`、V6、“我说的不是这个意思”在 `core/src/chat.rs`；ADR 0018 | 日记中的危机识别随 C-10；12 的对话安全用例集要真实接口跑 |
-| C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | 未开始 | `prompts/rewrite.md`、`eval/datasets/e_rewrite.jsonl`；`sense.rs` 收到 `rewrite_req` 时先回 `RewriteFail::Offline` | 计划 W8–W9；依赖 A-08 改写模式；V8 校验、可还原占位符 `[号码1]` |
+| C-09 | 温柔改写 Hub 服务：脱敏、P-REWRITE、保真校验、缓存 | **后端完成** | 本 PR：纯函数 `core/src/domain/rewrite.rs`（占位符、V1、V4/V8、提示词）、服务 `core/src/rewrite.rs`、外壳 `src-tauri/src/rewrite.rs`、`gateway/tests/rewrite_mock_ai.rs`；ADR 0028 | 见第 3.4 节：危机入口的界面（D）、首次使用说明（A/C/D 待定）、E-REWRITE 评测（真实接口）；禁用词表第九类 `abuse` 待 E 评审 |
 | C-10 | 情绪日记、晚间小结、周信 | 未开始 | `hub_templates/evening.toml`、`letter_fallback.md`、`prompts/diary.md`、`letter.md` | 16 第 3 节建议移给 B，W1 评审会还没定（B 的交接文档也记了“未认领”） |
 | C-11 | 评测脚本与报告 | 脚本完成，报告未出 | `eval/tools/`（[xinqing-ime#6](https://github.com/young8290/xinqing-ime/pull/6)，Hu-yiye）：日程 / 抽取 / 待办、对话安全 / 改写、周信、危机词表、E-COMFORT | E-COMFORT：`eval_comfort.py` 与评测集 `e_comfort.jsonl`（6 种状态摘要 × 若干次，共 50 条），[xinqing-ime#50](https://github.com/young8290/xinqing-ime/pull/50)；报告（`eval/reports/`）仍要等真实接口生成预测文件 |
 
@@ -31,8 +31,10 @@ xinqing_hub/
 │  ├─ comfort.rs             暖心话：频率档位、触发判断 Trigger、状态摘要、P-COMFORT 拼装、V1–V7 校验、模板选句
 │  ├─ validate.rs            08 第 5 节输出校验（V1、V3 计数、V4 禁用词、V5 重复、V7 语言；V2/V6/V8/V9 随功能补）
 │  ├─ safety.rs              危机词表本地通道
+│  ├─ rewrite.rs             温柔改写：可还原占位符 mask/restore、V1 解析、V4/V8/长度校验 check/accept、P-REWRITE 拼装
 │  ├─ dnd.rs                 勿扰应用与安静时段的解析、判断（暖心话用，休息提醒也可用）
 │  └─ settings.rs            设置键注册表（契约）：值的四种形态与格式校验（ADR 0019）、`schema()`（给 `settings_schema`）、`cap_key` / `caps`
+├─ core/src/rewrite.rs       温柔改写服务 RewriteService：rewrite_req → 同意 ⑥ / 危机词表 / 占位符 / P-REWRITE / V8 → rewrite_result；rewrite_done → rewrite_log
 ├─ core/src/care.rs          暖心话服务 ComfortService：订阅总线 → 触发 → 大模型（重试 1 次）或模板 → comfort_log → ComfortPort::show
 ├─ core/src/infra/store/     Db：迁移、只读连接 open_reader、单写入口 writer.rs（DbWriter）、窗口与状态、反馈、net_log（只留最近 200 条）；comfort.rs 是 comfort_log 的读写；schedule.rs 写结构化日程/待办并去重
 ├─ core/migrations/          0001_init.sql、0002_comfort_trigger.sql（契约；已发布的脚本不改，新改动按 main 上的最大编号顺延）
@@ -97,7 +99,25 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 记忆增删改、历史搜索、`chat.retention_days` 设置 | FR-CHT-07/08 | 命令完成（[xinqing-ime#49](https://github.com/young8290/xinqing-ime/pull/49)）：`memory_list/add/update/delete`（最多 50 条、每条 ≤ 100 字，满了返回 `chat.memory_full`）、`chat_search`（最多 50 条）；自动清理读取 30 / 90 / 365 天或永久。对话里明确说“记住”（`domain::chat::memory_request`，`ChatSent.memory_candidate`）或点消息上的“让晴晴记住”都先确认再写入；满了 / 超长有专门提示（`error.memory_full` / `error.memory_invalid`）：[xinqing-ime#57](https://github.com/young8290/xinqing-ime/pull/57) |
 | E-CHAT 对话安全评测（12 的用例集 100% 通过） | FR-CHT-03 验收 | 未做：要真实接口 |
 
+### 3.4 C-09 温柔改写（Hub 部分）
+
+| 部分 | 需求 | 状态 |
+|---|---|---|
+| 收 `rewrite_req`、回 `rewrite_result` / `rewrite_fail`（原因：`no_consent` / `invalid` / `crisis` / `timeout` / `budget` / `offline`） | FR-RWR-03 | 完成；Hub 9.5 秒到点给 `timeout`，比核心的 10 秒早一点 |
+| 可还原占位符 `[号码1]` `[证件1]` `[卡号1]` `[邮箱1]` `[链接1]`，结果由代码换回；原文与结果只在内存 | FR-RWR-07 | 完成（ADR 0028 第 3 条） |
+| P-REWRITE、V1 解析、V8 保真（数字整体、`@` 前缀兼容、占位符、≤ 1.5 倍 + 10 字）、V4 只拦新增的禁用词、新增辱骂词 | FR-RWR-05 第 1、2 条，08 第 5 节 | 完成（ADR 0028 第 5 条）；辱骂词放在 `banned_words.toml` 第九类 `abuse`，**待 E 评审** |
+| 危机内容不改写、不出网，记 `safety_log`，推 `safety:invite {source: "rewrite"}` | FR-RWR-05 第 3 条，E 在 ADR 0009 的阻塞项 | 后端完成（ADR 0028 第 4 条，E 的方案 ②）；**一句话区的求助入口与点击打开对话 + 求助卡片是 D 的界面** |
+| `rewrite_log`（来源、风格、第几个、长度、结果，不含文字） | FR-RWR-04，09 D-28 | 完成；`chosen` 记 1～3（ADR 0028 第 6 条），排队写入 |
+| 每种风格缓存 5 分钟 | FR-RWR-02 | 核心一侧已做（A-08），Hub 不重复 |
+| 首次使用说明 | FR-RWR-06 第 3 条 | 未做：归属待 A、C、D 商定 |
+| E-REWRITE 评测 | 08 第 8 节 | 未做：要真实接口 |
+
 ## 4. 关键决定与待评审
+
+- **ADR 0028（温柔改写 Hub 服务的实现解释，9 条）**：提议，待 E（隐私、危机安全、禁用词表第九类）、D（`safety:invite` 与界面）评审，A 知会。
+  要点：Hub 不另做缓存（核心已做）；占位符种类与写法；危机只用本地词表、不出网、推 `safety:invite`，界面在一句话区给求助入口（E 的方案 ②），
+  不自动弹出对话窗口；V8 的比较口径；V4 只拦新增的词；`chosen` 从 1 数；去掉 `sense.rs` 的 `offline` 占位；顺带收紧网关脱敏的查询参数规则
+  （原规则会吞掉任何半角问号后的文字）；mock-ai 认 P-REWRITE。
 
 - **ADR 0020（单写入口 DbWriter 的实现方式，6 条）**：提议，待 B、D、E 评审。要点：一个写连接 + 一个只读连接；写连接用互斥锁串行，
   **没有照 17 字面做写线程 + 通道**（领域函数都收 `&Db` 且读写交错，走通道要改写几十处，保证的性质相同）；普通数据（特征窗口与状态记录、
@@ -123,6 +143,9 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 ## 5. 已知问题
 
+- 改写的 V8 不检查中文数字（“三点”“两千”）；`@某人` 只能按前缀判断同一个人（ADR 0028 第 5 条）。
+- 改写的请求信息（来源、风格、长度）在内存里等 `rewrite_done`，Hub 在这期间重启，那次改写就不写 `rewrite_log`。
+- 改写服务的模板加载失败时不启动，核心等 10 秒后提示“暂时改写不了”。
 - `secrets_set` 的明文密钥经 Tauri IPC 的 JSON 反序列化进来，那一份中间缓冲清不掉；进入 Rust 后立即放进 `Zeroizing`。
 - 熔断打开期结束后不会自己发健康变化，要等下一次请求或每 30 分钟的模型刷新（网关 README 也写了）；离线角标因此最多晚 30 分钟消失。
 - 健康状态“离线”= 任一侧不可用（`GatewayHealth::offline`）。只配了大模型、没配 Jev 时也显示离线角标，符合 03 第 8 节“L2 Jev 不可用”的降级，但用户可能疑惑，设置页要说明。
@@ -141,10 +164,11 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 
 ## 6. 下一步（按优先级）
 
-1. 跟进 ADR 0019 的评审（D 已同意，待 E）；D 做设置页“关怀”“AI 服务”分类时用 `settings_schema` 出控件，如需改形状在本 ADR 上改；
-2. 跟进 ADR 0020 的评审（B、D、E）；
-3. C-07 剩余：设置页“晴晴记住的事”与历史搜索的界面（D）；日记的危机识别与“写成情绪日记”随 C-10；
-4. C-05 日程剩余（P0，W7–W8）：本地初筛、存储、抽取结果校验（含代码日期校验）都有了，还差 L2/L3 的网关接线、提醒调度 `scheduler` 与冲突处理。
+1. 跟进 ADR 0028 的评审（E、D）；D 做一句话区的求助入口时按 `safety:invite` 接；与 A、D 定首次使用说明放哪；
+2. 跟进 ADR 0019 的评审（D 已同意，待 E）；D 做设置页“关怀”“AI 服务”分类时用 `settings_schema` 出控件，如需改形状在本 ADR 上改；
+3. 跟进 ADR 0020 的评审（B、D、E）；
+4. C-07 剩余：设置页“晴晴记住的事”与历史搜索的界面（D）；日记的危机识别与“写成情绪日记”随 C-10；
+5. C-05 日程剩余（P0，W7–W8）：本地初筛、存储、抽取结果校验（含代码日期校验）都有了，还差 L2/L3 的网关接线、提醒调度 `scheduler` 与冲突处理。
 
 ## 7. 修订记录
 
@@ -160,3 +184,4 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 | 2026-10-05 | C-07 快捷指令：吐槽 / 理一理做成会话的对话方式（迁移 0003、`chat_set_mode`、两段新提示词），ADR 0022（#51） |
 | 2026-10-05 | C-05 FR-SCH-04 校验第 1 条（`domain/when.rs`）、标题截断与 V4 口径（ADR 0024）；C-07 “记住”先确认、记忆的专门提示、快捷指令按钮与呼吸引导（#57） |
 | 2026-10-05 | #54 已合并；按 D 在 ADR 0019 评审中的提议加只读命令 `settings_schema`（`SettingField` / `SettingFieldKind` / `SettingItem`），ADR 0019 第 9 条 |
+| 2026-10-05 | #62 已合并；C-09 温柔改写的 Hub 服务（占位符、V8、危机入口事件 `safety:invite`、`rewrite_log`）、网关脱敏查询参数规则收紧、禁用词表第九类 `abuse`，ADR 0028 |
