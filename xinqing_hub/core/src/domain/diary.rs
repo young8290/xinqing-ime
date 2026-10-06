@@ -101,15 +101,21 @@ const NONE: &str = "（无）";
 
 impl DiaryPrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let path = dirs.factory_path("prompts/diary.md");
-        let text = std::fs::read_to_string(&path).map_err(|source| TemplateError::Io {
-            path: path.clone(),
-            source,
-        })?;
-        let p = ComfortPrompt::parse(&text);
-        Ok(Self {
-            version: p.version,
-            body: p.body().to_string(),
+        const FILE: &str = "prompts/diary.md";
+        dirs.load_with_fallback(FILE, |path| {
+            let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
+                path: path.to_path_buf(), source,
+            })?;
+            let version = text.lines().next()
+                .and_then(|l| l.trim().strip_prefix("<!-- version:"))
+                .and_then(|l| l.strip_suffix("-->"))
+                .and_then(|l| l.trim().parse::<u32>().ok());
+            let p = ComfortPrompt::parse(&text);
+            if version.is_none_or(|v| v == 0) || p.body().trim().is_empty()
+                || ["{summary}", "{chat_digest}"].iter().any(|key| !p.body().contains(key)) {
+                return Err(TemplateError::Invalid { file: FILE, reason: "缺少正整数版本号、正文或必需占位符" });
+            }
+            Ok(Self { version: p.version, body: p.body().to_string() })
         })
     }
 

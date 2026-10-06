@@ -11,7 +11,6 @@ use xinqing_hub_core::domain::diary::{DiaryCopy, DiaryPrompt};
 use xinqing_hub_core::domain::safety::CrisisLexicon;
 use xinqing_hub_core::domain::validate::BannedWords;
 use xinqing_hub_core::infra::store::Db;
-use xinqing_hub_core::infra::templates::TemplateDirs;
 
 use crate::gateway::Ai;
 use crate::paths;
@@ -22,10 +21,8 @@ pub struct Diary(pub Option<Arc<DiaryService>>);
 
 /// 须在 `AppState`、`Arc<Ai>`、`Sensing` 都托管之后调用。
 pub fn start(app: &AppHandle) {
-    let loaded = paths::templates_dir()
-        .ok_or_else(|| anyhow::anyhow!("找不到 hub_templates"))
-        .and_then(|dir| {
-            let dirs = TemplateDirs::factory_only(dir);
+    let loaded = paths::hub_template_dirs()
+        .and_then(|dirs| {
             Ok((
                 DiaryPrompt::load(&dirs)?,
                 DiaryCopy::load(&dirs)?,
