@@ -45,6 +45,18 @@ pub struct GatewayHealthChanged(pub GatewayHealth);
 #[tauri_specta(event_name = "review:evening")]
 pub struct ReviewEvening(pub xinqing_hub_core::domain::evening::EveningSummary);
 
+/// `letter:new`：晴晴写好了这周的周信（FR-REV-02，ADR 0030）。卡片层提示“晴晴给你写了一封信”，点开后用
+/// `letters_list` 取正文；`ai_generated` 时信末加 `AI 生成` 标签，模板信不加。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "letter:new")]
+pub struct LetterNew {
+    /// `letter` 表的行号
+    pub id: u32,
+    /// 那周的周一，`YYYY-MM-DD`
+    pub week_start: String,
+    pub ai_generated: bool,
+}
+
 /// `comfort:new`：晴晴说了一句暖心话（FR-CMF-04）。小组件一句话区显示；`ai_generated` 时句尾加 `AI 生成` 标签，
 /// 模板句不加。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]

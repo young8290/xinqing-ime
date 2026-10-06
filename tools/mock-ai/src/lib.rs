@@ -135,6 +135,9 @@ pub const COMFORT_REPLIES: [&str; 3] = [
     r#"{"text":"慢慢来，你已经做得很好了。","kind":"cheer"}"#,
 ];
 
+/// P-LETTER 的回复：一封不含数字的周信（V9 只要求出现的数字都来自统计），长度、禁用词都能过校验。
+pub const LETTER_REPLY: &str = "你好呀，\n\n这一周你在电脑前忙了不少事情，辛苦了。能看出来你在认真对待手头的每一件事，有累的时候，也有顺手的时候，这些都很正常。忙的日子里还记得停下来喝口水、伸个懒腰，这份照顾自己的心意很难得。\n\n这周有几个晚上好像收工得有点晚，白天的节奏也偏紧一些，身体大概在悄悄提醒你放慢一点。不用急着改变什么，先留意到就已经很好了。\n\n下周可以试试：找一个晚上，比平时早半小时合上电脑，做一件让自己放松的小事。\n\n晴晴";
+
 /// P-REWRITE 的回复：在原文（提示词最后一行“原文：”之后，已是占位符形式）前后加几个客气字，
 /// 原文里的数字、`@某人`、占位符都原样保留，能过 V8。
 pub fn rewrite_reply(original: &str) -> String {
@@ -147,7 +150,7 @@ pub fn rewrite_reply(original: &str) -> String {
 }
 
 /// 请求的是 P-COMFORT（提示词要求输出 `{"text":...,"kind":"comfort|rest|cheer"}`）或 P-REWRITE（`{"candidates":...}`）
-/// 时回 JSON，否则回固定的一句话。
+/// 时回 JSON，P-LETTER（“本周统计：”）回一封信，否则回固定的一句话。
 fn reply_for(req: &ChatReq, n: usize) -> String {
     let has = |marker: &str| req.messages.iter().any(|m| m.content.contains(marker));
     if has(r#""kind":"comfort|rest|cheer""#) {
@@ -160,6 +163,8 @@ fn reply_for(req: &ChatReq, n: usize) -> String {
             .find_map(|m| m.content.rsplit_once("原文：").map(|(_, t)| t.trim()))
             .unwrap_or_default();
         rewrite_reply(original)
+    } else if has("本周统计：") {
+        LETTER_REPLY.to_string()
     } else {
         REPLY.to_string()
     }

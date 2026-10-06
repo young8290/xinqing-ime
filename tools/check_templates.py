@@ -48,11 +48,15 @@ def walk(d, prefix=""):
         key = f"{prefix}{k}"
         if isinstance(v, dict): yield from walk(v, key + ".")
         elif isinstance(v, str): yield key, v
+        elif isinstance(v, list):
+            for i, x in enumerate(v):
+                if isinstance(x, dict): yield from walk(x, f"{key}[{i}].")
+                elif isinstance(x, str): yield f"{key}[{i}]", x
 ui = load("ui_copy.toml")
 for key, text in walk(ui):
     if key.startswith("tip.") and han(text) > 16: errors.append(f"ui_copy {key} 超过 16 字：{text}")
     if key not in exempt and (b := bad(text)): errors.append(f"ui_copy {key} 含禁用词 {b}：{text}")
-for name in ("evening.toml", "weekly_line.toml", "explain.toml"):
+for name in ("evening.toml", "weekly_line.toml", "explain.toml", "letter_tips.toml"):
     for key, text in walk(load(name)):
         if (b := bad(text)): errors.append(f"{name} {key} 含禁用词 {b}：{text}")
 
