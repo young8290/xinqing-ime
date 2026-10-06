@@ -231,16 +231,30 @@ impl ReminderCopy {
                 (&c.deadline_body, &["time"][..]),
                 (&c.allday_body, &["location_suffix"][..]),
                 (&c.location_suffix, &["location"][..]),
-                (&c.missed_title, &[][..]), (&c.missed_body, &["n"][..]),
-                (&c.todo_title, &[][..]), (&c.todo_body, &["title"][..]),
-                (&c.todo_eve_title, &[][..]), (&c.digest_title, &[][..]),
-                (&c.digest_body, &["n"][..]), (&c.btn_ok, &[][..]),
-                (&c.btn_snooze, &[][..]), (&c.btn_snooze10, &[][..]),
+                (&c.missed_title, &[][..]),
+                (&c.missed_body, &["n"][..]),
+                (&c.todo_title, &[][..]),
+                (&c.todo_body, &["title"][..]),
+                (&c.todo_eve_title, &[][..]),
+                (&c.digest_title, &[][..]),
+                (&c.digest_body, &["n"][..]),
+                (&c.btn_ok, &[][..]),
+                (&c.btn_snooze, &[][..]),
+                (&c.btn_snooze10, &[][..]),
             ];
-            if raw.version == 0 || fields.iter().any(|(text, keys)| text.trim().is_empty()
-                || banned.find(text, crate::domain::validate::Scene::Other).is_some()
-                || !copy_placeholders_ok(text, keys)) {
-                return Err(TemplateError::Invalid { file: "ui_copy.toml", reason: "提醒文案版本、正文、禁用词或占位符不合法" });
+            if raw.version == 0
+                || fields.iter().any(|(text, keys)| {
+                    text.trim().is_empty()
+                        || banned
+                            .find(text, crate::domain::validate::Scene::Other)
+                            .is_some()
+                        || !copy_placeholders_ok(text, keys)
+                })
+            {
+                return Err(TemplateError::Invalid {
+                    file: "ui_copy.toml",
+                    reason: "提醒文案版本、正文、禁用词或占位符不合法",
+                });
             }
             Ok(c)
         })
@@ -314,12 +328,20 @@ impl ReminderCopy {
 }
 
 fn copy_placeholders_ok(text: &str, keys: &[&str]) -> bool {
-    if keys.iter().any(|key| !text.contains(&format!("{{{key}}}"))) { return false; }
+    if keys.iter().any(|key| !text.contains(&format!("{{{key}}}"))) {
+        return false;
+    }
     let mut rest = text;
     while let Some(open) = rest.find('{') {
-        if rest[..open].contains('}') { return false; }
-        let Some(close) = rest[open + 1..].find('}').map(|i| open + 1 + i) else { return false; };
-        if !keys.contains(&&rest[open + 1..close]) { return false; }
+        if rest[..open].contains('}') {
+            return false;
+        }
+        let Some(close) = rest[open + 1..].find('}').map(|i| open + 1 + i) else {
+            return false;
+        };
+        if !keys.contains(&&rest[open + 1..close]) {
+            return false;
+        }
         rest = &rest[close + 1..];
     }
     !rest.contains('}')

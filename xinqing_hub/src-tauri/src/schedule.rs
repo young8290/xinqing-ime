@@ -58,9 +58,19 @@ impl ScheduleCopy {
         let banned = BannedWords::load(dirs)?;
         Ok(dirs.load_with_fallback("ui_copy.toml", |path| {
             let raw: RawCopy = read_toml(path)?;
-            if raw.version == 0 || raw.schedule.ics_description.trim().is_empty()
-                || banned.find(&raw.schedule.ics_description, xinqing_hub_core::domain::validate::Scene::Other).is_some() {
-                return Err(xinqing_hub_core::infra::templates::TemplateError::Invalid { file: "ui_copy.toml", reason: "日程导出说明版本或正文校验失败" });
+            if raw.version == 0
+                || raw.schedule.ics_description.trim().is_empty()
+                || banned
+                    .find(
+                        &raw.schedule.ics_description,
+                        xinqing_hub_core::domain::validate::Scene::Other,
+                    )
+                    .is_some()
+            {
+                return Err(xinqing_hub_core::infra::templates::TemplateError::Invalid {
+                    file: "ui_copy.toml",
+                    reason: "日程导出说明版本或正文校验失败",
+                });
             }
             Ok(raw.schedule)
         })?)
@@ -80,9 +90,9 @@ pub fn start(app: &AppHandle) {
 
     let (cmds, cmd_rx) = mpsc::channel(16);
     app.manage(Reminders { cmds });
-    let reminder_copy = paths::hub_template_dirs().or_else(|error| {
-        dirs.clone().ok_or(error)
-    }).and_then(|d| Ok(ReminderCopy::load(&d)?));
+    let reminder_copy = paths::hub_template_dirs()
+        .or_else(|error| dirs.clone().ok_or(error))
+        .and_then(|d| Ok(ReminderCopy::load(&d)?));
     match reminder_copy {
         Ok(copy) => {
             let service = ReminderService::new(
