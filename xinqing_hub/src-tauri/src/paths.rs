@@ -49,7 +49,10 @@ pub fn hub_template_dirs() -> anyhow::Result<TemplateDirs> {
 }
 
 fn template_dirs_for(factory: PathBuf, data_dir: PathBuf) -> TemplateDirs {
-    TemplateDirs { factory, user: Some(data_dir.join("templates")) }
+    TemplateDirs {
+        factory,
+        user: Some(data_dir.join("templates")),
+    }
 }
 
 #[cfg(test)]

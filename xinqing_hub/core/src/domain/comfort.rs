@@ -395,7 +395,9 @@ impl ComfortPrompt {
                 path: path.to_path_buf(),
                 source,
             })?;
-            let header_version = text.lines().next()
+            let header_version = text
+                .lines()
+                .next()
                 .and_then(|l| l.trim().strip_prefix("<!-- version:"))
                 .and_then(|l| l.strip_suffix("-->"))
                 .and_then(|l| l.trim().parse::<u32>().ok());
@@ -403,8 +405,13 @@ impl ComfortPrompt {
             if header_version.is_none_or(|v| v == 0)
                 || prompt.body.trim().is_empty()
                 || ["{style_block}", "{summary_json}", "{recent_texts}"]
-                    .iter().any(|key| !prompt.body.contains(key)) {
-                return Err(TemplateError::Invalid { file: FILE, reason: "缺少正整数版本号、正文或必需占位符" });
+                    .iter()
+                    .any(|key| !prompt.body.contains(key))
+            {
+                return Err(TemplateError::Invalid {
+                    file: FILE,
+                    reason: "缺少正整数版本号、正文或必需占位符",
+                });
             }
             Ok(prompt)
         })
@@ -527,14 +534,19 @@ impl ComfortTemplates {
     }
 
     fn check(&self, banned: &BannedWords) -> Result<(), TemplateError> {
-        let invalid = |reason| TemplateError::Invalid { file: "comfort.toml", reason };
+        let invalid = |reason| TemplateError::Invalid {
+            file: "comfort.toml",
+            reason,
+        };
         if self.version == 0 {
             return Err(invalid("版本号必须为正整数"));
         }
         let mut ids = HashSet::new();
         for style in [Style::Gentle, Style::Lively] {
             for group in Group::ALL {
-                let lines = self.lines.get(&(style.template_style(), group))
+                let lines = self
+                    .lines
+                    .get(&(style.template_style(), group))
                     .filter(|lines| !lines.is_empty())
                     .ok_or_else(|| invalid("两种风格的六组暖心话均须至少一句"))?;
                 for line in lines {
@@ -545,7 +557,13 @@ impl ComfortTemplates {
                     if !(MIN_HAN..=MAX_HAN).contains(&n)
                         || banned.find(&line.text, Scene::Other).is_some()
                         || line.text.contains("打字")
-                        || line.text.chars().filter(|c| matches!(c, '!' | '！')).count() > 1 {
+                        || line
+                            .text
+                            .chars()
+                            .filter(|c| matches!(c, '!' | '！'))
+                            .count()
+                            > 1
+                    {
                         return Err(invalid("句子不符合长度、禁用内容或感叹号限制"));
                     }
                 }

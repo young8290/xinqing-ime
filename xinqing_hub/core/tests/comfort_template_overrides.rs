@@ -15,7 +15,9 @@ struct Fixture(TemplateDirs);
 impl Fixture {
     fn new() -> Self {
         let user = std::env::temp_dir().join(format!(
-            "xq-comfort-overrides-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+            "xq-comfort-overrides-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir_all(user.join("prompts")).unwrap();
         Self(TemplateDirs {
@@ -39,8 +41,11 @@ impl Fixture {
     }
 
     fn picked(&self) -> String {
-        ComfortTemplates::load(&self.0).unwrap()
-            .pick(Style::Gentle, Group::Cheer, &[], &HashSet::new(), 0).unwrap().text
+        ComfortTemplates::load(&self.0)
+            .unwrap()
+            .pick(Style::Gentle, Group::Cheer, &[], &HashSet::new(), 0)
+            .unwrap()
+            .text
     }
 }
 
@@ -59,7 +64,10 @@ fn valid_overrides_replace_factory_files_independently() {
     assert_eq!(f.picked(), CUSTOM_LINE);
     assert_eq!(ComfortPrompt::load(&f.0).unwrap().version, 1);
 
-    f.write("prompts/comfort.md", "<!-- version: 42 -->\n自定义提示词\n{style_block}\n{summary_json}\n{recent_texts}");
+    f.write(
+        "prompts/comfort.md",
+        "<!-- version: 42 -->\n自定义提示词\n{style_block}\n{summary_json}\n{recent_texts}",
+    );
     let prompt = ComfortPrompt::load(&f.0).unwrap();
     assert_eq!(prompt.version, 42);
     assert!(prompt.body().contains("自定义提示词"));
@@ -74,7 +82,8 @@ fn malformed_or_unsafe_user_lines_fall_back_to_factory() {
 
     // TOML 解析成功也要做内容校验；用户词表不能取消出厂禁用词约束。
     f.write("banned_words.toml", "version = 42\n");
-    for bad in ["你可能有点抑郁，早点休息吧", "加油", "慢慢来不用着急！！"] {
+    for bad in ["你可能有点抑郁，早点休息吧", "加油", "慢慢来不用着急！！"]
+    {
         let mut value = f.custom_lines();
         value["gentle"]["cheer"][0]["text"] = toml::Value::String(bad.into());
         f.write("comfort.toml", &toml::to_string(&value).unwrap());
@@ -91,8 +100,12 @@ fn incomplete_groups_duplicate_ids_and_no_brief_fallback_are_rejected() {
     for case in 0..3 {
         let mut value = f.custom_lines();
         match case {
-            0 => { value["lively"].as_table_mut().unwrap().remove("low"); }
-            1 => { value["gentle"]["cheer"][0]["id"] = value["gentle"]["cheer"][1]["id"].clone(); }
+            0 => {
+                value["lively"].as_table_mut().unwrap().remove("low");
+            }
+            1 => {
+                value["gentle"]["cheer"][0]["id"] = value["gentle"]["cheer"][1]["id"].clone();
+            }
             _ => {
                 for line in value["gentle"]["cheer"].as_array_mut().unwrap() {
                     line["text"] = toml::Value::String("今天可以给自己多留一点慢慢来的时间".into());
@@ -108,7 +121,12 @@ fn incomplete_groups_duplicate_ids_and_no_brief_fallback_are_rejected() {
 fn invalid_prompt_falls_back_without_discarding_valid_lines() {
     let f = Fixture::new();
     f.write("comfort.toml", &toml::to_string(&f.custom_lines()).unwrap());
-    for bad in ["没有版本号", "<!-- version: 0 -->", "<!-- version: 2 -->\n缺少占位符", "<!-- version: 2\n{style_block}{summary_json}{recent_texts}"] {
+    for bad in [
+        "没有版本号",
+        "<!-- version: 0 -->",
+        "<!-- version: 2 -->\n缺少占位符",
+        "<!-- version: 2\n{style_block}{summary_json}{recent_texts}",
+    ] {
         f.write("prompts/comfort.md", bad);
         assert_eq!(ComfortPrompt::load(&f.0).unwrap().version, 1);
         assert_eq!(f.picked(), CUSTOM_LINE);
