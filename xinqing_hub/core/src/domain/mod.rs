@@ -11,6 +11,7 @@ pub mod explain;
 pub mod features;
 pub mod feedback;
 pub mod fusion;
+pub mod letter;
 pub mod notify;
 pub mod research;
 pub mod rest;
