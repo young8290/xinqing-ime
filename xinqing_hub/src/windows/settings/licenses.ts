@@ -20,5 +20,6 @@ export function licenseEntries(): LicenseEntry[] {
     { name: 'Tauri', license: 'Apache-2.0 OR MIT' },
     { name: 'Vue', license: 'MIT' },
     { name: 'Pinia', license: 'MIT' },
+    { name: 'Apache ECharts', license: 'Apache-2.0' },
   ]
 }
