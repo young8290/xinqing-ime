@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use xqp::MoodState;
 
 use crate::infra::templates::{TemplateDirs, TemplateError, read_toml};
+use crate::domain::validate::{BannedWords, Scene};
 
 /// 当天活跃输入至少这么多分钟才出小结。
 pub const MIN_TYPING_MIN: u32 = 30;
@@ -227,6 +228,7 @@ struct Line {
 
 #[derive(Deserialize)]
 struct RawEvening {
+    version: u32,
     #[serde(default)]
     sunny: Vec<Line>,
     #[serde(default)]
@@ -245,7 +247,12 @@ struct RawEvening {
 
 impl EveningTemplates {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let raw: RawEvening = read_toml(&dirs.factory_path("evening.toml"))?;
+        let banned = BannedWords::load(dirs)?;
+        dirs.load_with_fallback("evening.toml", |path| {
+        let raw: RawEvening = read_toml(path)?;
+        if raw.version == 0 {
+            return Err(TemplateError::Invalid { file: "evening.toml", reason: "版本号必须为正整数" });
+        }
         let texts = |v: Vec<Line>| v.into_iter().map(|l| l.text).collect::<Vec<_>>();
         let groups = HashMap::from([
             (Group::Sunny, texts(raw.sunny)),
@@ -256,7 +263,14 @@ impl EveningTemplates {
             (Group::Mixed, texts(raw.mixed)),
             (Group::Late, texts(raw.late)),
         ]);
+        for lines in groups.values() {
+            if lines.is_empty() || lines.iter().any(|text| text.trim().is_empty()
+                || banned.find(text, Scene::Other).is_some()) {
+                return Err(TemplateError::Invalid { file: "evening.toml", reason: "七组结束语均须非空且不含禁用内容" });
+            }
+        }
         Ok(Self { groups })
+        })
     }
 
     /// 从组里选一句；组是空的就退到 `mixed`。`seed` 由调用方给（测试可固定）。
