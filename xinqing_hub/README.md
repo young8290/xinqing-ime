@@ -34,7 +34,7 @@ XQ_XQP_TCP=127.0.0.1:18765 pnpm tauri dev
 
 ## 约定
 
-- C-04 的用户暖心话可放在 Hub 数据目录的 `templates/comfort.toml`，提示词可放在 `templates/prompts/comfort.md`（正式版 `%LOCALAPPDATA%\XinQing\hub\templates\`，调试版 `XinQingDev`）。从出厂文件复制后修改，重启 Hub 生效；同名文件整体替换。暖心话需保留两种风格各六组、唯一 id、6～30 个汉字的句子和简洁兜底；提示词需保留正整数版本号与三个占位符。读取或校验失败时独立回退出厂版本。用户禁用词表不生效，始终使用出厂约束。其他模块尚未接入用户模板覆盖，详见 ADR 0034。
+- C-04 的用户暖心话可放在 Hub 数据目录的 `templates/comfort.toml`，提示词可放在 `templates/prompts/comfort.md`（正式版 `%LOCALAPPDATA%\XinQing\hub\templates\`，调试版 `XinQingDev`）。从出厂文件复制后修改，重启 Hub 生效；同名文件整体替换。暖心话需保留两种风格各六组、唯一 id、6～30 个汉字的句子和简洁兜底；提示词需保留正整数版本号与三个占位符。读取或校验失败时独立回退出厂版本。用户禁用词表不生效，始终使用出厂约束。C-04 的覆盖规则详见 ADR 0034，周信的覆盖范围见下文。
 
 - 前端只显示后端给的状态，不自行推断（17 第 3.2 节）；窗口打开时取快照，之后只跟随事件。
 - 固定文案只能来自 `ui_copy.toml`，组件里写裸字符串会被 ESLint（`vue/no-bare-strings-in-template`）拦下。
