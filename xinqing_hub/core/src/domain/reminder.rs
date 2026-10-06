@@ -244,8 +244,13 @@ impl ReminderCopy {
             ];
             if raw.version == 0
                 || fields.iter().any(|(text, keys)| {
-                text.trim().is_empty()
-                    || ["情绪", "低落", "烦躁", "疲劳", "犹豫", "流畅", "晴天", "阴天", "雨天", "雷雨", "晚霞"].iter().any(|word| text.contains(word))
+                    text.trim().is_empty()
+                        || [
+                            "情绪", "低落", "烦躁", "疲劳", "犹豫", "流畅", "晴天", "阴天", "雨天",
+                            "雷雨", "晚霞",
+                        ]
+                        .iter()
+                        .any(|word| text.contains(word))
                         || banned
                             .find(text, crate::domain::validate::Scene::Other)
                             .is_some()
