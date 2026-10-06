@@ -101,18 +101,29 @@ pub fn load_prompt(
 ) -> Result<(u32, String), TemplateError> {
     dirs.load_with_fallback(file, |path| {
         let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
-            path: path.to_path_buf(), source,
+            path: path.to_path_buf(),
+            source,
         })?;
-        let version = text.lines().next()
+        let version = text
+            .lines()
+            .next()
             .and_then(|line| line.trim().strip_prefix("<!-- version:"))
             .and_then(|line| line.strip_suffix("-->"))
             .and_then(|line| line.trim().parse::<u32>().ok())
             .filter(|version| *version > 0);
-        let body = text.lines().filter(|line| !line.trim_start().starts_with("<!--"))
-            .collect::<Vec<_>>().join("\n");
-        if version.is_none() || body.trim().is_empty()
-            || placeholders.iter().any(|key| !body.contains(key)) {
-            return Err(TemplateError::Invalid { file, reason: "缺少正整数版本号、正文或必需占位符" });
+        let body = text
+            .lines()
+            .filter(|line| !line.trim_start().starts_with("<!--"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        if version.is_none()
+            || body.trim().is_empty()
+            || placeholders.iter().any(|key| !body.contains(key))
+        {
+            return Err(TemplateError::Invalid {
+                file,
+                reason: "缺少正整数版本号、正文或必需占位符",
+            });
         }
         Ok((version.unwrap(), body))
     })

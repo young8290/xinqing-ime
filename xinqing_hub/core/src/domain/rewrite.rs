@@ -261,7 +261,11 @@ pub struct RewritePrompt {
 
 impl RewritePrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let (version, body) = crate::infra::templates::load_prompt(dirs, "prompts/rewrite.md", &["{style}", "{text}"])?;
+        let (version, body) = crate::infra::templates::load_prompt(
+            dirs,
+            "prompts/rewrite.md",
+            &["{style}", "{text}"],
+        )?;
         Ok(Self { version, body })
     }
 
