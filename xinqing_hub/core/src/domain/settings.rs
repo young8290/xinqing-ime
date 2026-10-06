@@ -328,6 +328,12 @@ pub const KEYS: &[KeySpec] = &[
         kind: Kind::Choice(crate::domain::evening::TIMES),
         default: || "22:30".into(),
     },
+    // 周信（FR-REV-02）：开关，ADR 0030
+    KeySpec {
+        key: "review.letter.enabled",
+        kind: Kind::Bool,
+        default: || true.into(),
+    },
     KeySpec {
         key: "dev.mode",
         kind: Kind::Bool,
@@ -361,6 +367,8 @@ pub const INTERNAL_KEYS: &[&str] = &[
     crate::domain::features::persist::RESET_KEY,
     // 上一次出晚间小结是哪一天的晚上（C-10，ADR 0029）
     crate::domain::evening::SHOWN_ON_KEY,
+    // 上一次处理过（写了或因有效天数不足跳过）的周信是哪一周（C-10，ADR 0030）
+    crate::domain::letter::LAST_WEEK_KEY,
 ];
 
 #[derive(Debug, thiserror::Error)]
