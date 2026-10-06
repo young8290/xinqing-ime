@@ -39,6 +39,7 @@ fn reminder_override_keeps_subjects_actions_and_rejects_broken_fields() {
     for text in [
         "  ",
         "抑郁 {time}{location_suffix}",
+        "疲劳 {time}{location_suffix}",
         "{unknown}",
         "{time}",
         "{time}{location_suffix",
