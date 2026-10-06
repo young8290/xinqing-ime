@@ -13,6 +13,7 @@ mod events;
 mod fullscreen;
 mod gateway;
 mod ime_events;
+mod notify;
 mod paths;
 mod research;
 mod rest;
@@ -150,6 +151,7 @@ pub fn run() {
             // 暖心话：订阅总线，主动关怀与自评回应（C-04）
             comfort::start(app.handle());
             // 休息提醒：使用时长计时与四类提醒（B-08）
+            notify::start(app.handle());
             rest::start(app.handle());
             // 研究模式：定时自评邀请（FR-DMO-04）
             research::start(app.handle());

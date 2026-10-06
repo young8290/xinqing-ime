@@ -2,7 +2,8 @@
 //!
 //! 显示（FR-RST-06 第 4 条）：经 XQP `tip` 在光标旁冒一句短文案（核心在输入中不弹、自带限流，A-07），
 //! 同时推送 `rest:due`，小组件显示完整卡片和 `已完成` / `5 分钟后` / `今天不再提醒`。
-//! 小组件隐藏时改用系统通知（FR-NTF-01）还没做：系统通知随 D-09 接入，在此之前只有光标旁气泡。
+//! 小组件窗口看不见时改弹系统通知（FR-NTF-01，`notify.rs`），按钮“知道了”/“5 分钟后”；弹不出来（非 Windows、
+//! 文案没加载）仍推送 `rest:due`，等小组件再出现时看到卡片。
 
 use std::sync::Arc;
 
@@ -17,8 +18,10 @@ use xinqing_hub_core::rest::{RestCmd, RestPort, RestService};
 use xqp::Down;
 
 use crate::events::RestDue;
+use crate::notify::Notifier;
 use crate::sensing::Sensing;
 use crate::state::AppState;
+use crate::windows::WindowTarget;
 
 /// 光标旁气泡的显示时长（10 第 2.5 节：1500–2500 ms；FR-RST-06 第 4 条写的是 2.5 秒）。
 const TIP_MS: u32 = 2_500;
@@ -116,6 +119,20 @@ impl RestPort for ShellPort {
             .enqueue("daily_summary", move |db| {
                 routine::record_rest(db, now, true, false)
             });
+        // 小组件看不见（用户关掉了小组件，或窗口还没建）：卡片没人看得到，改弹系统通知（FR-NTF-01）
+        let widget_visible = self
+            .app
+            .get_webview_window(WindowTarget::Widget.label())
+            .and_then(|w| w.is_visible().ok())
+            .unwrap_or(false);
+        if !widget_visible
+            && self
+                .app
+                .try_state::<Notifier>()
+                .is_some_and(|n| n.rest(&self.app, due.kind, due.tired))
+        {
+            return;
+        }
         let ev = RestDue {
             kind: due.kind,
             tired: due.tired,
