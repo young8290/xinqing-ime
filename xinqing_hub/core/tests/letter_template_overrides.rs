@@ -7,28 +7,47 @@ use xinqing_hub_core::infra::templates::TemplateDirs;
 
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 const LINE: &str = "给自己留一点安静的时间。";
-const PROMPT: &str = "<!-- version: 42 -->\n自定义周信\n{style_block}\n本周统计：{weekly_stats_json}";
+const PROMPT: &str =
+    "<!-- version: 42 -->\n自定义周信\n{style_block}\n本周统计：{weekly_stats_json}";
 struct Fixture(TemplateDirs);
 impl Fixture {
     fn new() -> Self {
-        let user = std::env::temp_dir().join(format!("xq-letter-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        let user = std::env::temp_dir().join(format!(
+            "xq-letter-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
         std::fs::create_dir_all(user.join("prompts")).unwrap();
-        Self(TemplateDirs { factory: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates"), user: Some(user) })
+        Self(TemplateDirs {
+            factory: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates"),
+            user: Some(user),
+        })
     }
     fn write(&self, file: &str, text: &str) {
         std::fs::write(self.0.user.as_ref().unwrap().join(file), text).unwrap();
     }
     fn tips(&self) -> toml::Value {
-        let mut value: toml::Value = toml::from_str(&std::fs::read_to_string(self.0.factory_path("letter_tips.toml")).unwrap()).unwrap();
+        let mut value: toml::Value = toml::from_str(
+            &std::fs::read_to_string(self.0.factory_path("letter_tips.toml")).unwrap(),
+        )
+        .unwrap();
         value["version"] = toml::Value::Integer(42);
-        for group in ["high", "mid", "low"] { value["rest_comment"][group] = toml::Value::String(LINE.into()); }
-        for tip in value["tip"].as_array_mut().unwrap() { tip["text"] = toml::Value::String(LINE.into()); }
+        for group in ["high", "mid", "low"] {
+            value["rest_comment"][group] = toml::Value::String(LINE.into());
+        }
+        for tip in value["tip"].as_array_mut().unwrap() {
+            tip["text"] = toml::Value::String(LINE.into());
+        }
         value
     }
-    fn copy(&self) -> Vec<String> { LetterFallback::load(&self.0).unwrap().all_copy() }
+    fn copy(&self) -> Vec<String> {
+        LetterFallback::load(&self.0).unwrap().all_copy()
+    }
 }
 impl Drop for Fixture {
-    fn drop(&mut self) { let _ = std::fs::remove_dir_all(self.0.user.as_ref().unwrap()); }
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(self.0.user.as_ref().unwrap());
+    }
 }
 
 #[test]
@@ -62,7 +81,14 @@ fn valid_files_override_independently_and_render_statistics() {
 fn invalid_prompts_fall_back_without_discarding_valid_tips() {
     let f = Fixture::new();
     f.write("letter_tips.toml", &toml::to_string(&f.tips()).unwrap());
-    for text in ["", "<!-- version: 0 -->\n{style_block}{weekly_stats_json}", "<!-- version: 42\n{style_block}{weekly_stats_json}", "{style_block}{weekly_stats_json}", "<!-- version: 42 -->\n{weekly_stats_json}", "<!-- version: 42 -->\n{style_block}"] {
+    for text in [
+        "",
+        "<!-- version: 0 -->\n{style_block}{weekly_stats_json}",
+        "<!-- version: 42\n{style_block}{weekly_stats_json}",
+        "{style_block}{weekly_stats_json}",
+        "<!-- version: 42 -->\n{weekly_stats_json}",
+        "<!-- version: 42 -->\n{style_block}",
+    ] {
         f.write("prompts/letter.md", text);
         assert_eq!(LetterPrompt::load(&f.0).unwrap().version, 1);
         assert_eq!(f.copy()[0], LINE);
@@ -80,15 +106,33 @@ fn invalid_tips_fall_back_without_discarding_valid_prompt_or_factory_bans() {
     for case in 0..9 {
         let mut value = f.tips();
         match case {
-            0 => { value["version"] = toml::Value::Integer(0); }
-            1 => { value.as_table_mut().unwrap().remove("version"); }
-            2 => { value["tip"].as_array_mut().unwrap().pop(); }
-            3 => { value["tip"][0]["when"] = toml::Value::String("default".into()); }
-            4 => { value["tip"][0]["when"] = toml::Value::String("unknown".into()); }
-            5 => { value["rest_comment"]["mid"] = toml::Value::String("  ".into()); }
-            6 => { value["tip"][0]["text"] = toml::Value::String("  ".into()); }
-            7 => { value["rest_comment"]["high"] = toml::Value::String("你可能有点抑郁".into()); }
-            _ => { value["tip"][0]["text"] = toml::Value::String("你可能有点抑郁".into()); }
+            0 => {
+                value["version"] = toml::Value::Integer(0);
+            }
+            1 => {
+                value.as_table_mut().unwrap().remove("version");
+            }
+            2 => {
+                value["tip"].as_array_mut().unwrap().pop();
+            }
+            3 => {
+                value["tip"][0]["when"] = toml::Value::String("default".into());
+            }
+            4 => {
+                value["tip"][0]["when"] = toml::Value::String("unknown".into());
+            }
+            5 => {
+                value["rest_comment"]["mid"] = toml::Value::String("  ".into());
+            }
+            6 => {
+                value["tip"][0]["text"] = toml::Value::String("  ".into());
+            }
+            7 => {
+                value["rest_comment"]["high"] = toml::Value::String("你可能有点抑郁".into());
+            }
+            _ => {
+                value["tip"][0]["text"] = toml::Value::String("你可能有点抑郁".into());
+            }
         }
         f.write("letter_tips.toml", &toml::to_string(&value).unwrap());
         assert_eq!(f.copy(), factory);
