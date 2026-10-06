@@ -237,7 +237,11 @@ struct PromptFile {
 }
 
 impl PromptFile {
-    fn load_user(dirs: &TemplateDirs, name: &'static str, keys: &[&str]) -> Result<Self, TemplateError> {
+    fn load_user(
+        dirs: &TemplateDirs,
+        name: &'static str,
+        keys: &[&str],
+    ) -> Result<Self, TemplateError> {
         let (version, body) = crate::infra::templates::load_prompt(dirs, name, keys)?;
         Ok(Self { version, body })
     }
@@ -279,7 +283,11 @@ pub struct ChatPrompts {
 impl ChatPrompts {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
         Ok(Self {
-            chat: PromptFile::load_user(dirs, "prompts/chat.md", &["{style_block}", "{today_summary_block}", "{memory_block}"])?,
+            chat: PromptFile::load_user(
+                dirs,
+                "prompts/chat.md",
+                &["{style_block}", "{today_summary_block}", "{memory_block}"],
+            )?,
             safe: PromptFile::load(dirs, "prompts/chat_safe.md")?,
             vent: PromptFile::load_user(dirs, "prompts/chat_vent.md", &[])?,
             organize: PromptFile::load_user(dirs, "prompts/chat_organize.md", &[])?,

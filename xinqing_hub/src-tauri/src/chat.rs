@@ -30,15 +30,14 @@ pub struct Chat(pub Option<Arc<ChatService>>);
 
 /// 须在 `AppState`、`Arc<Ai>`、`Sensing` 都托管之后调用。
 pub fn start(app: &AppHandle) {
-    let loaded = paths::hub_template_dirs()
-        .and_then(|dirs| {
-            Ok((
-                ChatPrompts::load(&dirs)?,
-                ChatCopy::load(&dirs)?,
-                BannedWords::load(&dirs)?,
-                CrisisLexicon::load(&dirs)?,
-            ))
-        });
+    let loaded = paths::hub_template_dirs().and_then(|dirs| {
+        Ok((
+            ChatPrompts::load(&dirs)?,
+            ChatCopy::load(&dirs)?,
+            BannedWords::load(&dirs)?,
+            CrisisLexicon::load(&dirs)?,
+        ))
+    });
     let service = match loaded {
         Ok((prompts, copy, banned, lex)) => Some(Arc::new(ChatService::new(
             Arc::new(ShellPort { app: app.clone() }),
