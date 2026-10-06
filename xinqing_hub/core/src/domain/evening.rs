@@ -9,8 +9,8 @@ use chrono::{DateTime, Duration, Local, NaiveDate, NaiveTime, TimeZone, Timelike
 use serde::{Deserialize, Serialize};
 use xqp::MoodState;
 
-use crate::infra::templates::{TemplateDirs, TemplateError, read_toml};
 use crate::domain::validate::{BannedWords, Scene};
+use crate::infra::templates::{TemplateDirs, TemplateError, read_toml};
 
 /// 当天活跃输入至少这么多分钟才出小结。
 pub const MIN_TYPING_MIN: u32 = 30;
@@ -249,27 +249,36 @@ impl EveningTemplates {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
         let banned = BannedWords::load(dirs)?;
         dirs.load_with_fallback("evening.toml", |path| {
-        let raw: RawEvening = read_toml(path)?;
-        if raw.version == 0 {
-            return Err(TemplateError::Invalid { file: "evening.toml", reason: "版本号必须为正整数" });
-        }
-        let texts = |v: Vec<Line>| v.into_iter().map(|l| l.text).collect::<Vec<_>>();
-        let groups = HashMap::from([
-            (Group::Sunny, texts(raw.sunny)),
-            (Group::Hesitant, texts(raw.hesitant)),
-            (Group::Low, texts(raw.low)),
-            (Group::Agitated, texts(raw.agitated)),
-            (Group::Tired, texts(raw.tired)),
-            (Group::Mixed, texts(raw.mixed)),
-            (Group::Late, texts(raw.late)),
-        ]);
-        for lines in groups.values() {
-            if lines.is_empty() || lines.iter().any(|text| text.trim().is_empty()
-                || banned.find(text, Scene::Other).is_some()) {
-                return Err(TemplateError::Invalid { file: "evening.toml", reason: "七组结束语均须非空且不含禁用内容" });
+            let raw: RawEvening = read_toml(path)?;
+            if raw.version == 0 {
+                return Err(TemplateError::Invalid {
+                    file: "evening.toml",
+                    reason: "版本号必须为正整数",
+                });
             }
-        }
-        Ok(Self { groups })
+            let texts = |v: Vec<Line>| v.into_iter().map(|l| l.text).collect::<Vec<_>>();
+            let groups = HashMap::from([
+                (Group::Sunny, texts(raw.sunny)),
+                (Group::Hesitant, texts(raw.hesitant)),
+                (Group::Low, texts(raw.low)),
+                (Group::Agitated, texts(raw.agitated)),
+                (Group::Tired, texts(raw.tired)),
+                (Group::Mixed, texts(raw.mixed)),
+                (Group::Late, texts(raw.late)),
+            ]);
+            for lines in groups.values() {
+                if lines.is_empty()
+                    || lines.iter().any(|text| {
+                        text.trim().is_empty() || banned.find(text, Scene::Other).is_some()
+                    })
+                {
+                    return Err(TemplateError::Invalid {
+                        file: "evening.toml",
+                        reason: "七组结束语均须非空且不含禁用内容",
+                    });
+                }
+            }
+            Ok(Self { groups })
         })
     }
 
