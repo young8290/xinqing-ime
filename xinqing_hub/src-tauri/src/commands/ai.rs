@@ -339,9 +339,14 @@ mod tests {
         llm.models = vec![mock_ai::DEFAULT_MODEL.into()];
         llm.api_key = Some(ApiKey::new("test-metrics-private-key"));
         let gw = HttpGateway::new(
-            GatewayConfig { jev: None, llm: Some(llm), caps: Vec::new() },
+            GatewayConfig {
+                jev: None,
+                llm: Some(llm),
+                caps: Vec::new(),
+            },
             Arc::new(SystemClock),
-        ).unwrap();
+        )
+        .unwrap();
         let unused = metrics_view(&gw);
         assert!(unused.apis.is_empty());
         assert_eq!(unused.models[0].success_rate, None);
@@ -352,7 +357,10 @@ mod tests {
         let request = || CompleteRequest {
             scenario: Scenario::Chat,
             prompt_ver: "metrics-test".into(),
-            messages: vec![Message { role: "user".into(), content: "private-metrics-input".into() }],
+            messages: vec![Message {
+                role: "user".into(),
+                content: "private-metrics-input".into(),
+            }],
         };
         gw.complete(request()).await.unwrap();
         mock.set_scenario(mock_ai::Scenario::E422);
@@ -374,12 +382,18 @@ mod tests {
         assert_eq!((mock.chat(), mock.models(), mock.jev()), before);
         assert_eq!(gw.budget_used(BudgetKind::ChatTurn), used);
         let json = serde_json::to_string(&v).unwrap();
-        for private in ["test-metrics-private-key", "private-metrics-input", mock_ai::REPLY, &base] {
+        for private in [
+            "test-metrics-private-key",
+            "private-metrics-input",
+            mock_ai::REPLY,
+            &base,
+        ] {
             assert!(!json.contains(private));
         }
         // 新网关的内存统计不继承；换配置只继承今日预算。
         let fresh = HttpGateway::new(GatewayConfig::default(), Arc::new(SystemClock))
-            .unwrap().inherit_budget(&gw);
+            .unwrap()
+            .inherit_budget(&gw);
         assert!(metrics_view(&fresh).apis.is_empty());
         assert_eq!(fresh.budget_used(BudgetKind::ChatTurn), used);
     }
