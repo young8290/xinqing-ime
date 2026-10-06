@@ -1,51 +1,87 @@
 <script setup lang="ts">
-// 情绪看板（07 FR-DSH-01～06，16 D-07）。骨架阶段只显示当前天气，验证状态快照与事件接通。
-import { computed, onMounted } from 'vue'
-import WeatherSprite from '@/components/WeatherSprite.vue'
-import { t } from '@/i18n'
-import { useStatusStore } from '@/stores/status'
-import { WEATHER_ICON, hedge, weatherName } from '@/weather'
+// 情绪看板（07 FR-DSH-01～06，16 D-07）：左侧导航六页，右侧内容，布局与设置中心一致。
+// 已有：今日（当前天气、今天的自评）、周报（作息洞察）。情绪日历、日程与待办、信箱、对话与日记等对应命令到位后补。
+// 看板中不展示任何用户输入的原文（FR-DSH-01）。地址栏 #weekly 等直接打开对应页。
+import { ref, type Component } from 'vue'
+import { t, type CopyKey } from '@/i18n'
+import ComingSoon from './ComingSoon.vue'
+import TodayPage from './TodayPage.vue'
+import WeeklyPage from './WeeklyPage.vue'
 
-const status = useStatusStore()
-const now = computed(() => {
-  const s = status.snapshot
-  return s && `${WEATHER_ICON[s.weather]} ${weatherName(s.weather)} · ${hedge(s.state)}`
-})
+type PageId = 'today' | 'calendar' | 'weekly' | 'schedule' | 'mailbox' | 'chat_diary'
 
-onMounted(() => status.init().catch((e) => console.warn('读取状态失败', e)))
+const PAGES: { id: PageId; title: CopyKey; component: Component }[] = [
+  { id: 'today', title: 'dashboard.today', component: TodayPage },
+  { id: 'calendar', title: 'dashboard.calendar', component: ComingSoon },
+  { id: 'weekly', title: 'dashboard.weekly', component: WeeklyPage },
+  { id: 'schedule', title: 'dashboard.schedule', component: ComingSoon },
+  { id: 'mailbox', title: 'dashboard.mailbox', component: ComingSoon },
+  { id: 'chat_diary', title: 'dashboard.chat_diary', component: ComingSoon },
+]
+
+const fromHash = PAGES.find((p) => `#${p.id}` === location.hash)?.id
+const current = ref<PageId>(fromHash ?? 'today')
+const page = () => PAGES.find((p) => p.id === current.value)!
 </script>
 
 <template>
-  <main class="page">
-    <h1>{{ t('window.dashboard') }}</h1>
-    <section v-if="status.snapshot" class="now">
-      <WeatherSprite :weather="status.snapshot.weather" :size="64" />
-      <p>{{ now }}</p>
-    </section>
-    <p class="muted">{{ t('common.coming_soon') }}</p>
-  </main>
+  <div class="layout">
+    <nav class="nav">
+      <button
+        v-for="p in PAGES"
+        :key="p.id"
+        class="nav-item"
+        :class="{ active: current === p.id }"
+        :aria-current="current === p.id ? 'page' : undefined"
+        @click="current = p.id"
+      >
+        {{ t(p.title) }}
+      </button>
+    </nav>
+    <main class="page">
+      <!-- 只有“准备中”页要页名；别的页不收 title，传了会落到根元素上变成悬停提示 -->
+      <component
+        :is="page().component"
+        :key="current"
+        v-bind="page().component === ComingSoon ? { title: page().title } : {}"
+      />
+    </main>
+  </div>
 </template>
 
 <style scoped>
-.page {
-  padding: var(--xq-sp-5);
-}
-
-.now {
+.layout {
   display: flex;
-  gap: var(--xq-sp-4);
-  align-items: center;
-  margin-bottom: var(--xq-sp-4);
-  padding: var(--xq-sp-4);
-  border: 1px solid var(--xq-border);
-  border-radius: var(--xq-radius-card);
-  background: var(--xq-surface);
-  box-shadow: var(--xq-shadow-card);
+  height: 100%;
 }
 
-.now p {
-  margin: 0;
-  font-size: var(--xq-fs-lg);
-  line-height: var(--xq-lh-lg);
+.nav {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--xq-sp-1);
+  width: 180px;
+  padding: var(--xq-sp-4) var(--xq-sp-3);
+  border-right: 1px solid var(--xq-border);
+  background: var(--xq-surface-2);
+}
+
+.nav-item {
+  justify-content: flex-start;
+  padding: var(--xq-sp-2) var(--xq-sp-3);
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+}
+
+.nav-item.active {
+  background: var(--xq-surface);
+}
+
+.page {
+  flex: 1;
+  min-width: 0;
+  padding: var(--xq-sp-5);
+  overflow: auto;
 }
 </style>
