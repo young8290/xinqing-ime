@@ -2,6 +2,7 @@
 //! 与输入法核心的变体目录一致（`wind-config::variant::app_dir_name`）。
 
 use std::path::PathBuf;
+use xinqing_hub_core::infra::templates::TemplateDirs;
 
 /// 测试与演示时可用环境变量把数据目录指到别处，避免碰到真实用户数据。
 pub const DATA_DIR_ENV: &str = "XQ_HUB_DATA_DIR";
@@ -39,4 +40,30 @@ pub fn templates_dir() -> Option<PathBuf> {
     }
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates");
     (cfg!(debug_assertions) && repo.is_dir()).then_some(repo)
+}
+
+/// 暖心话模板的出厂目录与用户覆盖目录；调试变体和 XQ_HUB_DATA_DIR 沿用数据目录规则。
+pub fn hub_template_dirs() -> anyhow::Result<TemplateDirs> {
+    let factory = templates_dir().ok_or_else(|| anyhow::anyhow!("找不到 hub_templates"))?;
+    Ok(template_dirs_for(factory, hub_data_dir()?))
+}
+
+fn template_dirs_for(factory: PathBuf, data_dir: PathBuf) -> TemplateDirs {
+    TemplateDirs { factory, user: Some(data_dir.join("templates")) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn overrides_follow_the_selected_data_directory() {
+        for data_dir in ["XinQing/hub", "XinQingDev/hub", "isolated-demo/hub"] {
+            let factory = PathBuf::from("factory");
+            let data = PathBuf::from(data_dir);
+            let dirs = template_dirs_for(factory.clone(), data.clone());
+            assert_eq!(dirs.factory, factory);
+            assert_eq!(dirs.user, Some(data.join("templates")));
+        }
+    }
 }

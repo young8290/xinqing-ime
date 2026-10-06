@@ -9,6 +9,11 @@ use serde::Deserialize;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TemplateError {
+    #[error("{file} 校验失败：{reason}")]
+    Invalid {
+        file: &'static str,
+        reason: &'static str,
+    },
     #[error("读取 {path} 失败：{source}")]
     Io {
         path: PathBuf,
@@ -56,6 +61,24 @@ impl TemplateDirs {
     /// 只认出厂版本的模板（危机词表、禁用词表）。
     pub fn factory_path(&self, name: &str) -> PathBuf {
         self.factory.join(name)
+    }
+
+    /// 加载允许覆盖的模板；用户文件读取、解析或内容校验失败时回退出厂版本。
+    /// 日志只记固定文件名，不输出用户正文或解析错误中的原文。
+    pub fn load_with_fallback<T>(
+        &self,
+        name: &'static str,
+        load: impl Fn(&Path) -> Result<T, TemplateError>,
+    ) -> Result<T, TemplateError> {
+        let factory = self.factory_path(name);
+        let selected = self.resolve(name);
+        if selected != factory {
+            match load(&selected) {
+                Ok(value) => return Ok(value),
+                Err(_) => eprintln!("用户模板 {name} 无法使用，改用出厂版本"),
+            }
+        }
+        load(&factory)
     }
 }
 

@@ -379,7 +379,8 @@ pub fn state_str(s: MoodState) -> &'static str {
     }
 }
 
-/// P-COMFORT 提示词（`prompts/comfort.md`，只用出厂版本：提示词改动要评审并重跑评测，08 第 8 节）。
+/// P-COMFORT 提示词（`prompts/comfort.md`），允许用户目录同名覆盖（15 第 5 节）。
+/// 出厂提示词改动仍要评审并重跑评测（08 第 8 节）。
 #[derive(Debug, Clone)]
 pub struct ComfortPrompt {
     pub version: u32,
@@ -388,12 +389,25 @@ pub struct ComfortPrompt {
 
 impl ComfortPrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let path = dirs.factory_path("prompts/comfort.md");
-        let text = std::fs::read_to_string(&path).map_err(|source| TemplateError::Io {
-            path: path.clone(),
-            source,
-        })?;
-        Ok(Self::parse(&text))
+        const FILE: &str = "prompts/comfort.md";
+        dirs.load_with_fallback(FILE, |path| {
+            let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
+                path: path.to_path_buf(),
+                source,
+            })?;
+            let header_version = text.lines().next()
+                .and_then(|l| l.trim().strip_prefix("<!-- version:"))
+                .and_then(|l| l.strip_suffix("-->"))
+                .and_then(|l| l.trim().parse::<u32>().ok());
+            let prompt = Self::parse(&text);
+            if header_version.is_none_or(|v| v == 0)
+                || prompt.body.trim().is_empty()
+                || ["{style_block}", "{summary_json}", "{recent_texts}"]
+                    .iter().any(|key| !prompt.body.contains(key)) {
+                return Err(TemplateError::Invalid { file: FILE, reason: "缺少正整数版本号、正文或必需占位符" });
+            }
+            Ok(prompt)
+        })
     }
 
     /// 首行 `<!-- version: N -->`；所有 `<!--` 开头的行是注释，不发给模型。
@@ -504,7 +518,43 @@ pub struct ComfortTemplates {
 
 impl ComfortTemplates {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        Self::from_path(&dirs.resolve("comfort.toml"))
+        let banned = BannedWords::load(dirs)?;
+        dirs.load_with_fallback("comfort.toml", |path| {
+            let templates = Self::from_path(path)?;
+            templates.check(&banned)?;
+            Ok(templates)
+        })
+    }
+
+    fn check(&self, banned: &BannedWords) -> Result<(), TemplateError> {
+        let invalid = |reason| TemplateError::Invalid { file: "comfort.toml", reason };
+        if self.version == 0 {
+            return Err(invalid("版本号必须为正整数"));
+        }
+        let mut ids = HashSet::new();
+        for style in [Style::Gentle, Style::Lively] {
+            for group in Group::ALL {
+                let lines = self.lines.get(&(style.template_style(), group))
+                    .filter(|lines| !lines.is_empty())
+                    .ok_or_else(|| invalid("两种风格的六组暖心话均须至少一句"))?;
+                for line in lines {
+                    if line.id.trim().is_empty() || !ids.insert(&line.id) {
+                        return Err(invalid("句子 id 为空或重复"));
+                    }
+                    let n = validate::han_count(&line.text);
+                    if !(MIN_HAN..=MAX_HAN).contains(&n)
+                        || banned.find(&line.text, Scene::Other).is_some()
+                        || line.text.contains("打字")
+                        || line.text.chars().filter(|c| matches!(c, '!' | '！')).count() > 1 {
+                        return Err(invalid("句子不符合长度、禁用内容或感叹号限制"));
+                    }
+                }
+            }
+        }
+        if self.group(Style::Brief, Group::Cheer).is_empty() {
+            return Err(invalid("温柔 cheer 组须有一句不超过十五个汉字的简洁兜底"));
+        }
+        Ok(())
     }
 
     pub fn from_path(path: &Path) -> Result<Self, TemplateError> {
