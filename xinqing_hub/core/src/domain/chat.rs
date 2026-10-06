@@ -228,7 +228,7 @@ pub fn trim_context(history: &[Turn]) -> &[Turn] {
     &history[keep_from..]
 }
 
-/// 提示词文件（首行 `<!-- version: N -->`，`<!--` 开头的行是注释，不发给模型）。只读出厂版本：
+/// 提示词文件（首行 `<!-- version: N -->`，`<!--` 开头的行是注释，不发给模型）。安全提示词只读出厂版本：
 /// 提示词改动要评审并重跑评测（08 第 8 节）。
 #[derive(Debug, Clone)]
 struct PromptFile {
@@ -237,6 +237,10 @@ struct PromptFile {
 }
 
 impl PromptFile {
+    fn load_user(dirs: &TemplateDirs, name: &'static str, keys: &[&str]) -> Result<Self, TemplateError> {
+        let (version, body) = crate::infra::templates::load_prompt(dirs, name, keys)?;
+        Ok(Self { version, body })
+    }
     fn load(dirs: &TemplateDirs, name: &str) -> Result<Self, TemplateError> {
         let path = dirs.factory_path(name);
         let text = std::fs::read_to_string(&path).map_err(|source| TemplateError::Io {
@@ -275,10 +279,10 @@ pub struct ChatPrompts {
 impl ChatPrompts {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
         Ok(Self {
-            chat: PromptFile::load(dirs, "prompts/chat.md")?,
+            chat: PromptFile::load_user(dirs, "prompts/chat.md", &["{style_block}", "{today_summary_block}", "{memory_block}"])?,
             safe: PromptFile::load(dirs, "prompts/chat_safe.md")?,
-            vent: PromptFile::load(dirs, "prompts/chat_vent.md")?,
-            organize: PromptFile::load(dirs, "prompts/chat_organize.md")?,
+            vent: PromptFile::load_user(dirs, "prompts/chat_vent.md", &[])?,
+            organize: PromptFile::load_user(dirs, "prompts/chat_organize.md", &[])?,
         })
     }
 
