@@ -204,13 +204,21 @@ impl DiaryCopy {
         let banned = BannedWords::load(dirs)?;
         let blank = dirs.load_with_fallback("ui_copy.toml", |path| {
             #[derive(Deserialize)]
-            struct BlankFile { version: u32, diary: BlankCopy }
+            struct BlankFile {
+                version: u32,
+                diary: BlankCopy,
+            }
             #[derive(Deserialize)]
-            struct BlankCopy { blank: String }
+            struct BlankCopy {
+                blank: String,
+            }
             let copy: BlankFile = read_toml(path)?;
             let blank = copy.diary.blank.trim();
             if copy.version == 0 || blank.is_empty() || banned.find(blank, Scene::Other).is_some() {
-                return Err(TemplateError::Invalid { file: "ui_copy.toml", reason: "日记空白模板版本、正文或禁用词校验失败" });
+                return Err(TemplateError::Invalid {
+                    file: "ui_copy.toml",
+                    reason: "日记空白模板版本、正文或禁用词校验失败",
+                });
             }
             Ok(blank.to_string())
         })?;
