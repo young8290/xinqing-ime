@@ -97,6 +97,12 @@ export const commands = {
 	 *  这句话已被清理时什么也不做。
 	 */
 	comfortFeedback: (id: number, verdict: ComfortVerdict) => typedError<null, UiError>(__TAURI_INVOKE("comfort_feedback", { id, verdict })),
+	/**  全部周信，新的在前（保留 1 年）。 */
+	lettersList: () => typedError<LetterItem[], UiError>(__TAURI_INVOKE("letters_list")),
+	/**  标记已读。这封已被删除或清理时什么也不做。 */
+	letterRead: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("letter_read", { id })),
+	/**  删除一封（删掉的不会重写）。这封已被删除或清理时什么也不做。 */
+	letterDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("letter_delete", { id })),
 	chatListSessions: () => typedError<ChatSessionItem[], UiError>(__TAURI_INVOKE("chat_list_sessions")),
 	/**  一个会话的消息，从旧到新。 */
 	chatGetMessages: (sessionId: number) => typedError<ChatMessageItem[], UiError>(__TAURI_INVOKE("chat_get_messages", { sessionId })),
@@ -155,6 +161,7 @@ export const events = {
 	comfortNew: makeEvent<ComfortNew>("comfort:new"),
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
+	letterNew: makeEvent<LetterNew>("letter:new"),
 	researchInvite: makeEvent<ResearchInvite>("research:invite"),
 	restDue: makeEvent<RestDue>("rest:due"),
 	reviewEvening: makeEvent<ReviewEvening>("review:evening"),
@@ -479,6 +486,30 @@ export type JevView = {
 	/**  例如 `••••a1b2`；没有密钥时为 `null` */
 	key_tail: string | null,
 	model: string,
+};
+
+/**  一封周信。时间戳是 Unix 毫秒（前端绑定不导出 i64）。 */
+export type LetterItem = {
+	id: number,
+	/**  那周的周一，`YYYY-MM-DD` */
+	week_start: string,
+	content: string,
+	/**  为真时信末显示 `AI 生成` 标签；本地模板写的不加 */
+	ai_generated: boolean,
+	read: boolean,
+	created_ts: number,
+};
+
+/**
+ *  `letter:new`：晴晴写好了这周的周信（FR-REV-02，ADR 0030）。卡片层提示“晴晴给你写了一封信”，点开后用
+ *  `letters_list` 取正文；`ai_generated` 时信末加 `AI 生成` 标签，模板信不加。
+ */
+export type LetterNew = {
+	/**  `letter` 表的行号 */
+	id: number,
+	/**  那周的周一，`YYYY-MM-DD` */
+	week_start: string,
+	ai_generated: boolean,
 };
 
 export type LlmInput = {

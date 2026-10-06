@@ -5,6 +5,7 @@ pub mod ai;
 pub mod chat;
 pub mod comfort;
 pub mod ime;
+pub mod letter;
 
 use std::sync::Arc;
 
