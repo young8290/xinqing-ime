@@ -21,15 +21,14 @@ pub struct Diary(pub Option<Arc<DiaryService>>);
 
 /// 须在 `AppState`、`Arc<Ai>`、`Sensing` 都托管之后调用。
 pub fn start(app: &AppHandle) {
-    let loaded = paths::hub_template_dirs()
-        .and_then(|dirs| {
-            Ok((
-                DiaryPrompt::load(&dirs)?,
-                DiaryCopy::load(&dirs)?,
-                CrisisLexicon::load(&dirs)?,
-                BannedWords::load(&dirs)?,
-            ))
-        });
+    let loaded = paths::hub_template_dirs().and_then(|dirs| {
+        Ok((
+            DiaryPrompt::load(&dirs)?,
+            DiaryCopy::load(&dirs)?,
+            CrisisLexicon::load(&dirs)?,
+            BannedWords::load(&dirs)?,
+        ))
+    });
     let service = match loaded {
         Ok((prompt, copy, lex, banned)) => Some(Arc::new(DiaryService::new(
             Arc::new(ShellPort { app: app.clone() }),
