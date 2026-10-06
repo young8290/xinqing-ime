@@ -269,11 +269,21 @@ pub struct LetterPrompt {
 
 impl LetterPrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let text = read_text(dirs, "prompts/letter.md")?;
-        let p = ComfortPrompt::parse(&text);
-        Ok(Self {
-            version: p.version,
-            body: p.body().to_string(),
+        const FILE: &str = "prompts/letter.md";
+        dirs.load_with_fallback(FILE, |path| {
+            let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
+                path: path.to_path_buf(), source,
+            })?;
+            let version = text.lines().next()
+                .and_then(|l| l.trim().strip_prefix("<!-- version:"))
+                .and_then(|l| l.strip_suffix("-->"))
+                .and_then(|l| l.trim().parse::<u32>().ok());
+            let p = ComfortPrompt::parse(&text);
+            if version.is_none_or(|v| v == 0) || p.body().trim().is_empty()
+                || ["{style_block}", "{weekly_stats_json}"].iter().any(|key| !p.body().contains(key)) {
+                return Err(TemplateError::Invalid { file: FILE, reason: "缺少正整数版本号、正文或必需占位符" });
+            }
+            Ok(Self { version: p.version, body: p.body().to_string() })
         })
     }
 
@@ -312,6 +322,7 @@ struct Tip {
 
 #[derive(Debug, Clone, Deserialize)]
 struct RawTips {
+    version: u32,
     rest_comment: RestComment,
     tip: Vec<Tip>,
 }
@@ -333,7 +344,22 @@ impl LetterFallback {
             .join("\n")
             .trim()
             .to_string();
-        let tips: RawTips = read_toml(&dirs.factory_path("letter_tips.toml"))?;
+        let banned = BannedWords::load(dirs)?;
+        const FILE: &str = "letter_tips.toml";
+        let tips = dirs.load_with_fallback(FILE, |path| {
+            let tips: RawTips = read_toml(path)?;
+            let groups = ["late", "rest_low", "hard", "default"];
+            if tips.version == 0 || tips.tip.len() != groups.len()
+                || groups.iter().any(|group| tips.tip.iter().filter(|t| t.when == *group).count() != 1) {
+                return Err(TemplateError::Invalid { file: FILE, reason: "版本号须为正整数，建议须包含四个不重复的分组" });
+            }
+            let copy = [&tips.rest_comment.high, &tips.rest_comment.mid, &tips.rest_comment.low]
+                .into_iter().chain(tips.tip.iter().map(|t| &t.text));
+            if copy.into_iter().any(|s| s.trim().is_empty() || banned.find(s, Scene::Other).is_some()) {
+                return Err(TemplateError::Invalid { file: FILE, reason: "评语或建议为空或包含禁用词" });
+            }
+            Ok(tips)
+        })?;
         Ok(Self { body, tips })
     }
 
