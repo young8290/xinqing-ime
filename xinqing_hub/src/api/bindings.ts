@@ -144,6 +144,58 @@ export const commands = {
 	chatDeleteAll: () => typedError<null, UiError>(__TAURI_INVOKE("chat_delete_all")),
 	/**  求助卡片上的“我说的不是这个意思”（FR-SAF-06）：本会话回到普通模式、词表阈值提高，求助信息折叠保留。 */
 	safetyDismiss: (sessionId: number) => typedError<null, UiError>(__TAURI_INVOKE("safety_dismiss", { sessionId })),
+	/**
+	 *  小组件一句话区的求助入口（收到 `safety:invite` 后显示，ADR 0028 第 4 条）：开一段安全模式的对话，
+	 *  打开对话窗口并显示求助卡片。返回这段对话的 `session_id`。
+	 */
+	safetyOpen: () => typedError<number, UiError>(__TAURI_INVOKE("safety_open")),
+	/**
+	 *  生成今天的日记草稿（FR-DIA-01）。从对话窗口“写成情绪日记”进来时带上那段对话的 `session_id`，
+	 *  看板“写今天的日记”不带。最长约 20 秒；大模型不可用时立即给空白模板。
+	 */
+	diaryGenerate: (sessionId: number | null) => typedError<DiaryDraft, UiError>(__TAURI_INVOKE("diary_generate", { sessionId })),
+	/**
+	 *  保存日记（FR-DIA-02/03）：`id` 为空时新写一篇（记在今天），否则修改那一篇。从草稿来的带上 `draft_id`，
+	 *  手写的不带。来源由后端判断。返回时已落盘。
+	 */
+	diarySave: (id: number | null, draftId: number | null, content: string) => typedError<DiarySaved, UiError>(__TAURI_INVOKE("diary_save", { id, draftId, content })),
+	/**  全部日记，新的在前（FR-DIA-03）。 */
+	diaryList: () => typedError<DiaryItem[], UiError>(__TAURI_INVOKE("diary_list")),
+	/**  删除一篇（FR-DIA-03）。这篇已被删除时什么也不做。 */
+	diaryDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("diary_delete", { id })),
+	/**  某个状态的日程（FR-SCH-09）：`pending` / `added` / `ignored`（只有数量有意义）。“已过期”是已添加里日期已过的，界面自己分。 */
+	scheduleList: (status: string) => typedError<ScheduleItem[], UiError>(__TAURI_INVOKE("schedule_list", { status })),
+	/**  卡片或待确认列表里的“添加”（FR-SCH-05）：待确认 → 已添加，按 FR-SCH-07 开始提醒。 */
+	scheduleConfirm: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("schedule_confirm", { id })),
+	/**  “忽略”（FR-SCH-05）：只留去重哈希，标题等立即删除。 */
+	scheduleIgnore: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("schedule_ignore", { id })),
+	/**  手动新建（FR-SCH-09）：直接是已添加，不带 `AI 识别`。返回与之时间重叠的日程（FR-SCH-11）。 */
+	scheduleCreate: (input: ScheduleInput) => typedError<ScheduleSaved, UiError>(__TAURI_INVOKE("schedule_create", { input })),
+	/**  修改（卡片上的“修改”、日程页编辑，FR-SCH-05、FR-SCH-09）。来源不变，标记清空（用户改过就以用户为准）。 */
+	scheduleUpdate: (id: number, input: ScheduleInput) => typedError<ScheduleSaved, UiError>(__TAURI_INVOKE("schedule_update", { id, input })),
+	/**  删除（FR-SCH-09）。 */
+	scheduleDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("schedule_delete", { id })),
+	/**
+	 *  加入我的日历（FR-SCH-08）：把这些日程写成 RFC 5545 `.ics` 放进临时目录，Windows 上用系统默认程序打开。
+	 *  返回文件路径。没有日期的日程跳过。
+	 */
+	scheduleExportIcs: (ids: number[]) => typedError<string, UiError>(__TAURI_INVOKE("schedule_export_ics", { ids })),
+	/**  提醒卡片上的操作（FR-SCH-07）：`ok` 知道了、`snooze_5` / `snooze_10` 5 / 10 分钟后再提醒。`id` 是 `reminder:due` 带的。 */
+	reminderAction: (id: number, action: string) => typedError<null, UiError>(__TAURI_INVOKE("reminder_action", { id, action })),
+	/**  某个状态的待办（FR-SCH-13）：`pending` / `open` / `done` / `archived`。 */
+	todoList: (status: string) => typedError<TodoItem[], UiError>(__TAURI_INVOKE("todo_list", { status })),
+	/**  卡片上的“加入待办”（FR-SCH-13）：待确认 → 未完成。 */
+	todoConfirm: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("todo_confirm", { id })),
+	/**  “忽略”：只留去重哈希。 */
+	todoIgnore: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("todo_ignore", { id })),
+	/**  手动新建（FR-SCH-13）：直接是未完成，不带 `AI 识别`。返回行号。 */
+	todoCreate: (input: TodoInput) => typedError<number, UiError>(__TAURI_INVOKE("todo_create", { input })),
+	/**  修改待确认或未完成的待办。 */
+	todoUpdate: (id: number, input: TodoInput) => typedError<null, UiError>(__TAURI_INVOKE("todo_update", { id, input })),
+	/**  勾选完成（FR-SCH-13）：7 天后归档、30 天后删除（数据保留期，`retention`）。 */
+	todoComplete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("todo_complete", { id })),
+	/**  删除。 */
+	todoDelete: (id: number) => typedError<null, UiError>(__TAURI_INVOKE("todo_delete", { id })),
 	/**  全部已登记的输入法配置键与类型，设置页据此生成表单。 */
 	imeSchema: () => typedError<ImeField[], UiError>(__TAURI_INVOKE("ime_schema")),
 	/**  整份合并后的输入法配置。 */
@@ -162,14 +214,20 @@ export const events = {
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
 	letterNew: makeEvent<LetterNew>("letter:new"),
+	reminderDue: makeEvent<ReminderDue>("reminder:due"),
+	reminderMissed: makeEvent<ReminderMissed>("reminder:missed"),
 	researchInvite: makeEvent<ResearchInvite>("research:invite"),
 	restDue: makeEvent<RestDue>("rest:due"),
 	reviewEvening: makeEvent<ReviewEvening>("review:evening"),
 	safetyInvite: makeEvent<SafetyInvite>("safety:invite"),
 	safetyTriggered: makeEvent<SafetyTriggered>("safety:triggered"),
+	scheduleDetected: makeEvent<ScheduleDetected>("schedule:detected"),
+	scheduleReady: makeEvent<ScheduleReady>("schedule:ready"),
 	selfReportChanged: makeEvent<SelfReportChanged>("self_report:changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings:changed"),
 	statusChanged: makeEvent<StatusChanged>("status:changed"),
+	todoDetected: makeEvent<TodoDetected>("todo:detected"),
+	todoReady: makeEvent<TodoReady>("todo:ready"),
 };
 
 /* Types */
@@ -332,6 +390,15 @@ export type ComfortVerdict =
 /**  🔕 今天先别说了 */
 "mute";
 
+/**  与之时间重叠的已添加日程（FR-SCH-11）：卡片上“⚠ 与「班会」时间重叠（15:00–16:00）”。 */
+export type ConflictItem = {
+	id: number,
+	title: string,
+	/**  全天日程为 `null` */
+	start: string | null,
+	end: string | null,
+};
+
 export type ConsentEntry = {
 	item: ConsentItem,
 	granted: boolean,
@@ -362,6 +429,36 @@ export type DemoStatus = {
 	enabled: boolean,
 	/**  时间加速倍数；不是演示模式时为 1 */
 	speed: number,
+};
+
+/**  `diary_generate` 的结果：草稿或空白模板，放进编辑框让用户改。 */
+export type DiaryDraft = {
+	/**  保存时原样带回 `diary_save`；空白模板时为 `null` */
+	draft_id: number | null,
+	text: string,
+	/**  为假时是空白模板（大模型不可用、草稿没通过校验、或没有可写的内容） */
+	ai_generated: boolean,
+};
+
+/**  一篇日记。时间戳是 Unix 毫秒（前端绑定不导出 i64）。 */
+export type DiaryItem = {
+	id: number,
+	/**  本地日期 `YYYY-MM-DD` */
+	date: string,
+	content: string,
+	/**  `ai_draft` 标“AI 生成”，`ai_edited` 标“AI 辅助生成”，`manual` 不标（FR-DIA-02） */
+	source: string,
+	created_ts: number,
+	updated_ts: number,
+};
+
+/**  `diary_save` 的结果。 */
+export type DiarySaved = {
+	id: number,
+	/**  `ai_draft` / `ai_edited` / `manual`（FR-DIA-02） */
+	source: string,
+	/**  本地词表命中：对话窗口已打开并显示求助卡片（FR-SAF-02 第 2 条） */
+	safety: boolean,
 };
 
 /**  晚间小结卡片的内容（`review:evening` 事件）。只有统计值和一句本地模板。 */
@@ -558,6 +655,27 @@ export type NetLogView = {
 };
 
 /**
+ *  `reminder:due`：日程或待办到点（FR-SCH-07、FR-SCH-14），卡片层显示 `title` / `body` 和“知道了 / 5 分钟后 / 10 分钟后”
+ *  （`todo_digest` 只有“知道了”），按钮调 `reminder_action(id, …)`。`kind`：`schedule` / `deadline` / `all_day` /
+ *  `todo` / `todo_eve`（截止前一天晚上，只在小组件）/ `todo_digest`。系统通知由后端另弹。
+ */
+export type ReminderDue = {
+	id: number,
+	kind: string,
+	/**  日程或待办的行号；汇总为 0 */
+	ref_id: number,
+	title: string,
+	body: string,
+};
+
+/**  `reminder:missed`：Hub 启动时发现 12 小时内错过的提醒，以“错过的提醒”卡片集中展示一次（FR-SCH-07）。 */
+export type ReminderMissed = {
+	title: string,
+	body: string,
+	items: ReminderDue[],
+};
+
+/**
  *  `research:invite`：研究模式的定时自评邀请（FR-DMO-04）。小组件弹出“主动报告心情”面板，可跳过（`research_dismiss`）；
  *  `answer_until_ts`（Unix 毫秒）之前提交的自评记为研究数据（`source = esm`），过了就按普通自评记。
  */
@@ -643,6 +761,70 @@ export type SafetyInviteSource = "rewrite";
  */
 export type SafetyTriggered = {
 	session_id: number,
+};
+
+/**  `schedule:detected`：L2 确认是日程（FR-SCH-05 第 2 条），卡片层先显示“识别中…”；字段随后经 `schedule:ready` 填入。 */
+export type ScheduleDetected = {
+	card_id: number,
+};
+
+/**  新建或修改日程时填的字段（卡片上的“修改”、日程页的新建与编辑）。 */
+export type ScheduleInput = {
+	/**  ≤ 12 字 */
+	title: string,
+	date: string | null,
+	time: string | null,
+	end_time: string | null,
+	all_day: boolean,
+	location: string | null,
+	is_deadline: boolean,
+	/**  提前几秒提醒；为空时按类型给默认值（有时刻的用设置 `sch.default_offsets`，截止类 1 天 + 2 小时，全天当天 09:00） */
+	remind_offsets: number[] | null,
+};
+
+/**  一条日程（09 D-12）。时间戳是 Unix 毫秒（前端绑定不导出 i64）。 */
+export type ScheduleItem = {
+	id: number,
+	/**  已忽略的只留哈希，标题等为 `null` */
+	title: string | null,
+	/**  `YYYY-MM-DD` */
+	date: string | null,
+	/**  `HH:MM`；全天日程为 `null` */
+	time: string | null,
+	end_time: string | null,
+	all_day: boolean,
+	location: string | null,
+	is_deadline: boolean,
+	/**  提前几秒提醒（FR-SCH-07）；全天日程固定当天 09:00，为空数组 */
+	remind_offsets: number[],
+	/**  `pending` 待确认 / `added` 已添加 / `ignored` 已忽略 */
+	status: string,
+	/**  `ai`（卡片显示 `AI 识别`）/ `manual` */
+	source: string,
+	/**
+	 *  `adjusted` 日期以代码为准、`maybe_past` 时间可能已过、`confirm_date` 请确认日期、`need_time` 请补充时刻、
+	 *  `local` 本地规则抽取（请确认信息）、`maybe_dup` 可能已经添加过
+	 */
+	flags: string[],
+	created_ts: number,
+};
+
+/**
+ *  `schedule:ready`：抽取完成，已存为待确认。`schedule` 为 `null` 表示 24 小时内已经提示过同一件事（FR-SCH-06），
+ *  卡片直接收起。卡片显示 `AI 识别`；`flags` 含 `local` 时标注“请确认信息”，含 `maybe_dup` 时提示“可能已经添加过”；
+ *  `conflicts` 非空时加一行“⚠ 与「…」时间重叠”（FR-SCH-11）。按钮调 `schedule_confirm` / `schedule_update` / `schedule_ignore`；
+ *  60 秒无操作收起，留在待确认列表里。
+ */
+export type ScheduleReady = {
+	card_id: number,
+	schedule: ScheduleItem | null,
+	conflicts: ConflictItem[],
+};
+
+/**  新建或修改日程的结果：行号与时间重叠的日程（只提示，不阻止，FR-SCH-11 第 3 条）。 */
+export type ScheduleSaved = {
+	id: number,
+	conflicts: ConflictItem[],
 };
 
 /**
@@ -777,6 +959,39 @@ export type StatusSnapshot = {
 	connected: boolean,
 	/**  基线建立进度 0–100（FR-STA-03 冷启动）。 */
 	baseline_progress: number,
+};
+
+/**  `todo:detected`：L2 确认是待办（FR-SCH-13），卡片层先显示“识别中…”。 */
+export type TodoDetected = {
+	card_id: number,
+};
+
+/**  新建或修改待办时填的字段。 */
+export type TodoInput = {
+	/**  ≤ 16 字 */
+	title: string,
+	due_date: string | null,
+};
+
+/**  一件待办（09 D-25）。 */
+export type TodoItem = {
+	id: number,
+	title: string | null,
+	due_date: string | null,
+	/**  `pending` 待确认 / `open` 未完成 / `done` 已完成 / `archived` 已归档 / `ignored` 已忽略 */
+	status: string,
+	source: string,
+	created_ts: number,
+	done_ts: number | null,
+};
+
+/**
+ *  `todo:ready`：抽取完成，已存为待确认；`todo` 为 `null` 表示 24 小时内已经提示过，卡片收起。
+ *  按钮调 `todo_confirm` / `todo_update` / `todo_ignore`。
+ */
+export type TodoReady = {
+	card_id: number,
+	todo: TodoItem | null,
 };
 
 export type UiError = {

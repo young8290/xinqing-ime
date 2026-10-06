@@ -328,6 +328,18 @@ pub const KEYS: &[KeySpec] = &[
         kind: Kind::Choice(crate::domain::evening::TIMES),
         default: || "22:30".into(),
     },
+    // 日程（FR-SCH-07）：有时刻的日程默认提前几分钟提醒，1440 = 提前 1 天；截止类与全天日程另有规则（ADR 0032）
+    KeySpec {
+        key: "sch.default_offsets",
+        kind: Kind::Choice(crate::domain::reminder::OFFSET_MINUTES),
+        default: || "10".into(),
+    },
+    // 待办（FR-SCH-14）：每天 09:00 汇总提醒未完成待办，默认关
+    KeySpec {
+        key: "todo.daily_digest",
+        kind: Kind::Bool,
+        default: || false.into(),
+    },
     // 周信（FR-REV-02）：开关，ADR 0030
     KeySpec {
         key: "review.letter.enabled",
@@ -369,6 +381,8 @@ pub const INTERNAL_KEYS: &[&str] = &[
     crate::domain::evening::SHOWN_ON_KEY,
     // 上一次处理过（写了或因有效天数不足跳过）的周信是哪一周（C-10，ADR 0030）
     crate::domain::letter::LAST_WEEK_KEY,
+    // 日程与待办的提醒看到哪个时刻了（C-05，ADR 0032）
+    crate::domain::reminder::CHECKED_KEY,
 ];
 
 #[derive(Debug, thiserror::Error)]

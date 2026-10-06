@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use chrono::{Local, TimeZone};
+use chrono::{DateTime, Local, TimeZone};
 use futures::StreamExt;
 use tokio::sync::watch;
 
@@ -130,6 +130,27 @@ pub struct Sent {
 struct Running {
     session_id: i64,
     stop: watch::Sender<bool>,
+}
+
+/// 今日状态摘要（FR-CHT-05），对话和情绪日记的草稿（FR-DIA-01）共用。只有统计，没有原文；没有任何数据时为 `None`。
+pub fn today_summary(db: &Db, now: DateTime<Local>) -> Result<Option<String>, StoreError> {
+    let midnight = now
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .and_then(|t| Local.from_local_datetime(&t).earliest())
+        .map_or(now.timestamp_millis(), |t| t.timestamp_millis());
+    let points: Vec<StatePoint> = db
+        .shown_states_since(midnight)?
+        .into_iter()
+        .filter_map(|(ts, state)| {
+            Local
+                .timestamp_millis_opt(ts)
+                .single()
+                .map(|local| StatePoint { local, state })
+        })
+        .collect();
+    let typing_min = (db.active_ms_since(midnight)? / 60_000) as u32;
+    Ok(chat::today_summary(&points, typing_min))
 }
 
 pub struct ChatService {
@@ -288,6 +309,19 @@ impl ChatService {
         Ok(())
     }
 
+    /// 小组件一句话区的求助入口（`safety:invite`，ADR 0028 第 4 条）：开一段安全模式的对话，让外壳打开对话窗口
+    /// 显示求助卡片。只开对话，不写 `safety_log`（触发时已经记过）。
+    pub fn open_safety(&self) -> Result<i64, ChatError> {
+        let id = {
+            let db = self.port.db();
+            let id = db.chat_session_create(&self.copy.safety_session, self.clock.now_ms())?;
+            db.chat_set_safe_mode(id, SafeMode::On)?;
+            id
+        };
+        self.port.safety(id);
+        Ok(id)
+    }
+
     /// 复制一条消息（`chat_copy`）：AI 回复附加“（内容由 AI 生成）”。消息不存在时为 `None`。
     pub fn copy_text(&self, message_id: i64) -> Result<Option<String>, ChatError> {
         let m = self.port.db().chat_message(message_id)?;
@@ -365,28 +399,10 @@ impl ChatService {
     }
 
     fn today_summary(&self) -> Result<Option<String>, StoreError> {
-        let now = self.clock.now();
-        let midnight = now
-            .date_naive()
-            .and_hms_opt(0, 0, 0)
-            .and_then(|t| Local.from_local_datetime(&t).earliest())
-            .map_or(now.timestamp_millis(), |t| t.timestamp_millis());
-        let db = self.port.db();
-        let points: Vec<StatePoint> = db
-            .shown_states_since(midnight)?
-            .into_iter()
-            .filter_map(|(ts, state)| {
-                Local
-                    .timestamp_millis_opt(ts)
-                    .single()
-                    .map(|local| StatePoint { local, state })
-            })
-            .collect();
-        let typing_min = (db.active_ms_since(midnight)? / 60_000) as u32;
-        Ok(chat::today_summary(&points, typing_min))
+        today_summary(&self.port.db(), self.clock.now())
     }
 
-    async fn judge_crisis(gateway: Arc<dyn AiGateway>, text: String) -> bool {
+    pub(crate) async fn judge_crisis(gateway: Arc<dyn AiGateway>, text: String) -> bool {
         let mut state = serde_json::Map::new();
         state.insert("message".into(), text.into());
         let req = JudgeRequest {
@@ -1179,5 +1195,24 @@ mod tests {
                 Err(ChatError::NoSession)
             ));
         });
+    }
+
+    #[tokio::test]
+    async fn safety_entry_opens_a_safe_session() {
+        let e = env(false);
+        let id = e.svc.open_safety().unwrap();
+        assert_eq!(e.mode(id), SafeMode::On);
+        assert_eq!(*e.port.safety.lock().unwrap(), [id]);
+        let title = e
+            .port
+            .db
+            .lock()
+            .unwrap()
+            .chat_session(id)
+            .unwrap()
+            .unwrap()
+            .title;
+        assert_eq!(title, "和晴晴聊聊");
+        assert!(e.safety_log().is_empty(), "触发时已经记过，这里不再记");
     }
 }

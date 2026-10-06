@@ -370,6 +370,8 @@ pub struct ChatCopy {
     pub replaced: String,
     /// `chat.copy_suffix`：复制 AI 回复时附在末尾的标识（FR-CHT-04 第 5 条）
     pub copy_suffix: String,
+    /// `safety.session_title`：从小组件的求助入口打开的对话的标题（ADR 0028 第 4 条）
+    pub safety_session: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -387,6 +389,7 @@ struct RawChatCopy {
 #[derive(Debug, Deserialize)]
 struct RawSafetyCopy {
     fallback_reply: String,
+    session_title: String,
 }
 
 impl ChatCopy {
@@ -397,6 +400,7 @@ impl ChatCopy {
             fallback_reply: raw.safety.fallback_reply.trim().to_string(),
             replaced: raw.chat.replaced.trim().to_string(),
             copy_suffix: raw.chat.copy_suffix,
+            safety_session: raw.safety.session_title.trim().to_string(),
         })
     }
 

@@ -6,14 +6,17 @@
 pub mod bus;
 pub mod care;
 pub mod chat;
+pub mod diary;
 pub mod domain;
 pub mod evening;
 pub mod infra;
 pub mod letter;
 pub mod pipeline;
+pub mod reminder;
 pub mod research;
 pub mod rest;
 pub mod rewrite;
+pub mod schedule;
 pub mod sense;
 
 /// Hub 版本（XQP 下行 hello 的 `hub_ver`）。
