@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest'
 // 只有真的可能为空的 `Option` 字段才是 `number | null`。时间戳字段按名字守住：新加的 `ts` / `*_ts` 忘了标注会在这里失败。
 const bindings = readFileSync(resolve(process.cwd(), 'src/api/bindings.ts'), 'utf8')
 
-/** 真的可能为空的时间戳（Rust 里是 `Option<f64>`）：这一晚没有打字时为空 */
-const NULLABLE_TS = new Set(['stop_ts'])
+/** 真的可能为空的时间戳（Rust 里是 `Option<f64>`）：`stop_ts` 这一晚没有打字时为空，`done_ts` 待办还没完成时为空 */
+const NULLABLE_TS = new Set(['stop_ts', 'done_ts'])
 
 describe('前端绑定的数字类型（ADR 0027）', () => {
   it('时间戳字段导出成 number，只有清单里的可空', () => {

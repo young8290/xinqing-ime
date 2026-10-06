@@ -1,10 +1,12 @@
 //! 领域层：只依赖基础层的 trait，禁止 use tauri / windows（NFR-MNT-03）。
 
+pub mod agenda;
 pub mod chat;
 pub mod comfort;
 pub mod comfort_feedback;
 pub mod consent;
 pub mod demo;
+pub mod diary;
 pub mod dnd;
 pub mod evening;
 pub mod explain;
@@ -13,6 +15,7 @@ pub mod feedback;
 pub mod fusion;
 pub mod letter;
 pub mod notify;
+pub mod reminder;
 pub mod research;
 pub mod rest;
 pub mod retention;

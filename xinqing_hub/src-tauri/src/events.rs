@@ -156,3 +156,61 @@ pub struct SafetyInvite {
 pub struct SafetyTriggered {
     pub session_id: u32,
 }
+
+/// `schedule:detected`：L2 确认是日程（FR-SCH-05 第 2 条），卡片层先显示“识别中…”；字段随后经 `schedule:ready` 填入。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "schedule:detected")]
+pub struct ScheduleDetected {
+    pub card_id: u32,
+}
+
+/// `schedule:ready`：抽取完成，已存为待确认。`schedule` 为 `null` 表示 24 小时内已经提示过同一件事（FR-SCH-06），
+/// 卡片直接收起。卡片显示 `AI 识别`；`flags` 含 `local` 时标注“请确认信息”，含 `maybe_dup` 时提示“可能已经添加过”；
+/// `conflicts` 非空时加一行“⚠ 与「…」时间重叠”（FR-SCH-11）。按钮调 `schedule_confirm` / `schedule_update` / `schedule_ignore`；
+/// 60 秒无操作收起，留在待确认列表里。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "schedule:ready")]
+pub struct ScheduleReady {
+    pub card_id: u32,
+    pub schedule: Option<crate::commands::schedule::ScheduleItem>,
+    pub conflicts: Vec<crate::commands::schedule::ConflictItem>,
+}
+
+/// `todo:detected`：L2 确认是待办（FR-SCH-13），卡片层先显示“识别中…”。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "todo:detected")]
+pub struct TodoDetected {
+    pub card_id: u32,
+}
+
+/// `todo:ready`：抽取完成，已存为待确认；`todo` 为 `null` 表示 24 小时内已经提示过，卡片收起。
+/// 按钮调 `todo_confirm` / `todo_update` / `todo_ignore`。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "todo:ready")]
+pub struct TodoReady {
+    pub card_id: u32,
+    pub todo: Option<crate::commands::schedule::TodoItem>,
+}
+
+/// `reminder:due`：日程或待办到点（FR-SCH-07、FR-SCH-14），卡片层显示 `title` / `body` 和“知道了 / 5 分钟后 / 10 分钟后”
+/// （`todo_digest` 只有“知道了”），按钮调 `reminder_action(id, …)`。`kind`：`schedule` / `deadline` / `all_day` /
+/// `todo` / `todo_eve`（截止前一天晚上，只在小组件）/ `todo_digest`。系统通知由后端另弹。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "reminder:due")]
+pub struct ReminderDue {
+    pub id: u32,
+    pub kind: String,
+    /// 日程或待办的行号；汇总为 0
+    pub ref_id: u32,
+    pub title: String,
+    pub body: String,
+}
+
+/// `reminder:missed`：Hub 启动时发现 12 小时内错过的提醒，以“错过的提醒”卡片集中展示一次（FR-SCH-07）。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "reminder:missed")]
+pub struct ReminderMissed {
+    pub title: String,
+    pub body: String,
+    pub items: Vec<ReminderDue>,
+}

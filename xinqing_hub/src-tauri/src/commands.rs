@@ -4,8 +4,10 @@
 pub mod ai;
 pub mod chat;
 pub mod comfort;
+pub mod diary;
 pub mod ime;
 pub mod letter;
+pub mod schedule;
 
 use std::sync::Arc;
 

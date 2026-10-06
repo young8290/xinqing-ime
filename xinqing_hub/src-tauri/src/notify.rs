@@ -1,4 +1,5 @@
-//! 系统通知（07 FR-NTF-01，16 D-09）：只在小组件看不见时代替小组件卡片，目前用于休息提醒。
+//! 系统通知（07 FR-NTF-01，16 D-09）：休息提醒只在小组件看不见时代替小组件卡片；日程与待办提醒、错过的提醒
+//! 按 FR-SCH-07 总是同时弹（C-05，`schedule.rs`）。
 //!
 //! - 文案与按钮来自 `ui_copy.toml`（core 的 [`NotifyCopy`]），和小组件卡片一致；暖心话、情绪状态、求助卡片不走这里（DS-COPY-08）。
 //! - Windows 用系统 toast（`tauri-winrt-notification`）：带“知道了”/“5 分钟后”两个按钮，点了经 [`RestCmd::Act`] 交回休息服务，
@@ -49,6 +50,26 @@ impl Notifier {
                 && rest.cmds.try_send(RestCmd::Act { kind, action }).is_err()
             {
                 eprintln!("休息提醒服务没在运行，通知上的操作被忽略");
+            }
+        })
+    }
+}
+
+impl Notifier {
+    /// 日程与待办提醒、错过的提醒（FR-SCH-07、FR-NTF-01）：文案由提醒服务给出（`[notify]`），按钮参数就是
+    /// `reminder_action` 的取值，点了交回提醒服务；`id` 为空（错过的提醒）时按钮只关通知。返回是否弹出。
+    pub fn reminder(&self, app: &AppHandle, notice: &Notice, id: Option<u32>) -> bool {
+        let handle = app.clone();
+        show(app, notice, move |arg| {
+            let (Some(id), Some(action)) = (id, arg) else {
+                return;
+            };
+            if let Some(r) = handle.try_state::<crate::schedule::Reminders>()
+                && r.cmds
+                    .try_send(xinqing_hub_core::reminder::ReminderCmd::Act { id, action })
+                    .is_err()
+            {
+                eprintln!("提醒服务没在运行，通知上的操作被忽略");
             }
         })
     }

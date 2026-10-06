@@ -24,7 +24,7 @@ use tokio::sync::{mpsc, watch};
 use xinqing_hub_core::infra::clock::Clock;
 use xinqing_hub_core::infra::gateway::{
     AiError, AiGateway, Budget, BudgetKind, CompleteRequest, CompleteResponse, Delta,
-    GatewayHealth, JudgeRequest, JudgeResponse, NetLogEntry, Scenario,
+    GatewayHealth, JudgeRequest, JudgeResponse, NetLogEntry, Question, Scenario,
 };
 
 pub use config::{
@@ -194,6 +194,15 @@ impl AiGateway for HttpGateway {
         let jev = self.jev.as_ref().ok_or(AiError::ModelUnavailable)?;
         if req.questions.is_empty() {
             return Err(AiError::BadRequest);
+        }
+        // 日程与待办的 L2 确认同时占“日程识别”的每日额度（`ai.cap.schedule`，FR-SCH-01 第 4 条，ADR 0032）：
+        // 每句命中初筛的话正好发一次 Q-PLAN 或 Q-TODO
+        if req
+            .questions
+            .iter()
+            .any(|q| matches!(q, Question::Plan | Question::Todo))
+        {
+            self.take_budget(BudgetKind::SchedulePrefilter)?;
         }
         self.take_budget(BudgetKind::Jev)?;
         let r = jev.judge(&req).await;

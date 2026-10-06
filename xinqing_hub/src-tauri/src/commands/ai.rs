@@ -111,11 +111,13 @@ pub struct NetLogView {
     pub tokens_out: Option<u32>,
 }
 
-/// 网关自己计数的几类；日程初筛（C-05）和周信（C-10）的次数由各自的服务计，接入后再加进来。
-const USAGE_KINDS: [BudgetKind; 4] = [
+/// 网关计数的几类。日程识别按 L2 确认的次数计（每句命中初筛的话发一次 Q-PLAN 或 Q-TODO，ADR 0032）；
+/// 周信每周最多 2 次，计在“大模型”里，不单列（ADR 0030）。
+const USAGE_KINDS: [BudgetKind; 5] = [
     BudgetKind::Jev,
     BudgetKind::Llm,
     BudgetKind::ChatTurn,
+    BudgetKind::SchedulePrefilter,
     BudgetKind::Rewrite,
 ];
 

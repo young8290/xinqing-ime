@@ -64,6 +64,24 @@ struct ShellPort {
     app: AppHandle,
 }
 
+/// 危机识别命中（对话或日记）：发布 `HubEvent::Safety`、推送 `safety:triggered`，打开对话窗口（FR-SAF-02 第 2 条）。
+pub fn show_safety(app: &AppHandle, session_id: i64) {
+    let _ = app
+        .state::<Sensing>()
+        .bus
+        .send(HubEvent::Safety { session_id });
+    if let Err(e) = (SafetyTriggered {
+        session_id: session_id as u32,
+    })
+    .emit(app)
+    {
+        eprintln!("推送 safety:triggered 失败：{e}");
+    }
+    if let Err(e) = windows::open(app, WindowTarget::Chat) {
+        eprintln!("打开对话窗口失败：{e:?}");
+    }
+}
+
 impl ChatPort for ShellPort {
     fn db(&self) -> Box<dyn Deref<Target = Db> + '_> {
         Box::new(self.app.state::<AppState>().inner().writer().lock())
@@ -119,21 +137,7 @@ impl ChatPort for ShellPort {
     }
 
     fn safety(&self, session_id: i64) {
-        let _ = self
-            .app
-            .state::<Sensing>()
-            .bus
-            .send(HubEvent::Safety { session_id });
-        if let Err(e) = (SafetyTriggered {
-            session_id: session_id as u32,
-        })
-        .emit(&self.app)
-        {
-            eprintln!("推送 safety:triggered 失败：{e}");
-        }
-        if let Err(e) = windows::open(&self.app, WindowTarget::Chat) {
-            eprintln!("打开对话窗口失败：{e:?}");
-        }
+        show_safety(&self.app, session_id);
     }
 
     fn note(&self, msg: &str) {

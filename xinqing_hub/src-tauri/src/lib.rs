@@ -7,6 +7,7 @@ mod chat;
 mod cleanup;
 mod comfort;
 mod commands;
+mod diary;
 mod error;
 mod evening;
 mod events;
@@ -19,6 +20,7 @@ mod paths;
 mod research;
 mod rest;
 mod rewrite;
+mod schedule;
 mod secrets;
 mod sensing;
 mod sim;
@@ -88,6 +90,26 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::chat::chat_delete,
             commands::chat::chat_delete_all,
             commands::chat::safety_dismiss,
+            commands::chat::safety_open,
+            commands::diary::diary_generate,
+            commands::diary::diary_save,
+            commands::diary::diary_list,
+            commands::diary::diary_delete,
+            commands::schedule::schedule_list,
+            commands::schedule::schedule_confirm,
+            commands::schedule::schedule_ignore,
+            commands::schedule::schedule_create,
+            commands::schedule::schedule_update,
+            commands::schedule::schedule_delete,
+            commands::schedule::schedule_export_ics,
+            commands::schedule::reminder_action,
+            commands::schedule::todo_list,
+            commands::schedule::todo_confirm,
+            commands::schedule::todo_ignore,
+            commands::schedule::todo_create,
+            commands::schedule::todo_update,
+            commands::schedule::todo_complete,
+            commands::schedule::todo_delete,
             commands::ime::ime_schema,
             commands::ime::ime_config_get,
             commands::ime::ime_config_set,
@@ -109,6 +131,12 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::SafetyInvite,
             events::ReviewEvening,
             events::LetterNew,
+            events::ScheduleDetected,
+            events::ScheduleReady,
+            events::TodoDetected,
+            events::TodoReady,
+            events::ReminderDue,
+            events::ReminderMissed,
         ])
 }
 
@@ -162,9 +190,12 @@ pub fn run() {
             research::start(app.handle());
             // 对话与对话里的危机安全（C-07、C-08）
             chat::start(app.handle());
+            diary::start(app.handle());
             rewrite::start(app.handle());
             evening::start(app.handle());
             letter::start(app.handle());
+            // 日程与待办识别、提醒调度（C-05、C-06）
+            schedule::start(app.handle());
 
             // 第 6 步：首次运行或隐私说明升级 → 引导窗口；否则显示小组件（`widget.visible` 关闭时不显示）。
             // 核心以 `--background` 拉起时同样走这一步（03 第 3.1 节），区别只是不额外打开其他窗口。

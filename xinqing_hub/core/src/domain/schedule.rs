@@ -18,6 +18,16 @@ pub enum CandidateKind {
     Todo,
 }
 
+impl CandidateKind {
+    /// L2 通过后光标旁气泡的短文案（≤ 16 字，与 `ui_copy.toml` 的 `tip.schedule` / `tip.todo` 一致，FR-SCH-05 第 1 条）。
+    pub fn tip(self) -> &'static str {
+        match self {
+            CandidateKind::Schedule => "📅 识别到日程",
+            CandidateKind::Todo => "✅ 识别到待办",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateSentence {
     pub kind: CandidateKind,
@@ -88,6 +98,28 @@ pub const FLAG_MAYBE_PAST: &str = "maybe_past";
 pub const FLAG_CONFIRM_DATE: &str = "confirm_date";
 /// 非截止类的全天日程，卡片提示补充时刻（时刻规则、补充规则 2、6）
 pub const FLAG_NEED_TIME: &str = "need_time";
+/// 大模型失败或超时，按本地规则抽取，卡片标注“请确认信息”（FR-SCH-03 第 2 条，ADR 0032）
+pub const FLAG_LOCAL: &str = "local";
+/// 同一天 ±1 小时内已有标题相似的日程，卡片提示“可能已经添加过”（FR-SCH-06 第 2 条）
+pub const FLAG_MAYBE_DUP: &str = "maybe_dup";
+
+/// 本地抽取的日程标题：事件动词起取前 8 个字（FR-SCH-03 第 2 条）。
+const LOCAL_TITLE_CHARS: usize = 8;
+/// 本地抽取的待办标题：动作词 + 后 6 个字（FR-SCH-12 L3）。
+const LOCAL_TODO_TAIL: usize = 6;
+/// 标题在这些标点处截断。
+const TITLE_STOP: &[char] = &['，', ',', '。', '！', '!', '？', '?', '；', ';', '、', ' '];
+
+fn cut_title(text: &str, max: usize) -> String {
+    text.split(TITLE_STOP)
+        .next()
+        .unwrap_or_default()
+        .chars()
+        .take(max)
+        .collect::<String>()
+        .trim()
+        .to_owned()
+}
 
 #[derive(Debug, Deserialize)]
 struct ScheduleOutput {
@@ -297,6 +329,54 @@ pub fn validate_todo_json(
     }))
 }
 
+/// P-SCHEDULE 与 P-TODO（`prompts/schedule.md`、`prompts/todo.md`，08 第 4 节）。
+#[derive(Debug, Clone)]
+pub struct ExtractPrompts {
+    schedule: crate::domain::comfort::ComfortPrompt,
+    todo: crate::domain::comfort::ComfortPrompt,
+}
+
+const WEEKDAYS: [&str; 7] = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
+impl ExtractPrompts {
+    pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
+        let read = |name: &str| {
+            let path = dirs.factory_path(name);
+            std::fs::read_to_string(&path)
+                .map(|t| crate::domain::comfort::ComfortPrompt::parse(&t))
+                .map_err(|source| TemplateError::Io { path, source })
+        };
+        Ok(Self {
+            schedule: read("prompts/schedule.md")?,
+            todo: read("prompts/todo.md")?,
+        })
+    }
+
+    /// `P-SCHEDULE v1` / `P-TODO v1`
+    pub fn ver(&self, kind: CandidateKind) -> String {
+        match kind {
+            CandidateKind::Schedule => format!("P-SCHEDULE v{}", self.schedule.version),
+            CandidateKind::Todo => format!("P-TODO v{}", self.todo.version),
+        }
+    }
+
+    /// 填入当天日期、星期和这一句（FR-SCH-03 第 1 条）。
+    pub fn render(&self, kind: CandidateKind, sentence: &str, today: NaiveDate) -> String {
+        use chrono::Datelike;
+        let p = match kind {
+            CandidateKind::Schedule => &self.schedule,
+            CandidateKind::Todo => &self.todo,
+        };
+        p.body()
+            .replace("{date}", &format_date(today))
+            .replace(
+                "{weekday}",
+                WEEKDAYS[today.weekday().num_days_from_monday() as usize],
+            )
+            .replace("{sentence}", sentence)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ScanResult {
     pub candidates: Vec<CandidateSentence>,
@@ -418,8 +498,23 @@ impl ScheduleRecognizer {
         })
     }
 
+    /// 模板里的每日命中上限（FR-SCH-01 第 4 条，默认 50）。
+    pub fn daily_cap(&self) -> usize {
+        self.daily_cap
+    }
+
     /// 扫描新上屏文本。`accepted_today` 是当天此前已命中的日程与待办总数。
     pub fn scan(&self, committed_text: &str, accepted_today: usize) -> ScanResult {
+        self.scan_capped(committed_text, accepted_today, self.daily_cap)
+    }
+
+    /// 同 [`Self::scan`]，上限取 `cap`（设置 `ai.cap.schedule` 改过时）。
+    pub fn scan_capped(
+        &self,
+        committed_text: &str,
+        accepted_today: usize,
+        cap: usize,
+    ) -> ScanResult {
         let mut result = ScanResult::default();
         let mut used = accepted_today;
         for raw_sentence in
@@ -444,7 +539,7 @@ impl ScheduleRecognizer {
             if !todo && !schedule {
                 continue;
             }
-            if used >= self.daily_cap {
+            if used >= cap {
                 result.skipped_by_daily_cap += 1;
                 continue;
             }
@@ -459,6 +554,77 @@ impl ScheduleRecognizer {
             });
         }
         result
+    }
+
+    /// 大模型不可用、超时或两次都没通过校验时的本地抽取（FR-SCH-03 第 2 条）：日期时刻按 FR-SCH-04 由代码从原句算，
+    /// 标题取“事件动词 + 宾语”的前 8 个字（句中没有事件动词时取句子开头），地点留空，标 `local`。
+    pub fn local_schedule(
+        &self,
+        sentence: &str,
+        now: NaiveDateTime,
+        banned: &BannedWords,
+    ) -> ScheduleDraft {
+        let from = self.event_verb.find(sentence).map_or(0, |m| m.start());
+        let mut title = cut_title(&sentence[from..], LOCAL_TITLE_CHARS);
+        if title.is_empty() {
+            title = cut_title(sentence, LOCAL_TITLE_CHARS);
+        }
+        let code = when::parse(sentence, now);
+        let raw = serde_json::json!({
+            "has_event": true,
+            "title": title,
+            "date": null,
+            "time": null,
+            "end_time": null,
+            "all_day": false,
+            "location": null,
+            "is_deadline": code.deadline || self.deadline.is_match(sentence),
+        })
+        .to_string();
+        let mut draft = match validate_schedule_json(&raw, sentence, now, banned) {
+            Ok(Some(d)) => d,
+            // 标题全是标点之类：仍给一张要用户自己填的卡片
+            _ => ScheduleDraft {
+                title: "日程".into(),
+                date: None,
+                time: None,
+                end_time: None,
+                all_day: true,
+                location: None,
+                is_deadline: false,
+                remind_offsets: Vec::new(),
+                source: "ai".into(),
+                flags: vec![FLAG_NEED_TIME.to_owned()],
+            },
+        };
+        draft.flags.push(FLAG_LOCAL.to_owned());
+        draft
+    }
+
+    /// 待办的本地抽取（FR-SCH-12 L3 失败时）：标题取“动作词 + 后 6 个字”，没有截止日期。
+    pub fn local_todo(&self, sentence: &str) -> TodoDraft {
+        let rest = self
+            .todo_hint
+            .find(sentence)
+            .map_or(sentence, |h| &sentence[h.end()..]);
+        let title = self
+            .todo_action
+            .find(rest)
+            .map(|a| {
+                let tail: String = rest[a.end()..].chars().take(LOCAL_TODO_TAIL).collect();
+                cut_title(&format!("{}{tail}", a.as_str()), TODO_TITLE_MAX)
+            })
+            .filter(|t| !t.is_empty())
+            .unwrap_or_else(|| cut_title(rest, TODO_TITLE_MAX));
+        TodoDraft {
+            title: if title.is_empty() {
+                "待办".into()
+            } else {
+                title
+            },
+            due_date: None,
+            source: "ai".into(),
+        }
     }
 
     fn excluded(&self, sentence: &str) -> bool {
@@ -935,6 +1101,75 @@ mod tests {
                 "记得打印简历"
             ),
             Err(ExtractError::DateTime)
+        );
+    }
+
+    #[test]
+    fn local_extraction_follows_fr_sch_03_and_04() {
+        let r = recognizer();
+        let b = banned();
+        let d = r.local_schedule("好的，周五下午三点在实验楼开组会", now(), &b);
+        assert_eq!(d.title, "组会");
+        assert_eq!(
+            (d.date.as_deref(), d.time.as_deref()),
+            (Some("2026-10-09"), Some("15:00"))
+        );
+        assert_eq!(d.location, None, "地点留空");
+        assert!(d.flags.contains(&FLAG_LOCAL.to_owned()));
+
+        let d = r.local_schedule("明晚八点前交数据库作业", now(), &b);
+        assert_eq!(d.title, "交数据库作业");
+        assert!(d.is_deadline);
+        assert_eq!(
+            (d.date.as_deref(), d.time.as_deref()),
+            (Some("2026-10-04"), Some("20:00"))
+        );
+
+        let d = r.local_schedule("下周二和室友去看电影", now(), &b);
+        assert_eq!(d.title, "看电影");
+        assert!(d.all_day && d.flags.contains(&FLAG_NEED_TIME.to_owned()));
+
+        let t = r.local_todo("记得周五前交材料");
+        assert_eq!((t.title.as_str(), t.due_date), ("交材料", None));
+        let t = r.local_todo("回头去打印一下简历和成绩单，别忘了");
+        assert_eq!(t.title, "打印一下简历和成", "动作词 + 后 6 个字");
+    }
+
+    #[test]
+    fn extract_prompts_get_date_weekday_and_sentence() {
+        let dirs = TemplateDirs::factory_only(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub_templates"),
+        );
+        let p = ExtractPrompts::load(&dirs).unwrap();
+        assert_eq!(p.ver(CandidateKind::Schedule), "P-SCHEDULE v1");
+        assert_eq!(p.ver(CandidateKind::Todo), "P-TODO v1");
+        let text = p.render(CandidateKind::Schedule, "周五开组会", now().date());
+        assert!(text.contains("今天是 2026-10-03（周六）"));
+        assert!(text.ends_with("句子：周五开组会"));
+        assert_eq!(
+            recognizer()
+                .scan_capped("明天开会。后天开会", 0, 1)
+                .candidates
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn tips_match_ui_copy() {
+        let text = std::fs::read_to_string(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../hub_templates/ui_copy.toml"),
+        )
+        .unwrap();
+        let copy: toml::Value = toml::from_str(&text).unwrap();
+        assert_eq!(
+            copy["tip"]["schedule"].as_str(),
+            Some(CandidateKind::Schedule.tip())
+        );
+        assert_eq!(
+            copy["tip"]["todo"].as_str(),
+            Some(CandidateKind::Todo.tip())
         );
     }
 }

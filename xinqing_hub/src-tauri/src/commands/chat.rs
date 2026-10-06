@@ -305,3 +305,11 @@ pub fn safety_dismiss(chat: State<'_, Chat>, session_id: u32) -> Result<(), UiEr
     service(&chat)?.dismiss_safety(i64::from(session_id))?;
     Ok(())
 }
+
+/// 小组件一句话区的求助入口（收到 `safety:invite` 后显示，ADR 0028 第 4 条）：开一段安全模式的对话，
+/// 打开对话窗口并显示求助卡片。返回这段对话的 `session_id`。
+#[tauri::command]
+#[specta::specta]
+pub fn safety_open(chat: State<'_, Chat>) -> Result<u32, UiError> {
+    Ok(service(&chat)?.open_safety()? as u32)
+}

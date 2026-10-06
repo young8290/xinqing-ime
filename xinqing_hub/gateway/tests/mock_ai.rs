@@ -189,6 +189,31 @@ async fn jev_breaker_opens_and_recovers() {
     assert_eq!((jev.calls, jev.ok, jev.breaker_open), (6, 1, false));
 }
 
+/// 日程与待办的 L2 确认同时占“日程识别”的额度（`ai.cap.schedule`，ADR 0032）；别的 Jev 问题不占。
+#[tokio::test]
+async fn schedule_questions_use_the_prefilter_budget() {
+    let r = rig_with(Mock::Normal, |c| {
+        c.caps = vec![(BudgetKind::SchedulePrefilter, 1)]
+    })
+    .await;
+    let plan = |q| {
+        let mut state = serde_json::Map::new();
+        state.insert("committed_text".into(), "明天下午三点开会".into());
+        JudgeRequest {
+            questions: vec![q],
+            state,
+        }
+    };
+    r.gw.judge(plan(Question::Plan)).await.unwrap();
+    assert_eq!(
+        r.gw.judge(plan(Question::Todo)).await.unwrap_err(),
+        AiError::BudgetExceeded
+    );
+    r.gw.judge(state_request()).await.unwrap();
+    assert_eq!(r.gw.budget_used(BudgetKind::SchedulePrefilter), 1);
+    assert_eq!(r.gw.budget_used(BudgetKind::Jev), 2);
+}
+
 /// TC-AIG-04：超出每日上限后不再发请求，领域层据此改用本地规则。
 #[tokio::test]
 async fn budget_exhaustion_sends_nothing() {

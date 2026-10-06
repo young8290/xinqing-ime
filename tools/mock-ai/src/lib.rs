@@ -138,6 +138,42 @@ pub const COMFORT_REPLIES: [&str; 3] = [
 /// P-LETTER 的回复：一封不含数字的周信（V9 只要求出现的数字都来自统计），长度、禁用词都能过校验。
 pub const LETTER_REPLY: &str = "你好呀，\n\n这一周你在电脑前忙了不少事情，辛苦了。能看出来你在认真对待手头的每一件事，有累的时候，也有顺手的时候，这些都很正常。忙的日子里还记得停下来喝口水、伸个懒腰，这份照顾自己的心意很难得。\n\n这周有几个晚上好像收工得有点晚，白天的节奏也偏紧一些，身体大概在悄悄提醒你放慢一点。不用急着改变什么，先留意到就已经很好了。\n\n下周可以试试：找一个晚上，比平时早半小时合上电脑，做一件让自己放松的小事。\n\n晴晴";
 
+/// P-DIARY 的回复：一篇第一人称的日记草稿，长度、禁用词都能过校验。
+pub const DIARY_REPLY: &str = "今天过得有点累，上午还算顺利，下午开始状态慢慢往下走。晚上和晴晴说了几句话，把心里的事讲出来以后轻松了一些。很多事情一下子做不完，也没关系。明天想早点起床，先做一件最简单的小事。";
+
+/// P-SCHEDULE 的回复：标题取句中认得的事件词（认不出时“日程”），日期时刻留空让 Hub 按原句计算（FR-SCH-04）。
+pub fn schedule_reply(sentence: &str) -> String {
+    const EVENTS: [&str; 8] = [
+        "组会",
+        "开会",
+        "面试",
+        "考试",
+        "上课",
+        "看电影",
+        "聚餐",
+        "答辩",
+    ];
+    let title = EVENTS
+        .iter()
+        .find(|e| sentence.contains(*e))
+        .copied()
+        .unwrap_or("日程");
+    serde_json::json!({
+        "has_event": true, "title": title, "date": null, "time": null, "end_time": null,
+        "all_day": false, "location": null, "is_deadline": sentence.contains("交"),
+    })
+    .to_string()
+}
+
+/// P-TODO 的回复：去掉“记得 / 别忘了”后取前 8 个字作标题，截止日期留空让 Hub 计算。
+pub fn todo_reply(sentence: &str) -> String {
+    let rest = sentence
+        .trim_start_matches("记得")
+        .trim_start_matches("别忘了");
+    let title: String = rest.chars().take(8).collect();
+    serde_json::json!({"is_todo": true, "title": title, "due_date": null}).to_string()
+}
+
 /// P-REWRITE 的回复：在原文（提示词最后一行“原文：”之后，已是占位符形式）前后加几个客气字，
 /// 原文里的数字、`@某人`、占位符都原样保留，能过 V8。
 pub fn rewrite_reply(original: &str) -> String {
@@ -150,7 +186,8 @@ pub fn rewrite_reply(original: &str) -> String {
 }
 
 /// 请求的是 P-COMFORT（提示词要求输出 `{"text":...,"kind":"comfort|rest|cheer"}`）或 P-REWRITE（`{"candidates":...}`）
-/// 时回 JSON，P-LETTER（“本周统计：”）回一封信，否则回固定的一句话。
+/// 时回 JSON，P-SCHEDULE / P-TODO 回抽取结果，P-LETTER（“本周统计：”）回一封信，P-DIARY（“情绪日记草稿”）回一篇草稿，
+/// 否则回固定的一句话。
 fn reply_for(req: &ChatReq, n: usize) -> String {
     let has = |marker: &str| req.messages.iter().any(|m| m.content.contains(marker));
     if has(r#""kind":"comfort|rest|cheer""#) {
@@ -163,8 +200,22 @@ fn reply_for(req: &ChatReq, n: usize) -> String {
             .find_map(|m| m.content.rsplit_once("原文：").map(|(_, t)| t.trim()))
             .unwrap_or_default();
         rewrite_reply(original)
+    } else if has(r#""has_event""#) || has(r#""is_todo""#) {
+        let sentence = req
+            .messages
+            .iter()
+            .rev()
+            .find_map(|m| m.content.rsplit_once("句子：").map(|(_, t)| t.trim()))
+            .unwrap_or_default();
+        if has(r#""has_event""#) {
+            schedule_reply(sentence)
+        } else {
+            todo_reply(sentence)
+        }
     } else if has("本周统计：") {
         LETTER_REPLY.to_string()
+    } else if has("情绪日记草稿") {
+        DIARY_REPLY.to_string()
     } else {
         REPLY.to_string()
     }
