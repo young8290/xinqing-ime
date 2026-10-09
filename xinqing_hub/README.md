@@ -43,3 +43,5 @@ XQ_XQP_TCP=127.0.0.1:18765 pnpm tauri dev
 - 前端只显示后端给的状态，不自行推断（17 第 3.2 节）；窗口打开时取快照，之后只跟随事件。
 - 固定文案只能来自 `ui_copy.toml`，组件里写裸字符串会被 ESLint（`vue/no-bare-strings-in-template`）拦下。
 - 颜色、字号、间距只用 `src/styles/tokens.css` 里的 `--xq-*` 令牌（07 第 1 节）。
+- C-10 周信允许覆盖 `templates/prompts/letter.md` 与 `templates/letter_tips.toml`（同一 Hub 数据目录）。复制出厂文件修改后重启 Hub：提示词须有正整数版本号并保留 `{style_block}`、`{weekly_stats_json}`；配套文案须保留三档评语与 `late` / `rest_low` / `hard` / `default` 各一条建议，内容非空且通过出厂禁用词校验。读取或校验失败逐文件回退；`letter_fallback.md` 尚未接入用户覆盖，详见 ADR 0036。
+- C-10 周信正文可覆盖 `templates/letter_fallback.md`，保留版本号；仅支持已知统计变量和配对、非嵌套条件块，可空统计须包在对应条件块内。重启加载，非法内容回退出厂版本（ADR 0041）。

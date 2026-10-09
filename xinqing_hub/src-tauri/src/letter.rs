@@ -14,7 +14,6 @@ use xinqing_hub_core::domain::routine::{self, RoutineNight};
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::domain::validate::BannedWords;
 use xinqing_hub_core::infra::store::{Db, NewLetter, StoreError};
-use xinqing_hub_core::infra::templates::TemplateDirs;
 use xinqing_hub_core::letter::{Letter, LetterPort, LetterService};
 
 use crate::events::LetterNew;
@@ -26,16 +25,13 @@ const DATE_FMT: &str = "%Y-%m-%d";
 
 /// 须在 `AppState`、`Arc<Ai>` 都托管之后调用。模板加载失败时不启动（记日志），其余功能不受影响。
 pub fn start(app: &AppHandle) {
-    let loaded = paths::templates_dir()
-        .ok_or_else(|| anyhow::anyhow!("找不到 hub_templates"))
-        .and_then(|dir| {
-            let dirs = TemplateDirs::factory_only(dir);
-            Ok((
-                LetterPrompt::load(&dirs)?,
-                LetterFallback::load(&dirs)?,
-                BannedWords::load(&dirs)?,
-            ))
-        });
+    let loaded = paths::hub_template_dirs().and_then(|dirs| {
+        Ok((
+            LetterPrompt::load(&dirs)?,
+            LetterFallback::load(&dirs)?,
+            BannedWords::load(&dirs)?,
+        ))
+    });
     let (prompt, fallback, banned) = match loaded {
         Ok(t) => t,
         Err(e) => {
