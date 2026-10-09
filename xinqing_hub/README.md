@@ -34,6 +34,8 @@ XQ_XQP_TCP=127.0.0.1:18765 pnpm tauri dev
 
 ## 约定
 
+- C-03 / FR-AIG-08 的网关指标通过 `commands.aiGatewayMetrics()` 读取：`apis` 是各接口的调用次数、成功率、P50/P95 与熔断状态，`models` 是按配置优先级排列的模型状态。读取不发网络请求，不消耗预算，不含密钥或正文。指标仅在内存中，Hub 重启或更换网关配置后清空；未调用的接口不出现在 `apis`，未知的成功率与延迟为 `null`。接口已提供，演示面板与设置页展示待接入（ADR 0033）。
+
 - 前端只显示后端给的状态，不自行推断（17 第 3.2 节）；窗口打开时取快照，之后只跟随事件。
 - 固定文案只能来自 `ui_copy.toml`，组件里写裸字符串会被 ESLint（`vue/no-bare-strings-in-template`）拦下。
 - 颜色、字号、间距只用 `src/styles/tokens.css` 里的 `--xq-*` 令牌（07 第 1 节）。

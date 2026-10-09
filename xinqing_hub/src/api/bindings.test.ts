@@ -21,4 +21,19 @@ describe('前端绑定的数字类型（ADR 0027）', () => {
   it('设置值没有 null（从 JSON 读出的数不会是 NaN）', () => {
     expect(bindings).toContain('export type SettingValue = boolean | number | string | string[];')
   })
+
+  it('网关指标通过生成命令读取，计数为 number，未知延迟和成功率可空', () => {
+    expect(bindings).toContain('aiGatewayMetrics: () => typedError<GatewayMetricsView, UiError>')
+    const api = bindings.match(/export type ApiMetricsView = \{([\s\S]*?)\n\};/)?.[1]
+    const model = bindings.match(/export type ModelStatusView = \{([\s\S]*?)\n\};/)?.[1]
+    expect(api).toBeDefined()
+    expect(model).toBeDefined()
+    expect(api).toMatch(/calls: number,/)
+    expect(api).toMatch(/ok: number,/)
+    expect(api).toMatch(/p50_ms: number \| null,/)
+    expect(api).toMatch(/p95_ms: number \| null,/)
+    expect(api).toMatch(/success_rate: number \| null,/)
+    expect(model).toMatch(/p50_ms: number \| null,/)
+    expect(model).toMatch(/success_rate: number \| null,/)
+  })
 })
