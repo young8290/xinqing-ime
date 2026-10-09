@@ -261,12 +261,12 @@ pub struct RewritePrompt {
 
 impl RewritePrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let path = dirs.factory_path("prompts/rewrite.md");
-        let text = std::fs::read_to_string(&path).map_err(|source| TemplateError::Io {
-            path: path.clone(),
-            source,
-        })?;
-        Ok(Self::parse(&text))
+        let (version, body) = crate::infra::templates::load_prompt(
+            dirs,
+            "prompts/rewrite.md",
+            &["{style}", "{text}"],
+        )?;
+        Ok(Self { version, body })
     }
 
     /// 首行 `<!-- version: N -->`；所有 `<!--` 开头的行是注释，不发给模型。

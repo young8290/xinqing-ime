@@ -9,7 +9,7 @@ use specta::Type;
 use tauri::State;
 use xinqing_hub_core::infra::gateway::BudgetKind;
 use xinqing_hub_gateway::{
-    AiSecrets, ApiKey, JevSecret, LlmSecret, MaskedSecrets, MaskedSide, SecretsError,
+    AiSecrets, ApiKey, HttpGateway, JevSecret, LlmSecret, MaskedSecrets, MaskedSide, SecretsError,
 };
 
 use crate::error::UiError;
@@ -96,6 +96,40 @@ pub struct UsageRow {
     pub cap: u32,
 }
 
+/// 演示者视图与设置页读取的内存指标；不含地址、密钥、请求或响应正文。
+#[derive(Debug, Clone, PartialEq, Serialize, Type)]
+pub struct GatewayMetricsView {
+    pub apis: Vec<ApiMetricsView>,
+    pub models: Vec<ModelStatusView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Type)]
+pub struct ApiMetricsView {
+    pub api: String,
+    #[specta(type = specta_typescript::Number)]
+    pub calls: u64,
+    #[specta(type = specta_typescript::Number)]
+    pub ok: u64,
+    /// 成功次数 / 调用次数（0～1）；没有调用时为空。
+    pub success_rate: Option<f64>,
+    #[specta(type = Option<specta_typescript::Number>)]
+    pub p50_ms: Option<u64>,
+    #[specta(type = Option<specta_typescript::Number>)]
+    pub p95_ms: Option<u64>,
+    pub breaker_open: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Type)]
+pub struct ModelStatusView {
+    pub model: String,
+    pub available: bool,
+    pub breaker_open: bool,
+    /// 最近 20 次调用的成功率（0～1）；没有调用时为空。
+    pub success_rate: Option<f64>,
+    #[specta(type = Option<specta_typescript::Number>)]
+    pub p50_ms: Option<u64>,
+}
+
 /// 设置页展示的出网记录；只包含接口、模型、字段名和计量信息，不含请求或响应正文。
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
 pub struct NetLogView {
@@ -168,6 +202,43 @@ pub fn ai_usage_today(ai: State<'_, Arc<Ai>>) -> Result<Vec<UsageRow>, UiError> 
             cap: gw.budget_cap(kind),
         })
         .collect())
+}
+
+/// 读取当前网关的内存指标（FR-AIG-08），不发请求、不扣预算、不落盘。
+/// 接口按名称排序，模型按配置优先级排列；Hub 重启或更换网关配置后统计清空。
+#[tauri::command]
+#[specta::specta]
+pub fn ai_gateway_metrics(ai: State<'_, Arc<Ai>>) -> Result<GatewayMetricsView, UiError> {
+    Ok(metrics_view(&ai.gateway()))
+}
+
+fn metrics_view(gw: &HttpGateway) -> GatewayMetricsView {
+    GatewayMetricsView {
+        apis: gw
+            .metrics()
+            .into_iter()
+            .map(|m| ApiMetricsView {
+                api: m.api,
+                calls: m.calls,
+                ok: m.ok,
+                success_rate: (m.calls > 0).then(|| m.ok as f64 / m.calls as f64),
+                p50_ms: m.p50_ms,
+                p95_ms: m.p95_ms,
+                breaker_open: m.breaker_open,
+            })
+            .collect(),
+        models: gw
+            .models()
+            .into_iter()
+            .map(|m| ModelStatusView {
+                model: m.model,
+                available: m.available,
+                breaker_open: m.breaker_open,
+                success_rate: m.success_rate,
+                p50_ms: m.p50_ms,
+            })
+            .collect(),
+    }
 }
 
 /// 返回设置页需要的最近出网记录（FR-SET-09、09 D-20）。数据库本身只保留最近 200 条，
@@ -249,6 +320,83 @@ impl From<SecretsStoreError> for UiError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xinqing_hub_core::infra::clock::SystemClock;
+    use xinqing_hub_core::infra::gateway::{AiGateway, CompleteRequest, Message, Scenario};
+    use xinqing_hub_gateway::{GatewayConfig, LlmConfig};
+
+    #[test]
+    fn offline_metrics_are_empty() {
+        let gw = HttpGateway::new(GatewayConfig::default(), Arc::new(SystemClock)).unwrap();
+        let v = metrics_view(&gw);
+        assert!(v.apis.is_empty());
+        assert!(v.models.is_empty());
+    }
+
+    #[tokio::test]
+    async fn metrics_snapshot_exposes_stats_without_sending_requests_or_private_content() {
+        let (base, mock) = mock_ai::serve(mock_ai::Scenario::Normal).await.unwrap();
+        let mut llm = LlmConfig::new(format!("{base}/v1"));
+        llm.models = vec![mock_ai::DEFAULT_MODEL.into()];
+        llm.api_key = Some(ApiKey::new("test-metrics-private-key"));
+        let gw = HttpGateway::new(
+            GatewayConfig {
+                jev: None,
+                llm: Some(llm),
+                caps: Vec::new(),
+            },
+            Arc::new(SystemClock),
+        )
+        .unwrap();
+        let unused = metrics_view(&gw);
+        assert!(unused.apis.is_empty());
+        assert_eq!(unused.models[0].success_rate, None);
+        assert_eq!(unused.models[0].p50_ms, None);
+        assert_eq!(mock.chat(), 0);
+        assert_eq!(mock.models(), 0);
+
+        let request = || CompleteRequest {
+            scenario: Scenario::Chat,
+            prompt_ver: "metrics-test".into(),
+            messages: vec![Message {
+                role: "user".into(),
+                content: "private-metrics-input".into(),
+            }],
+        };
+        gw.complete(request()).await.unwrap();
+        mock.set_scenario(mock_ai::Scenario::E422);
+        for _ in 0..3 {
+            assert!(gw.complete(request()).await.is_err());
+        }
+        let used = gw.budget_used(BudgetKind::ChatTurn);
+        let before = (mock.chat(), mock.models(), mock.jev());
+        let v = metrics_view(&gw);
+        assert_eq!(v.apis.len(), 1);
+        assert_eq!(v.apis[0].calls, 4);
+        assert_eq!(v.apis[0].ok, 1);
+        assert_eq!(v.apis[0].success_rate, Some(0.25));
+        assert!(v.apis[0].p50_ms.is_some());
+        assert_eq!(v.apis[0].p50_ms, v.apis[0].p95_ms);
+        assert!(v.apis[0].breaker_open);
+        assert!(v.models[0].breaker_open);
+        assert_eq!(v.models[0].success_rate, Some(0.25));
+        assert_eq!((mock.chat(), mock.models(), mock.jev()), before);
+        assert_eq!(gw.budget_used(BudgetKind::ChatTurn), used);
+        let json = serde_json::to_string(&v).unwrap();
+        for private in [
+            "test-metrics-private-key",
+            "private-metrics-input",
+            mock_ai::REPLY,
+            &base,
+        ] {
+            assert!(!json.contains(private));
+        }
+        // 新网关的内存统计不继承；换配置只继承今日预算。
+        let fresh = HttpGateway::new(GatewayConfig::default(), Arc::new(SystemClock))
+            .unwrap()
+            .inherit_budget(&gw);
+        assert!(metrics_view(&fresh).apis.is_empty());
+        assert_eq!(fresh.budget_used(BudgetKind::ChatTurn), used);
+    }
 
     #[test]
     fn blank_key_means_keep_the_saved_one() {

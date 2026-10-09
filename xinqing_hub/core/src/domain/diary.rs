@@ -101,15 +101,34 @@ const NONE: &str = "（无）";
 
 impl DiaryPrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let path = dirs.factory_path("prompts/diary.md");
-        let text = std::fs::read_to_string(&path).map_err(|source| TemplateError::Io {
-            path: path.clone(),
-            source,
-        })?;
-        let p = ComfortPrompt::parse(&text);
-        Ok(Self {
-            version: p.version,
-            body: p.body().to_string(),
+        const FILE: &str = "prompts/diary.md";
+        dirs.load_with_fallback(FILE, |path| {
+            let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
+                path: path.to_path_buf(),
+                source,
+            })?;
+            let version = text
+                .lines()
+                .next()
+                .and_then(|l| l.trim().strip_prefix("<!-- version:"))
+                .and_then(|l| l.strip_suffix("-->"))
+                .and_then(|l| l.trim().parse::<u32>().ok());
+            let p = ComfortPrompt::parse(&text);
+            if version.is_none_or(|v| v == 0)
+                || p.body().trim().is_empty()
+                || ["{summary}", "{chat_digest}"]
+                    .iter()
+                    .any(|key| !p.body().contains(key))
+            {
+                return Err(TemplateError::Invalid {
+                    file: FILE,
+                    reason: "缺少正整数版本号、正文或必需占位符",
+                });
+            }
+            Ok(Self {
+                version: p.version,
+                body: p.body().to_string(),
+            })
         })
     }
 
@@ -175,15 +194,36 @@ struct RawCopy {
 
 #[derive(Debug, Deserialize)]
 struct RawDiaryCopy {
-    blank: String,
     safety_session: String,
 }
 
 impl DiaryCopy {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
         let raw: RawCopy = read_toml(&dirs.factory_path("ui_copy.toml"))?;
+        // 整份用户文件只提取非安全的空白模板；求助会话标题仍来自出厂文件。
+        let banned = BannedWords::load(dirs)?;
+        let blank = dirs.load_with_fallback("ui_copy.toml", |path| {
+            #[derive(Deserialize)]
+            struct BlankFile {
+                version: u32,
+                diary: BlankCopy,
+            }
+            #[derive(Deserialize)]
+            struct BlankCopy {
+                blank: String,
+            }
+            let copy: BlankFile = read_toml(path)?;
+            let blank = copy.diary.blank.trim();
+            if copy.version == 0 || blank.is_empty() || banned.find(blank, Scene::Other).is_some() {
+                return Err(TemplateError::Invalid {
+                    file: "ui_copy.toml",
+                    reason: "日记空白模板版本、正文或禁用词校验失败",
+                });
+            }
+            Ok(blank.to_string())
+        })?;
         Ok(Self {
-            blank: raw.diary.blank.trim().to_string(),
+            blank,
             safety_session: raw.diary.safety_session.trim().to_string(),
         })
     }

@@ -340,11 +340,15 @@ const WEEKDAYS: [&str; 7] = ["周一", "周二", "周三", "周四", "周五", "
 
 impl ExtractPrompts {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let read = |name: &str| {
-            let path = dirs.factory_path(name);
-            std::fs::read_to_string(&path)
-                .map(|t| crate::domain::comfort::ComfortPrompt::parse(&t))
-                .map_err(|source| TemplateError::Io { path, source })
+        let read = |name| {
+            let (version, body) = crate::infra::templates::load_prompt(
+                dirs,
+                name,
+                &["{date}", "{weekday}", "{sentence}"],
+            )?;
+            Ok::<_, TemplateError>(crate::domain::comfort::ComfortPrompt::parse(&format!(
+                "<!-- version: {version} -->\n{body}"
+            )))
         };
         Ok(Self {
             schedule: read("prompts/schedule.md")?,
@@ -385,6 +389,7 @@ pub struct ScanResult {
 
 #[derive(Debug, Deserialize)]
 struct RawPatterns {
+    version: u32,
     min_len: usize,
     max_len: usize,
     daily_cap: usize,
@@ -463,38 +468,55 @@ pub struct ScheduleRecognizer {
 
 impl ScheduleRecognizer {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let path = dirs.resolve(FILE);
-        let raw: RawPatterns = crate::infra::templates::read_toml(&path)?;
-        let compile = |pattern: &str| {
-            Regex::new(pattern).map_err(|source| TemplateError::Regex {
-                file: FILE,
-                pattern: pattern.to_string(),
-                source,
+        dirs.load_with_fallback(FILE, |path| {
+            let raw: RawPatterns = crate::infra::templates::read_toml(path)?;
+            if raw.version == 0
+                || raw.min_len == 0
+                || raw.max_len < raw.min_len
+                || raw.daily_cap == 0
+            {
+                return Err(TemplateError::Invalid {
+                    file: FILE,
+                    reason: "版本或长度范围、每日额度不合法",
+                });
+            }
+            let compile = |pattern: &str| {
+                if pattern.trim().is_empty() {
+                    return Err(TemplateError::Invalid {
+                        file: FILE,
+                        reason: "识别正则不能为空",
+                    });
+                }
+                Regex::new(pattern).map_err(|source| TemplateError::Regex {
+                    file: FILE,
+                    pattern: pattern.to_string(),
+                    source,
+                })
+            };
+            Ok(Self {
+                min_len: raw.min_len,
+                max_len: raw.max_len,
+                daily_cap: raw.daily_cap,
+                relative_date: compile(&raw.date_relative.pattern)?,
+                relative_not_preceded_by: raw.date_relative.not_preceded_by,
+                absolute_date: compile(&raw.date_absolute.pattern)?,
+                time: compile(&raw.time_of_day.pattern)?,
+                deadline: compile(&raw.deadline.pattern)?,
+                event_verb: compile(&raw.event_verb.pattern)?,
+                past: compile(&raw.exclude.past)?,
+                question_end: compile(&raw.exclude.question_end)?,
+                confirm: compile(&raw.exclude.confirm)?,
+                todo_hint: compile(&raw.todo.hint)?,
+                todo_action: compile(&raw.todo.action)?,
+                second_person: compile(&raw.todo.second_person)?,
+                second_person_allow: compile(&raw.todo.second_person_allow)?,
+                remind_others: compile(&raw.todo.remind_others)?,
+                not_followed_by: raw.todo.huan_not_followed_by,
+                absolute_not_followed_by: compile(&raw.date_absolute.not_followed_by_char)?,
+                absolute_not_preceded_by: compile(&raw.date_absolute.not_preceded_by_char)?,
+                hao_not_followed_by: raw.date_absolute.hao_not_followed_by,
+                remind_not_followed_by: raw.todo.remind_others_not_followed_by,
             })
-        };
-        Ok(Self {
-            min_len: raw.min_len,
-            max_len: raw.max_len,
-            daily_cap: raw.daily_cap,
-            relative_date: compile(&raw.date_relative.pattern)?,
-            relative_not_preceded_by: raw.date_relative.not_preceded_by,
-            absolute_date: compile(&raw.date_absolute.pattern)?,
-            time: compile(&raw.time_of_day.pattern)?,
-            deadline: compile(&raw.deadline.pattern)?,
-            event_verb: compile(&raw.event_verb.pattern)?,
-            past: compile(&raw.exclude.past)?,
-            question_end: compile(&raw.exclude.question_end)?,
-            confirm: compile(&raw.exclude.confirm)?,
-            todo_hint: compile(&raw.todo.hint)?,
-            todo_action: compile(&raw.todo.action)?,
-            second_person: compile(&raw.todo.second_person)?,
-            second_person_allow: compile(&raw.todo.second_person_allow)?,
-            remind_others: compile(&raw.todo.remind_others)?,
-            not_followed_by: raw.todo.huan_not_followed_by,
-            absolute_not_followed_by: compile(&raw.date_absolute.not_followed_by_char)?,
-            absolute_not_preceded_by: compile(&raw.date_absolute.not_preceded_by_char)?,
-            hao_not_followed_by: raw.date_absolute.hao_not_followed_by,
-            remind_not_followed_by: raw.todo.remind_others_not_followed_by,
         })
     }
 

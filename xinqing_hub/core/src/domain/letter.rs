@@ -269,11 +269,34 @@ pub struct LetterPrompt {
 
 impl LetterPrompt {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let text = read_text(dirs, "prompts/letter.md")?;
-        let p = ComfortPrompt::parse(&text);
-        Ok(Self {
-            version: p.version,
-            body: p.body().to_string(),
+        const FILE: &str = "prompts/letter.md";
+        dirs.load_with_fallback(FILE, |path| {
+            let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
+                path: path.to_path_buf(),
+                source,
+            })?;
+            let version = text
+                .lines()
+                .next()
+                .and_then(|l| l.trim().strip_prefix("<!-- version:"))
+                .and_then(|l| l.strip_suffix("-->"))
+                .and_then(|l| l.trim().parse::<u32>().ok());
+            let p = ComfortPrompt::parse(&text);
+            if version.is_none_or(|v| v == 0)
+                || p.body().trim().is_empty()
+                || ["{style_block}", "{weekly_stats_json}"]
+                    .iter()
+                    .any(|key| !p.body().contains(key))
+            {
+                return Err(TemplateError::Invalid {
+                    file: FILE,
+                    reason: "缺少正整数版本号、正文或必需占位符",
+                });
+            }
+            Ok(Self {
+                version: p.version,
+                body: p.body().to_string(),
+            })
         })
     }
 
@@ -292,11 +315,6 @@ impl LetterPrompt {
     }
 }
 
-fn read_text(dirs: &TemplateDirs, name: &str) -> Result<String, TemplateError> {
-    let path = dirs.factory_path(name);
-    std::fs::read_to_string(&path).map_err(|source| TemplateError::Io { path, source })
-}
-
 #[derive(Debug, Clone, Deserialize)]
 struct RestComment {
     high: String,
@@ -312,6 +330,7 @@ struct Tip {
 
 #[derive(Debug, Clone, Deserialize)]
 struct RawTips {
+    version: u32,
     rest_comment: RestComment,
     tip: Vec<Tip>,
 }
@@ -325,15 +344,70 @@ pub struct LetterFallback {
 
 impl LetterFallback {
     pub fn load(dirs: &TemplateDirs) -> Result<Self, TemplateError> {
-        let text = read_text(dirs, "letter_fallback.md")?;
-        let body = text
-            .lines()
-            .filter(|l| !l.trim_start().starts_with("<!--"))
-            .collect::<Vec<_>>()
-            .join("\n")
-            .trim()
-            .to_string();
-        let tips: RawTips = read_toml(&dirs.factory_path("letter_tips.toml"))?;
+        let banned = BannedWords::load(dirs)?;
+        let body = dirs.load_with_fallback("letter_fallback.md", |path| {
+            let text = std::fs::read_to_string(path).map_err(|source| TemplateError::Io {
+                path: path.to_path_buf(),
+                source,
+            })?;
+            let version = text
+                .lines()
+                .next()
+                .and_then(|l| l.trim().strip_prefix("<!-- version:"))
+                .and_then(|l| l.strip_suffix("-->"))
+                .and_then(|l| l.trim().parse::<u32>().ok());
+            let body = text
+                .lines()
+                .filter(|l| !l.trim_start().starts_with("<!--"))
+                .collect::<Vec<_>>()
+                .join("\n")
+                .trim()
+                .to_string();
+            if version.is_none_or(|v| v == 0)
+                || body.trim().is_empty()
+                || banned.find(&body, Scene::Other).is_some()
+                || !fallback_syntax_ok(&body)
+            {
+                return Err(TemplateError::Invalid {
+                    file: "letter_fallback.md",
+                    reason: "版本、正文、禁用词或占位符语法不合法",
+                });
+            }
+            Ok(body)
+        })?;
+        const FILE: &str = "letter_tips.toml";
+        let tips = dirs.load_with_fallback(FILE, |path| {
+            let tips: RawTips = read_toml(path)?;
+            let groups = ["late", "rest_low", "hard", "default"];
+            if tips.version == 0
+                || tips.tip.len() != groups.len()
+                || groups
+                    .iter()
+                    .any(|group| tips.tip.iter().filter(|t| t.when == *group).count() != 1)
+            {
+                return Err(TemplateError::Invalid {
+                    file: FILE,
+                    reason: "版本号须为正整数，建议须包含四个不重复的分组",
+                });
+            }
+            let copy = [
+                &tips.rest_comment.high,
+                &tips.rest_comment.mid,
+                &tips.rest_comment.low,
+            ]
+            .into_iter()
+            .chain(tips.tip.iter().map(|t| &t.text));
+            if copy
+                .into_iter()
+                .any(|s| s.trim().is_empty() || banned.find(s, Scene::Other).is_some())
+            {
+                return Err(TemplateError::Invalid {
+                    file: FILE,
+                    reason: "评语或建议为空或包含禁用词",
+                });
+            }
+            Ok(tips)
+        })?;
         Ok(Self { body, tips })
     }
 
@@ -427,6 +501,67 @@ impl LetterFallback {
         v.extend(self.tips.tip.iter().map(|t| t.text.clone()));
         v
     }
+}
+
+/// 只支持已知统计占位符与非嵌套条件块；可空变量必须在对应条件块中。
+fn fallback_syntax_ok(body: &str) -> bool {
+    const KEYS: &[&str] = &[
+        "typing_avg",
+        "rest_rate",
+        "rest_comment",
+        "water",
+        "best_slot",
+        "hard_slot",
+        "stop_avg",
+        "done",
+        "schedules_done",
+        "todos_done",
+        "tip",
+    ];
+    const CONDITIONS: &[&str] = &[
+        "rest_rate",
+        "water",
+        "best_slot",
+        "hard_slot",
+        "stop_avg",
+        "done",
+    ];
+    let mut condition: Option<&str> = None;
+    let mut rest = body;
+    while let Some(open) = rest.find('{') {
+        if rest[..open].contains('}') {
+            return false;
+        }
+        let Some(close) = rest[open + 1..].find('}').map(|i| open + 1 + i) else {
+            return false;
+        };
+        let token = &rest[open + 1..close];
+        if let Some(key) = token.strip_prefix('?') {
+            if condition.is_some() || !CONDITIONS.contains(&key) {
+                return false;
+            }
+            condition = Some(key);
+        } else if let Some(key) = token.strip_prefix('/') {
+            if condition != Some(key) {
+                return false;
+            }
+            condition = None;
+        } else {
+            if !KEYS.contains(&token) || token == "done" {
+                return false;
+            }
+            let required = match token {
+                "rest_comment" => Some("rest_rate"),
+                "rest_rate" | "water" | "best_slot" | "hard_slot" | "stop_avg" => Some(token),
+                _ => None,
+            };
+            if required.is_some() && required != condition {
+                return false;
+            }
+        }
+        rest = &rest[close + 1..];
+    }
+    condition.is_none() && !rest.contains('}')
 }
 
 #[cfg(test)]
