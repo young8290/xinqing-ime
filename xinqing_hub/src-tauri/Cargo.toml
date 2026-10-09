@@ -42,6 +42,9 @@ futures = "0.3"
 dirs = "6"
 tauri-plugin-dialog = "2"
 
+[dev-dependencies]
+mock-ai = { path = "../../tools/mock-ai" }
+
 [target.'cfg(windows)'.dependencies]
 # 系统通知（FR-NTF-01，src/notify.rs）：带按钮的 toast；官方 notification 插件在桌面端不支持按钮
 tauri-winrt-notification = "0.7"

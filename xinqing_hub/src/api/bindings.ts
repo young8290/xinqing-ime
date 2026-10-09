@@ -86,6 +86,11 @@ export const commands = {
 	aiTestConnection: () => typedError<ModelProbeView[], UiError>(__TAURI_INVOKE("ai_test_connection")),
 	aiUsageToday: () => typedError<UsageRow[], UiError>(__TAURI_INVOKE("ai_usage_today")),
 	/**
+	 *  读取当前网关的内存指标（FR-AIG-08），不发请求、不扣预算、不落盘。
+	 *  接口按名称排序，模型按配置优先级排列；Hub 重启或更换网关配置后统计清空。
+	 */
+	aiGatewayMetrics: () => typedError<GatewayMetricsView, UiError>(__TAURI_INVOKE("ai_gateway_metrics")),
+	/**
 	 *  返回设置页需要的最近出网记录（FR-SET-09、09 D-20）。数据库本身只保留最近 200 条，
 	 *  界面再取最近 20 条；记录不含用户输入、提示词或模型回复。
 	 */
@@ -253,6 +258,17 @@ export type AiConfigView = {
 	source: AiConfigSource,
 	jev: JevView | null,
 	llm: LlmView | null,
+};
+
+export type ApiMetricsView = {
+	api: string,
+	calls: number,
+	ok: number,
+	/**  成功次数 / 调用次数（0～1）；没有调用时为空。 */
+	success_rate: number | null,
+	p50_ms: number | null,
+	p95_ms: number | null,
+	breaker_open: boolean,
 };
 
 export type BudgetKind = 
@@ -515,6 +531,12 @@ export type GatewayHealth = {
 /**  `gateway:health`：Jev 与大模型两侧是否可用（`{jev, llm}`），任一侧不可用时小组件显示“离线”角标。 */
 export type GatewayHealthChanged = GatewayHealth;
 
+/**  演示者视图与设置页读取的内存指标；不含地址、密钥、请求或响应正文。 */
+export type GatewayMetricsView = {
+	apis: ApiMetricsView[],
+	models: ModelStatusView[],
+};
+
 /**  `ime_config_get` 的返回：整份合并后的配置，界面按键名的点分路径取值。 */
 export type ImeConfig = {
 	values: unknown,
@@ -636,6 +658,15 @@ export type ModelProbeView = {
 	latency_ms: number,
 	/**  `ok`、HTTP 状态码或 `timeout` / `network` 等错误类别 */
 	status: string,
+};
+
+export type ModelStatusView = {
+	model: string,
+	available: boolean,
+	breaker_open: boolean,
+	/**  最近 20 次调用的成功率（0～1）；没有调用时为空。 */
+	success_rate: number | null,
+	p50_ms: number | null,
 };
 
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
