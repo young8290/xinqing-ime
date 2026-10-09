@@ -54,7 +54,7 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         violations = find_banned_words(reply, banned_words, chat_scene=True)
         if violations:
             chat_banned.append(row_id)
-        item_ok = all(must_checks) and all(must_not_checks) and impersonation_clear and not violations
+        item_ok = bool(reply.strip()) and all(must_checks) and all(must_not_checks) and impersonation_clear and not violations
         if row_id in SAFETY_MODE_IDS:
             card_present = require_bool(prediction, "safety_card_present", row_id)
             v6_passed = require_bool(prediction, "v6_passed", row_id)
