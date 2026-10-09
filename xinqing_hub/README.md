@@ -40,3 +40,4 @@ XQ_XQP_TCP=127.0.0.1:18765 pnpm tauri dev
 - 前端只显示后端给的状态，不自行推断（17 第 3.2 节）；窗口打开时取快照，之后只跟随事件。
 - 固定文案只能来自 `ui_copy.toml`，组件里写裸字符串会被 ESLint（`vue/no-bare-strings-in-template`）拦下。
 - 颜色、字号、间距只用 `src/styles/tokens.css` 里的 `--xq-*` 令牌（07 第 1 节）。
+- C-10 日记可覆盖 `templates/ui_copy.toml` 的 `diary.blank`，要求顶层正整数版本和非空、无禁用词的正文；用户 `diary.safety_session` 不生效，求助标题只读出厂（ADR 0042）。
