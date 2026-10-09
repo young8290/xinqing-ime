@@ -9,7 +9,6 @@ use xinqing_hub_core::domain::consent::{ConsentItem, ConsentState};
 use xinqing_hub_core::domain::rewrite::{self as rw, RewritePrompt};
 use xinqing_hub_core::domain::safety::CrisisLexicon;
 use xinqing_hub_core::domain::validate::BannedWords;
-use xinqing_hub_core::infra::templates::TemplateDirs;
 use xinqing_hub_core::rewrite::{RewriteLog, RewritePort, RewriteService};
 use xqp::Down;
 
@@ -22,16 +21,13 @@ use crate::state::AppState;
 /// 须在 `AppState`、`Arc<Ai>`、`Sensing` 都托管之后调用。模板加载失败时不启动（记日志）：核心等 10 秒后提示
 /// “暂时改写不了”，其余功能不受影响。
 pub fn start(app: &AppHandle) {
-    let loaded = paths::templates_dir()
-        .ok_or_else(|| anyhow::anyhow!("找不到 hub_templates"))
-        .and_then(|dir| {
-            let dirs = TemplateDirs::factory_only(dir);
-            Ok((
-                RewritePrompt::load(&dirs)?,
-                CrisisLexicon::load(&dirs)?,
-                BannedWords::load(&dirs)?,
-            ))
-        });
+    let loaded = paths::hub_template_dirs().and_then(|dirs| {
+        Ok((
+            RewritePrompt::load(&dirs)?,
+            CrisisLexicon::load(&dirs)?,
+            BannedWords::load(&dirs)?,
+        ))
+    });
     let (prompt, lexicon, banned) = match loaded {
         Ok(t) => t,
         Err(e) => {
