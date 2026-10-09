@@ -78,15 +78,13 @@ pub fn start(app: &AppHandle) {
         None => eprintln!("日程提醒不可用：找不到 hub_templates"),
     }
 
-    let loaded = dirs
-        .ok_or_else(|| anyhow::anyhow!("找不到 hub_templates"))
-        .and_then(|d| {
-            Ok((
-                ScheduleRecognizer::load(&d)?,
-                ExtractPrompts::load(&d)?,
-                BannedWords::load(&d)?,
-            ))
-        });
+    let loaded = paths::hub_template_dirs().and_then(|d| {
+        Ok((
+            ScheduleRecognizer::load(&d)?,
+            ExtractPrompts::load(&d)?,
+            BannedWords::load(&d)?,
+        ))
+    });
     match loaded {
         Ok((recognizer, prompts, banned)) => {
             let service = Arc::new(ScheduleService::new(
