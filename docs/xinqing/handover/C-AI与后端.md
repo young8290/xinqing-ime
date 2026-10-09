@@ -3,7 +3,7 @@
 > 负责范围（产品书 13 第 1 节）：AIG 网关、CMF 暖心话、CHT 对话、DIA 日记、SAF 危机安全、SCH 日程与待办、RWR 温柔改写的 Hub 部分、REV-01/02 晚间小结与周信、评测脚本；
 > 另是数据库迁移（`xinqing_hub/core/migrations/`）与设置键注册表（`xinqing_hub/core/src/domain/settings.rs`）的契约负责人（13 第 3.1 节）。
 > 任务清单与估算见产品书 16 第 2.3 节。本文件随 C 的每个 PR 更新，任务中途换人时按产品书 13 第 3.1 节“交接”直接看这里。
-> 最后更新：2026-10-06（C-10：晚间小结用户结束语覆盖与启动校验，ADR 0035）
+> 最后更新：2026-10-06（C-10：晚间小结用户结束语覆盖与启动校验，ADR 0035；C-04：暖心话用户模板覆盖，ADR 0034；C-03：网关内存指标读取接口，ADR 0033）
 
 ## 1. 任务状态
 
@@ -92,7 +92,7 @@ dev 构建默认连这个 mock-ai，启动后 `net_log` 表里会出现一条 `l
 |---|---|---|
 | 每日预算上限设置 → `set_cap` | FR-AIG-07、10 第 6.2 节 | 完成（#44）：`ai.daily_caps` 拆成 `ai.cap.jev` / `llm` / `chat` / `schedule` / `rewrite` 五个整数键（ADR 0019 第 4 条）；外壳启动时和 `settings_set` 改了这些键时调 `Ai::apply_caps`，立即生效、今日用量不清零。设置页控件等 D（FR-SET-08）。`ai.llm_models` 仍随 `secrets_set` 存（ADR 0012） |
 | 设置页“最近 20 次出网请求”（`Db::net_log_recent` 已有） | FR-SET-09 | 命令完成（[xinqing-ime#48](https://github.com/young8290/xinqing-ime/pull/48)）：`ai_net_log_recent`；设置页隐私分类里的展示等 D 接入（FR-SET-09 只显示字段名和时间） |
-| 演示者视图的网关指标（`HttpGateway::metrics` / `models` 已有） | FR-AIG-08 | 未做：随 B-10 演示模式 |
+| 演示者视图的网关指标（`HttpGateway::metrics` / `models` 已有） | FR-AIG-08 | 后端读取接口完成：`ai_gateway_metrics` 返回接口调用次数 / 成功率 / P50 / P95 / 熔断与模型状态，前端绑定 `commands.aiGatewayMetrics()`；不发请求、不扣预算、不落盘，ADR 0033。演示者视图与设置页展示仍待 D |
 | Jev 判断接进实时感知（`Sense`） | FR-STA-05 | **B 的任务**（B 交接文档 B-06）。外壳托管的 `Arc<Ai>` 实现 `AiGateway`，`sensing::start` 里 `app.state::<Arc<Ai>>()` 拿到后转成 `Arc<dyn AiGateway>` 传给 `Sense` 即可；顺带把 `need_comfort`、`valence` 填进 `MoodEvent::Sample` |
 
 ### 3.3 C-07 对话与 C-08 危机安全（对话部分）
@@ -279,3 +279,5 @@ C 的后端任务（C-01～C-10）都已完成，剩下的是评审、评测和�
 | 2026-10-06 | C-04 接通暖心话与 P-COMFORT 用户目录覆盖、启动语义校验、逐文件回退及集成测试，ADR 0034；其他模块覆盖待接入 |
 
 | 2026-10-06 | C-10 晚间小结结束语用户目录覆盖、启动校验与失败回退，ADR 0035；周信和日记覆盖仍待接入 |
+
+| 2026-10-06 | C-03 新增网关内存指标只读命令、生成绑定与命令层测试，ADR 0033；界面展示仍待 D |
