@@ -10,7 +10,6 @@ use xinqing_hub_core::domain::evening::{self, DayFacts, EveningSummary, EveningT
 use xinqing_hub_core::domain::settings;
 use xinqing_hub_core::evening::{EveningPort, EveningService};
 use xinqing_hub_core::infra::store::Db;
-use xinqing_hub_core::infra::templates::TemplateDirs;
 
 use crate::events::ReviewEvening;
 use crate::paths;
@@ -19,16 +18,14 @@ use crate::state::AppState;
 
 /// 须在 `AppState`、`Sensing` 都托管之后调用。模板加载失败时不启动（记日志），其余功能不受影响。
 pub fn start(app: &AppHandle) {
-    let templates = match paths::templates_dir()
-        .ok_or_else(|| anyhow::anyhow!("找不到 hub_templates"))
-        .and_then(|dir| Ok(EveningTemplates::load(&TemplateDirs::factory_only(dir))?))
-    {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("晚间小结不可用：{e}");
-            return;
-        }
-    };
+    let templates =
+        match paths::hub_template_dirs().and_then(|dirs| Ok(EveningTemplates::load(&dirs)?)) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("晚间小结不可用：{e}");
+                return;
+            }
+        };
     let bus = app.state::<Sensing>().bus.subscribe();
     let service = EveningService::new(
         Arc::new(ShellPort { app: app.clone() }),

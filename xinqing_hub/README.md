@@ -34,10 +34,17 @@ XQ_XQP_TCP=127.0.0.1:18765 pnpm tauri dev
 
 ## 约定
 
+- C-10 的晚间小结结束语可用数据目录下 `templates/evening.toml` 整体覆盖。保留正整数 `version` 和七组非空结束语；全部句子须通过出厂禁用词校验。文件缺失或读取、校验失败时使用出厂版本，修改后重启 Hub 生效。调试变体和 `XQ_HUB_DATA_DIR` 规则与 C-04 一致；周信与日记模板尚未接入覆盖（ADR 0035）。
+
 - C-04 的用户暖心话可放在 Hub 数据目录的 `templates/comfort.toml`，提示词可放在 `templates/prompts/comfort.md`（正式版 `%LOCALAPPDATA%\XinQing\hub\templates\`，调试版 `XinQingDev`）。从出厂文件复制后修改，重启 Hub 生效；同名文件整体替换。暖心话需保留两种风格各六组、唯一 id、6～30 个汉字的句子和简洁兜底；提示词需保留正整数版本号与三个占位符。读取或校验失败时独立回退出厂版本。用户禁用词表不生效，始终使用出厂约束。C-04 的覆盖规则详见 ADR 0034。
+
 - C-10 日记提示词可放在同一 Hub 数据目录的 `templates/prompts/diary.md`，复制出厂文件修改并重启生效。须保留完整的正整数版本标记 `<!-- version: N -->` 和正文中的 `{summary}`、`{chat_digest}`；读取或校验失败回退出厂版本。固定文案 `ui_copy.toml` 仍只认出厂版本，详见 ADR 0037。
+
+- C-03 / FR-AIG-08 的网关指标通过 `commands.aiGatewayMetrics()` 读取：`apis` 是各接口的调用次数、成功率、P50/P95 与熔断状态，`models` 是按配置优先级排列的模型状态。读取不发网络请求，不消耗预算，不含密钥或正文。指标仅在内存中，Hub 重启或更换网关配置后清空；未调用的接口不出现在 `apis`，未知的成功率与延迟为 `null`。接口已提供，演示面板与设置页展示待接入（ADR 0033）。
 
 - 前端只显示后端给的状态，不自行推断（17 第 3.2 节）；窗口打开时取快照，之后只跟随事件。
 - 固定文案只能来自 `ui_copy.toml`，组件里写裸字符串会被 ESLint（`vue/no-bare-strings-in-template`）拦下。
 - 颜色、字号、间距只用 `src/styles/tokens.css` 里的 `--xq-*` 令牌（07 第 1 节）。
 - C-10 日记可覆盖 `templates/ui_copy.toml` 的 `diary.blank`，要求顶层正整数版本和非空、无禁用词的正文；用户 `diary.safety_session` 不生效，求助标题只读出厂（ADR 0042）。
+- C-10 周信允许覆盖 `templates/prompts/letter.md` 与 `templates/letter_tips.toml`（同一 Hub 数据目录）。复制出厂文件修改后重启 Hub：提示词须有正整数版本号并保留 `{style_block}`、`{weekly_stats_json}`；配套文案须保留三档评语与 `late` / `rest_low` / `hard` / `default` 各一条建议，内容非空且通过出厂禁用词校验。读取或校验失败逐文件回退；`letter_fallback.md` 尚未接入用户覆盖，详见 ADR 0036。
+- C-10 周信正文可覆盖 `templates/letter_fallback.md`，保留版本号；仅支持已知统计变量和配对、非嵌套条件块，可空统计须包在对应条件块内。重启加载，非法内容回退出厂版本（ADR 0041）。
