@@ -13,7 +13,8 @@ use xinqing_hub_core::infra::store::{Db, ScheduleRow, StoreError, TodoRow};
 use xinqing_hub_core::reminder::ReminderCmd;
 
 use crate::error::UiError;
-use crate::schedule::{Reminders, ScheduleCopy};
+use crate::events::ReminderMissed;
+use crate::schedule::{MissedStash, Reminders, ScheduleCopy};
 use crate::state::AppState;
 
 /// 一条日程（09 D-12）。时间戳是 Unix 毫秒（前端绑定不导出 i64）。
@@ -365,6 +366,14 @@ pub fn reminder_action(
         eprintln!("提醒服务没有在运行，操作未处理");
     }
     Ok(())
+}
+
+/// 取走 Hub 启动时错过的提醒（FR-SCH-07“错过的提醒”卡片）：只给一次，取过就清空；没有时为 `null`。
+/// 卡片层打开时、收到 `reminder:missed` 时都调它，同一批不会显示两次（ADR 0036）。
+#[tauri::command]
+#[specta::specta]
+pub fn reminder_missed_take(stash: State<'_, MissedStash>) -> Option<ReminderMissed> {
+    stash.0.lock().unwrap_or_else(|e| e.into_inner()).take()
 }
 
 /// 某个状态的待办（FR-SCH-13）：`pending` / `open` / `done` / `archived`。

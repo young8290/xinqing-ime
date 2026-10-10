@@ -24,6 +24,7 @@ chat = "和晴晴聊聊"
 dashboard = "情绪看板"
 settings = "心晴设置"
 onboarding = "欢迎使用心晴"
+cards = "心晴提醒"                # 卡片层（07 第 2 节）没有标题栏，读屏用
 
 [widget]
 paused = "休息中，不看你打字啦"
@@ -37,6 +38,9 @@ care_reduced = "我会少打扰你一些"
 prob_hint = "{hedge}（可能性 {pct}%）"     # 悬停状态行时才显示概率（DS-COPY-02）
 sprite_label = "心晴：{weather}"           # 读屏播报（DS-A11Y-02）
 expand = "展开小组件"                      # 贴边隐藏后小标签的读屏名称
+research_badge = "研究模式"                # FR-DMO-04：研究模式开着时状态行旁的标识
+demo_badge = "演示模式"                    # FR-DMO-03：演示模式时状态行旁的标识
+letter_hint = "✉️ 晴晴给你写了一封信"       # 周信卡片点了“等会儿再看”，留在一句话区，点了打开信箱（FR-WGT-04）
 
 [widget.menu]                # 右键菜单（07 FR-WGT-06），顺序按规格；其余菜单项随对应功能补上
 pause = "暂停感知"
@@ -44,12 +48,34 @@ resume = "恢复感知"
 dashboard = "打开看板"
 settings = "设置"
 hide = "隐藏小组件"
+pending = "待确认日程与待办"
+pending_n = "待确认日程与待办（{n}）"
 
 [widget.feedback]            # 解释面板里的“准 / 不准”（04 FR-STA-07）
 label = "这个判断准吗"
 fit = "准"
 unfit = "不准"
 thanks = "谢谢，我记下了"
+
+[widget.comfort]             # 一句话区悬停时的暖心话反馈（05 FR-CMF-05）
+label = "这句话怎么样"
+useful = "👍 有用"
+unfit = "👎 不合适"
+mute = "🔕 今天先别说了"
+thanks = "谢谢，我记下了"
+muted = "好，今天先不主动来打扰你"
+
+[widget.footer]              # 小组件底栏（07 FR-WGT-05）；时长写法见 [common] duration_*
+typing = "⌨ 今日 {duration}"
+next = "📅 {time} {title}"
+next_tomorrow = "📅 明天 {time} {title}"
+all_day = "全天"
+todos = "✅ {n} 件待办"
+open = "打开日程与待办"
+
+[self_report]                # 研究模式的定时邀请复用“我现在…”面板（FR-DMO-04）
+invite_title = "晴晴想问问：现在感觉怎么样？"
+skip = "跳过"
 
 [self_report.options]
 sunny = "☀️ 挺好"
@@ -191,6 +217,49 @@ ai_edited = "AI 辅助生成"      # 修改过的草稿；手写的不标
 
 [schedule]                   # 06 FR-SCH 日程（C-05，ADR 0032）
 ics_description = "由心晴识别添加"   # 导出到系统日历的 .ics 里的说明（FR-SCH-08）
+
+[cards]                      # 07 FR-WGT-07 卡片层；休息提醒卡片的文案在 [rest]，提醒的按钮在 [notify]
+region = "心晴的提醒"
+more = "后面还有 {n} 张"
+detecting_schedule = "📅 识别中…"
+detecting_todo = "✅ 识别中…"
+schedule_label = "日程"
+todo_label = "待办"
+add = "添加"
+todo_add = "加入待办"
+edit = "修改"
+ignore = "忽略"
+added = "已添加 ✓"
+todo_added = "已加入待办 ✓"
+all_day = "全天"
+deadline = "{time} 截止"
+todo_due = "截止 {date}"
+location = "📍 {location}"
+conflict = "⚠ 与「{title}」时间重叠（{range}）"
+self_reply_title = "想说说吗？"           # 负面自评后，一句话区是晴晴的回应，卡片给“和晴晴聊聊”（FR-STA-10 第 2 条）
+self_reply_chat = "和晴晴聊聊"
+self_reply_later = "先不用"
+evening_title = "🌙 今天的小结"
+evening_typing = "⌨ 打字 {duration}"
+evening_water = "💧 喝水 {n} 次"
+evening_rest = "👀 休息 {done}/{due} 次"
+evening_schedules = "📅 完成日程 {n} 个"
+evening_todos = "✅ 完成待办 {n} 个"
+evening_band = "今天的天气：{band}"
+evening_open = "看看今天的看板"
+evening_dismiss = "今天不用了"
+letter_title = "✉️ 晴晴给你写了一封信"
+letter_open = "打开看看"
+letter_later = "等会儿再看"
+missed_open = "看看日程"
+
+[cards.flag]                 # 日程卡片的提示（ADR 0024、0032 的 flags）
+local = "请确认信息"
+maybe_dup = "可能已经添加过"
+confirm_date = "请确认日期"
+need_time = "请补充时刻"
+maybe_past = "时间可能已经过了"
+adjusted = "日期按日历算过了"
 
 [error]                      # DS-COPY-06：说清发生了什么 + 可以怎么做，不显示错误码
 generic = "出了点小问题，稍后再试一次吧。"
@@ -537,6 +606,11 @@ chart_label = "最近 {n} 晚的停止打字时间折线：平均 {avg}，{late}
 close = "关闭"
 retry = "重试"
 coming_soon = "这里还在准备中，很快就来。"
+ai_generated = "AI 生成"                  # DS-COPY-05：AI 写的文字旁的小标签
+ai_detected = "AI 识别"                   # DS-COPY-05：日程与待办卡片用这一个
+duration_m = "{m} 分钟"                   # DS-COPY-07：时长写成“1 小时 42 分”
+duration_h = "{h} 小时"
+duration_hm = "{h} 小时 {m} 分"
 
 [routine]
 stop_typing_note = "只统计在这台电脑上打字的时间，不等于入睡时间"

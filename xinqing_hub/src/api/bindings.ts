@@ -80,6 +80,11 @@ export const commands = {
 	 */
 	hotkeyStatus: () => __TAURI_INVOKE<HotkeyStatus[]>("hotkey_status"),
 	/**
+	 *  本次启动时数据库损坏、已备份并重建（FR-DAT-01）：小组件一句话区提示 `error.db_rebuilt`。
+	 *  只有第一次调用返回真，小组件重开不会再提示（ADR 0036）。
+	 */
+	dbRebuiltTake: () => __TAURI_INVOKE<boolean>("db_rebuilt_take"),
+	/**
 	 *  用户点了休息提醒卡片上的按钮（FR-RST-06 第 2 条）：完成或关闭后该类计时清零，“5 分钟后”顺延；
 	 *  每次操作记一条 `reminder_log`（FR-RST-08）。服务没在运行时忽略。
 	 */
@@ -203,6 +208,15 @@ export const commands = {
 	scheduleExportIcs: (ids: number[]) => typedError<string, UiError>(__TAURI_INVOKE("schedule_export_ics", { ids })),
 	/**  提醒卡片上的操作（FR-SCH-07）：`ok` 知道了、`snooze_5` / `snooze_10` 5 / 10 分钟后再提醒。`id` 是 `reminder:due` 带的。 */
 	reminderAction: (id: number, action: string) => typedError<null, UiError>(__TAURI_INVOKE("reminder_action", { id, action })),
+	/**
+	 *  取走 Hub 启动时错过的提醒（FR-SCH-07“错过的提醒”卡片）：只给一次，取过就清空；没有时为 `null`。
+	 *  卡片层打开时、收到 `reminder:missed` 时都调它，同一批不会显示两次（ADR 0036）。
+	 */
+	reminderMissedTake: () => __TAURI_INVOKE<{
+	title: string,
+	body: string,
+	items: ReminderDue[],
+} | null>("reminder_missed_take"),
 	/**  某个状态的待办（FR-SCH-13）：`pending` / `open` / `done` / `archived`。 */
 	todoList: (status: string) => typedError<TodoItem[], UiError>(__TAURI_INVOKE("todo_list", { status })),
 	/**  卡片上的“加入待办”（FR-SCH-13）：待确认 → 未完成。 */
@@ -1205,7 +1219,9 @@ export type WeekReport = {
  *  `open_window` 与 `--open` 的目标。标签与 `tauri.conf.json` 的窗口 `label`、
  *  前端 `src/windows/<label>/` 目录一一对应。
  */
-export type WindowTarget = "widget" | "chat" | "dashboard" | "settings" | "onboarding";
+export type WindowTarget = "widget" | "chat" | "dashboard" | "settings" | "onboarding" | 
+/**  卡片层（07 第 2 节、FR-WGT-07）：依附小组件，由前端决定显示与位置 */
+"cards";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

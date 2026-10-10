@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "cards",
+  "description": "只给卡片层（07 第 2 节、FR-WGT-07）：贴着小组件上方或下方显示，按卡片多少调高度，置顶跟随小组件；没有卡片时隐藏。",
+  "windows": ["cards"],
+  "permissions": [
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-show",
+    "core:window:allow-set-always-on-top"
+  ]
+}

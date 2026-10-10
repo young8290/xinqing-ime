@@ -320,6 +320,15 @@ pub async fn open_window(app: AppHandle, target: WindowTarget) -> Result<(), UiE
     windows::open(&app, target)
 }
 
+/// 本次启动时数据库损坏、已备份并重建（FR-DAT-01）：小组件一句话区提示 `error.db_rebuilt`。
+/// 只有第一次调用返回真，小组件重开不会再提示（ADR 0036）。
+#[tauri::command]
+#[specta::specta]
+pub fn db_rebuilt_take(state: State<'_, AppState>) -> bool {
+    static TAKEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    state.db_rebuilt && !TAKEN.swap(true, std::sync::atomic::Ordering::SeqCst)
+}
+
 /// 全局快捷键的注册结果（FR-ENT-04，设置页“常规”）：`conflict` 为真的是设了但没注册上（被别的软件占用，
 /// 或与另一项重复），界面提示换一个，不弹窗打扰（07 FR-ENT-04）。
 #[tauri::command]

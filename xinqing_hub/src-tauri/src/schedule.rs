@@ -41,6 +41,11 @@ pub struct Reminders {
     pub cmds: mpsc::Sender<ReminderCmd>,
 }
 
+/// 启动时错过的提醒（`reminder:missed`）。那一刻卡片层多半还没加载完、收不到事件，先存在这里，
+/// 卡片层打开时用 `reminder_missed_take` 取走，只给一次（FR-SCH-07“集中展示一次”，ADR 0036）。
+#[derive(Default)]
+pub struct MissedStash(pub std::sync::Mutex<Option<ReminderMissed>>);
+
 /// 日程命令用到的固定文案（`ui_copy.toml` 的 `[schedule]`）。
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct ScheduleCopy {
@@ -55,6 +60,7 @@ struct RawCopy {
 /// 须在 `AppState`、`Arc<Ai>`、`Sensing`、`Notifier` 都托管之后调用。模板加载失败时识别不启动（记日志），
 /// 提醒照常（文案也读不出时提醒也不启动）。
 pub fn start(app: &AppHandle) {
+    app.manage(MissedStash::default());
     let dirs = paths::templates_dir().map(TemplateDirs::factory_only);
     let copy = dirs
         .as_ref()
@@ -240,6 +246,12 @@ impl ReminderPort for ShellPort {
             body: notice.body.clone(),
             items: items.iter().map(due_of).collect(),
         };
+        *self
+            .app
+            .state::<MissedStash>()
+            .0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(ev.clone());
         if let Err(e) = ev.emit(&self.app) {
             eprintln!("推送 reminder:missed 失败：{e}");
         }

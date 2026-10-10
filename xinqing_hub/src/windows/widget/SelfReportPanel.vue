@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // “我现在…”自评面板（04 FR-STA-10）：六个选项，点一下就提交；备注选填（≤ 50 字，只存本地），不追问原因。
 // 盖住小组件的整个内容区（约 286 × 134 px）：标题、备注一行、两行选项刚好放下。
+// 研究模式的邀请（FR-DMO-04）换成邀请标题，右上角多一个“跳过”。
 import { onMounted, ref } from 'vue'
 import type { SelfWeather } from '@/api'
 import { t } from '@/i18n'
 import { NOTE_MAX, SELF_WEATHERS, selfOption } from '@/selfReport'
 
-const emit = defineEmits<{ submit: [weather: SelfWeather, note: string]; close: [] }>()
+const props = withDefaults(defineProps<{ invited?: boolean }>(), { invited: false })
+const emit = defineEmits<{ submit: [weather: SelfWeather, note: string]; close: []; skip: [] }>()
 
 const note = ref('')
 const root = ref<HTMLElement | null>(null)
@@ -20,14 +22,19 @@ onMounted(() => root.value?.querySelector<HTMLButtonElement>('.option')?.focus()
     ref="root"
     class="self-report"
     role="dialog"
-    :aria-label="t('widget.self_report_prompt')"
+    :aria-label="props.invited ? t('self_report.invite_title') : t('widget.self_report_prompt')"
     @pointerdown.stop
     @keydown.esc.stop="emit('close')"
     @keydown.enter.stop
   >
     <div class="head">
-      <p class="title">{{ t('widget.self_report_prompt') }}</p>
-      <button class="compact close" :aria-label="t('common.close')" @click.stop="emit('close')">
+      <p class="title">
+        {{ props.invited ? t('self_report.invite_title') : t('widget.self_report_prompt') }}
+      </p>
+      <button v-if="props.invited" class="compact skip" @click.stop="emit('skip')">
+        {{ t('self_report.skip') }}
+      </button>
+      <button v-else class="compact close" :aria-label="t('common.close')" @click.stop="emit('close')">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M4 4l8 8M12 4l-8 8" />
         </svg>
@@ -73,6 +80,11 @@ onMounted(() => root.value?.querySelector<HTMLButtonElement>('.option')?.focus()
   font-size: var(--xq-fs-sm);
   line-height: var(--xq-lh-sm);
   font-weight: 500;
+}
+
+.skip {
+  margin: calc(-1 * var(--xq-sp-2)) calc(-1 * var(--xq-sp-2)) calc(-1 * var(--xq-sp-2)) 0;
+  font-size: var(--xq-fs-xs);
 }
 
 .close {

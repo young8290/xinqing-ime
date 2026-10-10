@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import type { Explanation, RestDue, SelfReportChanged, SelfReportItem, StatusSnapshot } from '@/api'
+import type {
+  ComfortItem,
+  ComfortNew,
+  Explanation,
+  ScheduleItem,
+  SelfReportChanged,
+  SelfReportItem,
+  StatusSnapshot,
+} from '@/api'
 import { t } from '@/i18n'
 
 type Item = { id: string; text: string; action: () => void }
@@ -20,8 +28,24 @@ const mocks = vi.hoisted(() => ({
   selfReportSet: vi.fn(),
   selfReportList: [] as SelfReportItem[],
   emitSelfReport: null as null | ((e: SelfReportChanged) => void),
-  restAction: vi.fn(),
-  emitRest: null as null | ((e: RestDue) => void),
+  comfortList: [] as ComfortItem[],
+  comfortFeedback: vi.fn(),
+  emitComfort: null as null | ((e: ComfortNew) => void),
+  emitCareReduced: null as null | (() => void),
+  emitSafetyInvite: null as null | (() => void),
+  emitTypo: null as null | (() => void),
+  emitInvite: null as null | (() => void),
+  safetyOpen: vi.fn(),
+  researchDismiss: vi.fn(),
+  dbRebuilt: false,
+  demo: false,
+  settings: {} as Record<string, unknown>,
+  typingMin: 0,
+  schedules: [] as ScheduleItem[],
+  pendingSchedules: [] as ScheduleItem[],
+  openTodos: 0,
+  busListeners: {} as Record<string, (e: { payload: unknown }) => void>,
+  busEmit: vi.fn(),
 }))
 const ok = (data: unknown = null) => Promise.resolve({ status: 'ok', data })
 
@@ -29,14 +53,33 @@ vi.mock('@/api', async (orig) => ({
   ...(await orig<typeof import('@/api')>()),
   commands: {
     getStatus: () => ok(mocks.snapshot),
-    settingsGet: (key: string) => ok(key === 'widget.topmost'),
+    settingsGet: (key: string) => ok(key in mocks.settings ? mocks.settings[key] : key === 'widget.topmost'),
     openWindow: mocks.openWindow,
     pauseSet: mocks.pauseSet,
     stateExplain: mocks.stateExplain,
     submitFeedback: mocks.submitFeedback,
     selfReportSet: mocks.selfReportSet,
     selfReportList: () => ok(mocks.selfReportList),
-    restAction: mocks.restAction,
+    comfortList: () => ok(mocks.comfortList),
+    comfortFeedback: mocks.comfortFeedback,
+    dbRebuiltTake: () => Promise.resolve(mocks.dbRebuilt),
+    demoStatus: () => ok({ enabled: mocks.demo, speed: mocks.demo ? 60 : 1 }),
+    safetyOpen: mocks.safetyOpen,
+    researchDismiss: mocks.researchDismiss,
+    dayStats: () =>
+      ok({
+        date: '',
+        typing_min: mocks.typingMin,
+        rests_due: 0,
+        rests_done: 0,
+        water: 0,
+        comforts: 0,
+        dominant: null,
+        timeline: [],
+      }),
+    scheduleList: (status: string) => ok(status === 'pending' ? mocks.pendingSchedules : mocks.schedules),
+    todoList: (status: string) =>
+      ok(Array.from({ length: status === 'open' ? mocks.openTodos : 0 }, (_, i) => ({ id: i }))),
   },
   events: {
     statusChanged: {
@@ -52,12 +95,45 @@ vi.mock('@/api', async (orig) => ({
         return () => {}
       },
     },
-    restDue: {
-      listen: async (cb: (e: { payload: RestDue }) => void) => {
-        mocks.emitRest = (payload) => cb({ payload })
+    comfortNew: {
+      listen: async (cb: (e: { payload: ComfortNew }) => void) => {
+        mocks.emitComfort = (payload) => cb({ payload })
         return () => {}
       },
     },
+    careReduced: {
+      listen: async (cb: () => void) => {
+        mocks.emitCareReduced = cb
+        return () => {}
+      },
+    },
+    safetyInvite: {
+      listen: async (cb: () => void) => {
+        mocks.emitSafetyInvite = cb
+        return () => {}
+      },
+    },
+    moodTypo: {
+      listen: async (cb: () => void) => {
+        mocks.emitTypo = cb
+        return () => {}
+      },
+    },
+    researchInvite: {
+      listen: async (cb: () => void) => {
+        mocks.emitInvite = cb
+        return () => {}
+      },
+    },
+    reminderDue: { listen: async () => () => {} },
+    todoReady: { listen: async () => () => {} },
+  },
+}))
+vi.mock('@tauri-apps/api/event', () => ({
+  emit: mocks.busEmit,
+  listen: async (name: string, cb: (e: { payload: unknown }) => void) => {
+    mocks.busListeners[name] = cb
+    return () => {}
   },
 }))
 vi.mock('@tauri-apps/api/window', () => ({
@@ -80,6 +156,28 @@ vi.mock('@tauri-apps/api/menu', () => ({
 }))
 
 const { default: App } = await import('./App.vue')
+
+// 新加的来源默认都是空的，各用例按需打开
+beforeEach(() => {
+  mocks.comfortList = []
+  mocks.comfortFeedback.mockReset().mockReturnValue(ok())
+  mocks.safetyOpen.mockReset().mockReturnValue(ok(5))
+  mocks.researchDismiss.mockReset().mockReturnValue(ok())
+  mocks.dbRebuilt = false
+  mocks.demo = false
+  mocks.settings = {}
+  mocks.typingMin = 0
+  mocks.schedules = []
+  mocks.pendingSchedules = []
+  mocks.openTodos = 0
+  mocks.busListeners = {}
+  mocks.busEmit.mockReset().mockResolvedValue(undefined)
+  try {
+    localStorage.clear()
+  } catch {
+    // jsdom 里总能用
+  }
+})
 
 async function mountWidget() {
   const w = mount(App)
@@ -121,6 +219,7 @@ describe('小组件', () => {
       '我现在…',
       '暂停感知',
       '打开看板',
+      '待确认日程与待办',
       '设置',
       '隐藏小组件',
     ])
@@ -458,7 +557,7 @@ describe('“我现在…”自评（FR-STA-10、FR-WGT-06）', () => {
   })
 })
 
-describe('休息提醒卡片（FR-RST-02～06）', () => {
+describe('一句话区（FR-WGT-04、FR-CMF-04/05）', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -475,69 +574,194 @@ describe('休息提醒卡片（FR-RST-02～06）', () => {
     mocks.show.mockReset().mockResolvedValue(undefined)
     mocks.openWindow.mockReset().mockReturnValue(ok())
     mocks.stateExplain.mockReset().mockReturnValue(ok(null))
-    mocks.restAction.mockReset().mockReturnValue(ok())
   })
 
-  async function due(payload: RestDue) {
+  const comfort = (p: Partial<ComfortNew> = {}): ComfortNew => ({
+    id: 11,
+    text: '想说的话不急着说完，慢慢来。',
+    source: 'llm',
+    ai_generated: true,
+    trigger: 'auto',
+    ...p,
+  })
+
+  it('没有消息时是空闲问候', async () => {
     const w = await mountWidget()
-    mocks.emitRest!(payload)
-    await flushPromises()
-    return w
-  }
-  const buttons = (w: Awaited<ReturnType<typeof mountWidget>>) =>
-    w.findAll('[role=alertdialog] button').map((b) => b.text())
-
-  it('喝水：卡片给三个按钮，“已完成”叫“喝了”；点了就收起并交给后端，不会打开对话', async () => {
-    const w = await due({ kind: 'water', tired: false })
-    const card = w.find('[role=alertdialog]')
-    expect(card.text()).toContain(t('rest.water'))
-    expect(buttons(w)).toEqual([t('rest.btn_drank'), t('rest.btn_later'), t('rest.btn_today_off')])
-    await card.findAll('button')[0]!.trigger('click')
-    await flushPromises()
-    expect(mocks.restAction).toHaveBeenCalledWith('water', 'done')
-    expect(w.find('[role=alertdialog]').exists()).toBe(false)
-    expect(mocks.openWindow).not.toHaveBeenCalled()
+    expect(w.find('.message').text()).toBe(t('greeting.idle'))
+    expect(w.find('.ai-tag').exists()).toBe(false)
   })
 
-  it('“今天不再提醒”与 Esc（等同 5 分钟后）', async () => {
-    const w = await due({ kind: 'move', tired: false })
-    await w.findAll('[role=alertdialog] button')[2]!.trigger('click')
-    await flushPromises()
-    expect(mocks.restAction).toHaveBeenLastCalledWith('move', 'today_off')
-    mocks.emitRest!({ kind: 'night', tired: false })
-    await flushPromises()
-    await w.find('[role=alertdialog]').trigger('keydown', { key: 'Escape' })
-    await flushPromises()
-    expect(mocks.restAction).toHaveBeenLastCalledWith('night', 'later')
-    expect(w.find('[role=alertdialog]').exists()).toBe(false)
+  it('打开时用今天最后一句暖心话做“今日一句”，AI 写的带标识', async () => {
+    mocks.comfortList = [
+      { id: 1, ts: 1, text: '早上的', ai_generated: false, trigger: 'auto', feedback: null },
+      { id: 2, ts: 2, text: '刚才那句', ai_generated: true, trigger: 'auto', feedback: null },
+    ]
+    const w = await mountWidget()
+    expect(w.find('.message').text()).toBe('刚才那句')
+    expect(w.find('.ai-tag').text()).toBe('AI 生成')
   })
 
-  it('疲惫时护眼换文案', async () => {
-    const w = await due({ kind: 'eye', tired: true })
-    expect(w.find('[role=alertdialog]').text()).toContain(t('rest.eye_tired'))
-  })
-
-  describe('护眼倒计时', () => {
+  describe('新的暖心话', () => {
     beforeEach(() =>
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] }),
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] }),
     )
     afterEach(() => vi.useRealTimers())
 
-    it('点“已完成”先倒数 20 秒，再显示致谢 2 秒，然后才交给后端', async () => {
-      const w = await due({ kind: 'eye', tired: false })
-      await w.findAll('[role=alertdialog] button')[0]!.trigger('click')
+    it('逐字出现（每字 40 ms），模板句不带 AI 标识', async () => {
+      const w = await mountWidget()
+      mocks.emitComfort!(comfort({ text: '慢慢来。', ai_generated: false, source: 'template' }))
       await flushPromises()
-      expect(w.find('[role=timer]').text()).toBe('20')
-      expect(buttons(w)).toEqual([])
-      await vi.advanceTimersByTimeAsync(19_000)
-      expect(w.find('[role=timer]').text()).toBe('1')
-      await vi.advanceTimersByTimeAsync(1_000)
-      expect(w.find('[role=timer]').text()).toBe(t('rest.eye_done'))
-      expect(mocks.restAction).not.toHaveBeenCalled()
-      await vi.advanceTimersByTimeAsync(2_000)
-      await flushPromises()
-      expect(mocks.restAction).toHaveBeenCalledWith('eye', 'done')
-      expect(w.find('[role=alertdialog]').exists()).toBe(false)
+      expect(w.find('.message').text()).toBe('')
+      await vi.advanceTimersByTimeAsync(80)
+      expect(w.find('.message').text()).toBe('慢慢')
+      await vi.advanceTimersByTimeAsync(200)
+      expect(w.find('.message').text()).toBe('慢慢来。')
+      expect(w.find('.ai-tag').exists()).toBe(false)
     })
+
+    it('2 小时后淡出为今日一句：同一句话还在，问候不会盖过它', async () => {
+      const w = await mountWidget()
+      mocks.emitComfort!(comfort())
+      await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000 + 1000)
+      expect(w.find('.message').text()).toBe(comfort().text)
+      expect(w.find('.ai-tag').exists()).toBe(true)
+    })
+  })
+
+  it('悬停时的 👍 / 👎 / 🔕：记到这句话上并致谢（FR-CMF-05）', async () => {
+    const w = await mountWidget()
+    mocks.emitComfort!(comfort())
+    await flushPromises()
+    const group = w.find('[role=group][aria-label="这句话怎么样"]')
+    expect(group.findAll('button').map((b) => b.attributes('aria-label'))).toEqual([
+      '👍 有用',
+      '👎 不合适',
+      '🔕 今天先别说了',
+    ])
+    await group.find('button[data-verdict=mute]').trigger('click')
+    await flushPromises()
+    expect(mocks.comfortFeedback).toHaveBeenCalledWith(11, 'mute')
+    expect(w.find('.thanks').text()).toBe(t('widget.comfort.muted'))
+    expect(mocks.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('降档时告诉用户“我会少打扰你一些”', async () => {
+    const w = await mountWidget()
+    mocks.emitCareReduced!()
+    await flushPromises()
+    expect(w.find('.message').text()).toBe(t('widget.care_reduced'))
+  })
+
+  it('改写的求助入口优先级最高，点了开安全模式对话并收起（ADR 0028）', async () => {
+    const w = await mountWidget()
+    mocks.emitComfort!(comfort())
+    mocks.emitSafetyInvite!()
+    await flushPromises()
+    const link = w.find('button.message')
+    expect(link.text()).toBe(t('rewrite.crisis_bubble'))
+    await link.trigger('click')
+    await flushPromises()
+    expect(mocks.safetyOpen).toHaveBeenCalled()
+    expect(mocks.openWindow).not.toHaveBeenCalled()
+    expect(w.find('button.message').exists()).toBe(false)
+  })
+
+  it('卡片层转来的周信提示：点了打开看板信箱', async () => {
+    const w = await mountWidget()
+    mocks.busListeners['xq:review-hint']!({ payload: { letter: 4 } })
+    await flushPromises()
+    await w.find('button.message').trigger('click')
+    await flushPromises()
+    expect(mocks.openWindow).toHaveBeenCalledWith('dashboard')
+    expect(mocks.busEmit).toHaveBeenCalledWith('xq:dashboard-nav', { page: 'mailbox', letter: 4 })
+  })
+
+  it('数据库刚重建过：提示一次（FR-DAT-01）', async () => {
+    mocks.dbRebuilt = true
+    const w = await mountWidget()
+    expect(w.find('.message').text()).toBe(t('error.db_rebuilt'))
+  })
+})
+
+describe('底栏、角标与其他（FR-WGT-05、FR-DMO-03/04）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.snapshot = {
+      state: 'fluent',
+      weather: 'sunny',
+      prob: 0.9,
+      offline: false,
+      paused: false,
+      connected: true,
+      baseline_progress: 100,
+    }
+    mocks.setAlwaysOnTop.mockReset().mockResolvedValue(undefined)
+    mocks.show.mockReset().mockResolvedValue(undefined)
+    mocks.openWindow.mockReset().mockReturnValue(ok())
+    mocks.stateExplain.mockReset().mockReturnValue(ok(null))
+    mocks.menuItems = []
+    mocks.popup.mockReset().mockReturnValue(ok())
+  })
+
+  it('底栏：今日输入时长与待办数，点了打开看板“日程与待办”', async () => {
+    mocks.typingMin = 102
+    mocks.openTodos = 3
+    const w = await mountWidget()
+    expect(w.find('.footer-left').text()).toBe('⌨ 今日 1 小时 42 分')
+    const right = w.find('.footer-right')
+    expect(right.text()).toBe('✅ 3 件待办')
+    await right.trigger('click')
+    await flushPromises()
+    expect(mocks.openWindow).toHaveBeenCalledWith('dashboard')
+    expect(mocks.busEmit).toHaveBeenCalledWith('xq:dashboard-nav', { page: 'schedule' })
+  })
+
+  it('没有日程也没有待办时右边不显示', async () => {
+    const w = await mountWidget()
+    expect(w.find('.footer-right').exists()).toBe(false)
+  })
+
+  it('菜单里的待确认日程与待办带数量，点了打开日程页', async () => {
+    mocks.pendingSchedules = [{ id: 1 } as ScheduleItem, { id: 2 } as ScheduleItem]
+    const w = await mountWidget()
+    await w.find('main').trigger('contextmenu')
+    await flushPromises()
+    const item = mocks.menuItems.find((i) => i.id === 'pending')!
+    expect(item.text).toBe('待确认日程与待办（2）')
+    item.action()
+    await flushPromises()
+    expect(mocks.busEmit).toHaveBeenCalledWith('xq:dashboard-nav', { page: 'schedule' })
+  })
+
+  it('研究模式开着（有编号）时显示标识；演示模式也显示', async () => {
+    mocks.settings = { 'research.enabled': true, 'research.id': 'P07' }
+    mocks.demo = true
+    const w = await mountWidget()
+    const badges = w.findAll('.badge').map((b) => b.text())
+    expect(badges).toEqual([t('widget.demo_badge'), t('widget.research_badge')])
+  })
+
+  it('研究模式开关开着但没填编号：不算研究模式', async () => {
+    mocks.settings = { 'research.enabled': true, 'research.id': '' }
+    const w = await mountWidget()
+    expect(w.findAll('.badge')).toHaveLength(0)
+  })
+
+  it('研究模式的邀请：弹出“我现在…”面板，换标题，可以跳过', async () => {
+    const w = await mountWidget()
+    mocks.emitInvite!()
+    await flushPromises()
+    const dialog = w.find('[role=dialog]')
+    expect(dialog.attributes('aria-label')).toBe(t('self_report.invite_title'))
+    await dialog.find('button.skip').trigger('click')
+    await flushPromises()
+    expect(mocks.researchDismiss).toHaveBeenCalled()
+    expect(w.find('[role=dialog]').exists()).toBe(false)
+  })
+
+  it('卡片层有卡片时告诉小组件（贴边隐藏不收起）', async () => {
+    await mountWidget()
+    expect(mocks.busListeners['xq:cards']).toBeTypeOf('function')
   })
 })

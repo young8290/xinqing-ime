@@ -1,31 +1,35 @@
 <script setup lang="ts">
-// 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区、离线角标、单击打开对话、拖动吸附、
-// 右键菜单、贴边隐藏、悬停状态行显示解释、“我现在…”自评、休息提醒卡片（06 FR-RST-06）。卡片层、底栏数据、一句话区的消息优先级随 D-02 / D-04 后续 PR 补上
-// （进度见 docs/xinqing/handover/D-前端与视觉.md）。
+// 桌面小组件（07 FR-WGT-01～06）：状态行、小精灵、一句话区（消息优先级，FR-WGT-04）、底栏（FR-WGT-05）、离线 / 研究 / 演示角标、
+// 单击打开对话、拖动吸附、右键菜单、贴边隐藏、悬停状态行显示解释、“我现在…”自评与研究模式的邀请。
+// 日程、待办、提醒、休息、自评回应、晚间小结、周信这些卡片在卡片层窗口（../cards，FR-WGT-07）。
 import { computed, nextTick, onMounted, ref, toRef } from 'vue'
 import { LogicalPosition, getCurrentWindow } from '@tauri-apps/api/window'
 import { Menu } from '@tauri-apps/api/menu'
-import { commands, unwrap, type SelfWeather, type Verdict } from '@/api'
+import { commands, events, unwrap, type ComfortVerdict, type SelfWeather, type Verdict } from '@/api'
 import ExplainPanel from '@/components/ExplainPanel.vue'
 import WeatherSprite from '@/components/WeatherSprite.vue'
 import WeatherStage from '@/components/WeatherStage.vue'
-import { errorText, t } from '@/i18n'
+import { t } from '@/i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useStatusStore } from '@/stores/status'
 import { menuEntries, type MenuAction } from './menu'
-import RestCard from './RestCard.vue'
+import MessageLine from './MessageLine.vue'
+import { NOTICE_MS, type Message } from './messages'
 import SelfReportPanel from './SelfReportPanel.vue'
 import { statusLine } from './statusLine'
+import { onCards, openDashboard } from '../shared/bus'
 import { takeGreeting } from '../shared/firstRun'
 import { useExplain } from './useExplain'
-import { useRest } from './useRest'
+import { useFooter } from './useFooter'
+import { useMessages } from './useMessages'
 import { useSelfReport } from './useSelfReport'
 import { useWidgetWindow } from './useWidgetWindow'
 
 const status = useStatusStore()
 const settings = useSettingsStore()
 const selfReport = useSelfReport()
-const rest = useRest()
+const msgs = useMessages()
+const footer = useFooter()
 const line = computed(() => (status.snapshot ? statusLine(status.snapshot, selfReport.active.value) : null))
 const setting = <T,>(key: string, fallback: T) =>
   computed(() => {
@@ -35,18 +39,26 @@ const setting = <T,>(key: string, fallback: T) =>
 const opacity = setting('widget.opacity', 1)
 const autohide = setting('widget.autohide', false)
 const topmost = setting('widget.topmost', true)
+// 研究模式：填了编号并打开开关才生效（ADR 0025），状态行旁显示“研究模式”（FR-DMO-04）
+const researchOn = setting('research.enabled', false)
+const researchId = setting('research.id', '')
+const research = computed(() => researchOn.value && researchId.value !== '')
+const demo = ref(false)
 // 刚走完首次引导：晴晴先打个招呼（FR-ONB-05）
-const message = ref(takeGreeting() ? t('greeting.first_run') : t('greeting.idle'))
+if (takeGreeting()) msgs.notice(t('greeting.first_run'), NOTICE_MS)
 const menuOpen = ref(false)
+/** 卡片层现在有几张卡片（卡片层窗口告诉我们） */
+const cards = ref(0)
 
-// 菜单、自评面板或休息提醒开着时不贴边收起
-const holdOpen = computed(() => menuOpen.value || selfReport.panelOpen.value || rest.due.value !== null)
+// 菜单、自评面板开着，或卡片层有卡片时不贴边收起
+const holdOpen = computed(() => menuOpen.value || selfReport.panelOpen.value || cards.value > 0)
 const place = useWidgetWindow({ autohide, topmost, holdOpen })
 const explain = useExplain(
   toRef(status, 'snapshot'),
   computed(() => selfReport.active.value !== null),
 )
 const penEl = ref<HTMLElement | null>(null)
+const stage = ref<InstanceType<typeof WeatherStage> | null>(null)
 
 /** 打开“我现在…”（状态行的 ✎ 或右键菜单，FR-WGT-06） */
 function openSelfReport(): void {
@@ -54,9 +66,13 @@ function openSelfReport(): void {
   selfReport.panelOpen.value = true
 }
 
-/** 关面板后把焦点还给 ✎，键盘用户不至于掉到窗口外 */
-async function closeSelfReport(): Promise<void> {
-  selfReport.panelOpen.value = false
+/** 关面板后把焦点还给 ✎，键盘用户不至于掉到窗口外。研究模式的邀请被关掉等于跳过。 */
+async function closeSelfReport(skip = false): Promise<void> {
+  try {
+    await (skip ? selfReport.skip() : selfReport.close())
+  } catch (e) {
+    msgs.error(e)
+  }
   await nextTick()
   penEl.value?.focus()
 }
@@ -67,7 +83,7 @@ async function onSelfSubmit(weather: SelfWeather, note: string): Promise<void> {
     await nextTick()
     penEl.value?.focus()
   } catch (e) {
-    message.value = errorText(e)
+    msgs.error(e)
   }
 }
 const panel = ref<{ $el: HTMLElement } | null>(null)
@@ -97,40 +113,103 @@ async function vote(verdict: Verdict): Promise<void> {
     // 焦点原来在按钮上（键盘用户）：交给致谢那句，Esc 照样能收起面板
     if (hadFocus) thanksEl.value?.focus()
   } catch (e) {
-    message.value = errorText(e)
+    msgs.error(e)
+  }
+}
+
+/** 暖心话的 👍 / 👎 / 🔕（FR-CMF-05）。🔕 让今天剩下的时间不再主动关怀，休息提醒不受影响。 */
+async function voteComfort(id: number, verdict: ComfortVerdict): Promise<void> {
+  try {
+    await unwrap(commands.comfortFeedback(id, verdict))
+  } catch (e) {
+    msgs.error(e)
+  }
+}
+
+/** 点一句带动作的消息：求助入口开一段安全模式的对话并显示求助卡片（ADR 0028 第 4 条）；周信提示打开信箱。 */
+async function onMessageAct(m: Message): Promise<void> {
+  if (!m.action) return
+  try {
+    if (m.action.type === 'safety') {
+      await unwrap(commands.safetyOpen())
+      msgs.dismiss('safety')
+    } else {
+      await openDashboard({ page: 'mailbox', letter: m.action.id })
+      msgs.dismiss('review')
+    }
+  } catch (e) {
+    msgs.error(e)
   }
 }
 
 onMounted(async () => {
   void place.start()
   try {
-    await Promise.all([status.init(), settings.init(['widget.opacity', 'widget.autohide', 'widget.topmost'])])
+    await Promise.all([
+      status.init(),
+      settings.init([
+        'widget.opacity',
+        'widget.autohide',
+        'widget.topmost',
+        'research.enabled',
+        'research.id',
+      ]),
+    ])
   } catch (e) {
-    message.value = errorText(e)
+    msgs.error(e)
   }
   // 自评覆盖期取不到时只是少显示“你说的”，不打扰用户
   selfReport.init().catch((e) => console.warn('读取自评失败', e))
-  // 收不到提醒时光标旁气泡照样会出现，这里只打警告
-  rest.init().catch((e) => console.warn('订阅休息提醒失败', e))
+  // 新的暖心话：小精灵“靠近”（FR-CMF-04 第 5 条）；取不到“今日一句”时只是少一句话
+  msgs.init(() => stage.value?.play('approach')).catch((e) => console.warn('订阅一句话区消息失败', e))
+  footer.init().catch((e) => console.warn('读取底栏失败', e))
+  onCards((c) => (cards.value = c.count)).catch((e) => console.warn('订阅卡片层失败', e))
+  // 打错字：小精灵“晃一下”，天气不变（FR-WGT-03、DS-MOTION-02）；闭眼（暂停）时不晃
+  events.moodTypo
+    .listen(() => {
+      if (!line.value?.eyesClosed) stage.value?.play('shake')
+    })
+    .catch((e) => console.warn('订阅打错字事件失败', e))
+  try {
+    demo.value = (await unwrap(commands.demoStatus())).enabled
+  } catch (e) {
+    console.warn('读取演示模式失败', e)
+  }
 })
 
 async function run(action: () => Promise<unknown>): Promise<void> {
   try {
     await action()
   } catch (e) {
-    message.value = errorText(e)
+    msgs.error(e)
   }
 }
 
 const openChat = () => run(() => unwrap(commands.openWindow('chat')))
+const openSchedule = () => run(() => openDashboard({ page: 'schedule' }))
 
 const ACTIONS: Record<MenuAction, () => Promise<unknown>> = {
   self_report: async () => openSelfReport(),
   pause: () => status.setPaused(true),
   resume: () => status.setPaused(false),
   dashboard: () => unwrap(commands.openWindow('dashboard')),
+  pending: () => openDashboard({ page: 'schedule' }),
   settings: () => unwrap(commands.openWindow('settings')),
   hide: () => getCurrentWindow().hide(),
+}
+
+/** 待确认的日程与待办一共几件（菜单项上的数字）；取不到就不显示数字 */
+async function pendingCount(): Promise<number> {
+  try {
+    const [s, td] = await Promise.all([
+      unwrap(commands.scheduleList('pending')),
+      unwrap(commands.todoList('pending')),
+    ])
+    return s.length + td.length
+  } catch (e) {
+    console.warn('读取待确认日程失败', e)
+    return 0
+  }
 }
 
 /** 系统原生菜单：能伸出小组件窗口之外，读屏和高对比度也由系统负责。`at` 省略时在鼠标处弹出。 */
@@ -138,7 +217,7 @@ async function openMenu(at?: LogicalPosition): Promise<void> {
   if (menuOpen.value) return
   menuOpen.value = true
   try {
-    const items = menuEntries(status.snapshot).map(({ id, text }) => ({
+    const items = menuEntries(status.snapshot, await pendingCount()).map(({ id, text }) => ({
       id,
       text,
       action: () => void run(ACTIONS[id]),
@@ -146,7 +225,7 @@ async function openMenu(at?: LogicalPosition): Promise<void> {
     const menu = await Menu.new({ items })
     await menu.popup(at)
   } catch (e) {
-    message.value = errorText(e)
+    msgs.error(e)
   } finally {
     menuOpen.value = false
   }
@@ -209,7 +288,7 @@ function onPointerUp(): void {
       @contextmenu.prevent="openMenu()"
       @keydown="onKeydown"
     >
-      <WeatherStage v-if="line" :weather="line.weather" :eyes-closed="line.eyesClosed" />
+      <WeatherStage v-if="line" ref="stage" :weather="line.weather" :eyes-closed="line.eyesClosed" />
       <div class="content">
         <!-- 状态行：悬停或键盘聚焦时显示解释（FR-WGT-06、FR-STA-09）；右侧依次是离线角标和 ✎“我现在…” -->
         <div class="status-row">
@@ -227,6 +306,8 @@ function onPointerUp(): void {
           >
             {{ line?.text }}
           </p>
+          <span v-if="demo" class="badge">{{ t('widget.demo_badge') }}</span>
+          <span v-if="research" class="badge">{{ t('widget.research_badge') }}</span>
           <span v-if="status.snapshot?.offline" class="badge">{{ t('widget.offline_badge') }}</span>
           <button
             ref="penEl"
@@ -245,8 +326,10 @@ function onPointerUp(): void {
         <SelfReportPanel
           v-if="selfReport.panelOpen.value"
           class="overlay"
+          :invited="selfReport.invited.value"
           @submit="onSelfSubmit"
-          @close="closeSelfReport"
+          @close="closeSelfReport()"
+          @skip="closeSelfReport(true)"
         />
         <ExplainPanel
           v-if="explain.lines.value"
@@ -274,17 +357,23 @@ function onPointerUp(): void {
             </div>
           </template>
         </ExplainPanel>
-        <!-- 休息提醒排在最后，盖在自评、解释面板之上 -->
-        <RestCard
-          v-if="rest.due.value"
-          class="overlay"
-          :due="rest.due.value"
-          :countdown="rest.countdown.value"
-          @act="(a) => run(() => rest.act(a))"
-        />
-        <!-- FR-WGT-04：最多 2 行，悬停显示全文 -->
-        <p class="message" :title="message">{{ message }}</p>
-        <footer class="footer" />
+        <!-- FR-WGT-04：消息优先级、最多 2 行、悬停显示全文与反馈按钮 -->
+        <MessageLine :msg="msgs.shown.value" @act="onMessageAct" @vote="voteComfort" />
+        <!-- FR-WGT-05：左边今日输入时长，右边下一个日程或待办数，点了打开看板“日程与待办” -->
+        <footer class="footer">
+          <span v-if="footer.left.value" class="footer-left">{{ footer.left.value }}</span>
+          <button
+            v-if="footer.right.value"
+            class="footer-right"
+            :title="t('widget.footer.open')"
+            :aria-label="`${footer.right.value}，${t('widget.footer.open')}`"
+            @pointerdown.stop
+            @keydown.enter.stop
+            @click.stop="openSchedule"
+          >
+            {{ footer.right.value }}
+          </button>
+        </footer>
       </div>
     </main>
   </div>
@@ -406,23 +495,33 @@ body {
   line-height: var(--xq-lh-xs);
 }
 
-.message {
-  display: -webkit-box;
-  flex: 1;
-  margin: 0;
-  overflow: hidden;
-  font-size: var(--xq-fs-lg);
-  font-weight: 500;
-  line-height: var(--xq-lh-lg);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2; /* FR-WGT-04：最多 2 行 */
-}
-
 .footer {
+  display: flex;
+  gap: var(--xq-sp-2);
+  align-items: center;
+  justify-content: space-between;
   min-height: var(--xq-lh-xs);
   color: var(--xq-text-2);
   font-size: var(--xq-fs-xs);
   line-height: var(--xq-lh-xs);
+  white-space: nowrap;
+}
+
+.footer-left {
+  flex: none;
+}
+
+/* 底栏很矮：点击目标靠负边距撑到 32 px 高（DS-A11Y-03），不把底栏撑高 */
+.footer-right {
+  min-width: 0;
+  margin: calc(-1 * var(--xq-sp-2)) calc(-1 * var(--xq-sp-1)) calc(-1 * var(--xq-sp-2)) 0;
+  padding: 0 var(--xq-sp-1);
+  overflow: hidden;
+  border-color: transparent;
+  background: transparent;
+  color: var(--xq-text-2);
+  font-size: var(--xq-fs-xs);
+  text-overflow: ellipsis;
 }
 
 .badge {

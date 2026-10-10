@@ -4,7 +4,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // 每个窗口一个入口（17 第 3.1 节）。名字与 tauri.conf.json 的窗口 label、src/windows/<label>/ 一致。
-export const WINDOWS = ['widget', 'chat', 'dashboard', 'settings', 'onboarding'] as const
+export const WINDOWS = ['widget', 'chat', 'dashboard', 'settings', 'onboarding', 'cards'] as const
 
 const src = fileURLToPath(new URL('./src', import.meta.url))
 
