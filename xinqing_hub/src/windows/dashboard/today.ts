@@ -179,6 +179,8 @@ export function ecgOption(
       {
         type: 'line',
         data: pulses.map((p) => [p.ts, Math.min(p.iki_ms, 5000) / 1000]),
+        // 阶梯线：两键之间保持上一个间隔，到下一键才跳到新的间隔，长停顿是一根窄窄的尖峰（像心电图），不是一条斜坡
+        step: 'end',
         showSymbol: false,
         lineStyle: { color: c.series, width: 2, cap: 'round', join: 'round' },
         itemStyle: { color: c.series },

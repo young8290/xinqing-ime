@@ -122,7 +122,7 @@ watch(month, () => {
           }}</span>
         </p>
         <StateTimeline :date="picked" :segments="day.stats.timeline" :reports="day.reports" />
-        <h3>{{ t('dashboard.today.comfort_title') }}</h3>
+        <h3>{{ t('dashboard.calendar.comforts') }}</h3>
         <ComfortList :date="picked" />
         <h3>{{ t('dashboard.calendar.diaries') }}</h3>
         <p v-if="day.diaries.length === 0" class="muted">{{ t('dashboard.calendar.no_diary') }}</p>
@@ -160,8 +160,9 @@ watch(month, () => {
   flex-direction: column;
   gap: 2px;
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
-  min-height: 64px;
+  height: 76px; /* 固定高度：有没有 📓 的格子一样高，每行对齐 */
   padding: var(--xq-sp-1);
   border-color: var(--xq-border);
   background: var(--xq-surface);
