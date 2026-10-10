@@ -14,6 +14,10 @@ export interface ChartColors {
   text: string
   /** 提示框底色 */
   tooltipBg: string
+  /** 热力图里“0”的格子：比底色深一档，看得出格子在那儿 */
+  empty: string
+  /** 打字心电图上成串退格的标记（07 FR-DSH-02 规定用红色；另有三角形状与图例，不只靠颜色） */
+  alert: string
 }
 
 /** 读不到令牌时（测试环境）的回落值，与浅色令牌一致 */
@@ -24,6 +28,8 @@ const FALLBACK: ChartColors = {
   axisText: '#746e64',
   text: '#2b2a28',
   tooltipBg: '#ffffff',
+  empty: '#f6f3ee',
+  alert: '#c23a2e',
 }
 
 export function chartColors(root: Element = document.documentElement): ChartColors {
@@ -36,6 +42,8 @@ export function chartColors(root: Element = document.documentElement): ChartColo
     axisText: v('--xq-text-3', FALLBACK.axisText),
     text: v('--xq-text-1', FALLBACK.text),
     tooltipBg: v('--xq-surface', FALLBACK.tooltipBg),
+    empty: v('--xq-surface-2', FALLBACK.empty),
+    alert: v('--xq-danger', FALLBACK.alert),
   }
 }
 

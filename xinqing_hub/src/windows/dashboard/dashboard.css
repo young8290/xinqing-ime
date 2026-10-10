@@ -1,0 +1,132 @@
+/* 看板各页共用的样式（只在看板窗口里）。只用设计令牌（07 第 1 节）。 */
+.d-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--xq-sp-4);
+}
+
+.d-card {
+  min-width: 0;
+  padding: var(--xq-sp-4);
+  border: 1px solid var(--xq-border);
+  border-radius: var(--xq-radius-card);
+  background: var(--xq-surface);
+  box-shadow: var(--xq-shadow-card);
+}
+
+.d-card.wide {
+  grid-column: 1 / -1;
+}
+
+.d-card h2 {
+  margin: 0 0 var(--xq-sp-2);
+}
+
+.d-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xq-sp-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--xq-sp-3);
+}
+
+.d-head h1,
+.d-head h2 {
+  margin: 0;
+}
+
+.d-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xq-sp-2);
+  align-items: center;
+}
+
+.d-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.d-list > li {
+  padding: var(--xq-sp-2) 0;
+  border-bottom: 1px solid var(--xq-border);
+}
+
+.d-list > li:last-child {
+  border-bottom: none;
+}
+
+.d-small {
+  font-size: var(--xq-fs-sm);
+  line-height: var(--xq-lh-sm);
+}
+
+.d-time {
+  display: inline-block;
+  min-width: 48px;
+  color: var(--xq-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.d-error {
+  color: var(--xq-danger);
+}
+
+/* DS-COPY-05：`AI 生成` / `AI 识别` / `AI 辅助生成` */
+.d-tag {
+  display: inline-block;
+  padding: 0 var(--xq-sp-2);
+  border-radius: var(--xq-radius-sm);
+  background: var(--xq-surface-2);
+  color: var(--xq-text-2);
+  font-size: var(--xq-fs-xs);
+  line-height: var(--xq-lh-xs);
+  vertical-align: middle;
+}
+
+/* 表格视图（每张图都有，07 DS-A11Y 与图表规范） */
+.d-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--xq-fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.d-table th,
+.d-table td {
+  padding: var(--xq-sp-1) var(--xq-sp-2);
+  border-bottom: 1px solid var(--xq-border);
+  text-align: left;
+}
+
+.d-table th {
+  color: var(--xq-text-2);
+  font-weight: 400;
+}
+
+details > summary {
+  min-height: 32px;
+  color: var(--xq-text-2);
+  font-size: var(--xq-fs-sm);
+  line-height: 32px;
+  cursor: pointer;
+}
+
+.d-input,
+.d-textarea {
+  min-height: 32px;
+  padding: 0 var(--xq-sp-2);
+  border: 1px solid var(--xq-border);
+  border-radius: var(--xq-radius-sm);
+  background: var(--xq-surface-2);
+  color: var(--xq-text-1);
+  font: inherit;
+}
+
+.d-textarea {
+  width: 100%;
+  padding: var(--xq-sp-2);
+  resize: vertical;
+}

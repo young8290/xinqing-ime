@@ -3,18 +3,51 @@
 // 颜色一律从设计令牌读（chartColors），深浅色、高对比度切换时重画；用户开了“减少动态效果”就不放动画（DS-MOTION）。
 // 用法：传一个“颜色 → option”的函数，组件负责初始化、尺寸变化、主题变化和卸载。
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { BarChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts'
+import {
+  GridComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  VisualMapContinuousComponent,
+} from 'echarts/components'
 import { init, use, type ComposeOption, type ECharts } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import type { LineSeriesOption } from 'echarts/charts'
-import type { GridComponentOption, MarkLineComponentOption, TooltipComponentOption } from 'echarts/components'
+import type {
+  BarSeriesOption,
+  HeatmapSeriesOption,
+  LineSeriesOption,
+  ScatterSeriesOption,
+} from 'echarts/charts'
+import type {
+  GridComponentOption,
+  MarkLineComponentOption,
+  TooltipComponentOption,
+  VisualMapComponentOption,
+} from 'echarts/components'
 import { chartColors, type ChartColors } from './chartTheme'
 
-use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
+// 看板用到的：折线（作息洞察、打字心电图）、条形（周报的输入时长与状态分布）、热力图（低落与疲劳的时段）、散点（心电图上的退格标记）
+use([
+  LineChart,
+  BarChart,
+  HeatmapChart,
+  ScatterChart,
+  GridComponent,
+  TooltipComponent,
+  MarkLineComponent,
+  VisualMapContinuousComponent,
+  SVGRenderer,
+])
 
 export type ChartOption = ComposeOption<
-  LineSeriesOption | GridComponentOption | TooltipComponentOption | MarkLineComponentOption
+  | LineSeriesOption
+  | BarSeriesOption
+  | HeatmapSeriesOption
+  | ScatterSeriesOption
+  | GridComponentOption
+  | TooltipComponentOption
+  | MarkLineComponentOption
+  | VisualMapComponentOption
 >
 
 const props = defineProps<{

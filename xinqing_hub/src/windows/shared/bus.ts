@@ -1,7 +1,8 @@
 // 窗口之间的界面事件（只在前端之间传，不经后端，不是 bindings.ts 的契约）：
 // - 卡片层告诉小组件现在有几张卡片（小组件据此不贴边收起）；
 // - 周信卡片点了“等会儿再看”，小组件一句话区留一条提示（FR-WGT-04）；
-// - 别的窗口要看板打开某一页（底栏“下一个日程”、卡片上的“修改”“打开看看”等）。
+// - 别的窗口要看板打开某一页（底栏“下一个日程”、卡片上的“修改”“打开看看”等）；
+// - 看板“对话与日记”要对话窗口打开某一段对话。
 // 都用全局广播 emit：每个窗口只听自己关心的，名字统一加 `xq:` 前缀，与后端事件区分。
 import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { commands, unwrap } from '@/api'
@@ -9,6 +10,7 @@ import { commands, unwrap } from '@/api'
 export const CARDS_EVENT = 'xq:cards'
 export const REVIEW_HINT_EVENT = 'xq:review-hint'
 export const DASHBOARD_NAV_EVENT = 'xq:dashboard-nav'
+export const CHAT_OPEN_EVENT = 'xq:chat-open'
 
 /** 看板的页 */
 export type DashboardPage = 'today' | 'calendar' | 'weekly' | 'schedule' | 'mailbox' | 'chat_diary'
@@ -82,4 +84,40 @@ export function emitReviewHint(hint: ReviewHint): Promise<void> {
 
 export function onReviewHint(cb: (hint: ReviewHint) => void): Promise<UnlistenFn> {
   return listen<ReviewHint>(REVIEW_HINT_EVENT, (e) => cb(e.payload))
+}
+
+/** 对话窗口刚打开时还没开始听事件：要打开的会话同时写进 localStorage，对话窗口挂载时取一次。 */
+export const CHAT_STORAGE_KEY = 'xq.chat.open'
+
+export async function openChat(session: number): Promise<void> {
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, String(session))
+  } catch {
+    // 存不下时对话窗口照常打开，停在它自己选的会话
+  }
+  await unwrap(commands.openWindow('chat'))
+  await emit(CHAT_OPEN_EVENT, session)
+}
+
+/** 对话窗口挂载时取走要打开的会话（取过就删）。 */
+export function takeChatOpen(): number | null {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY)
+    localStorage.removeItem(CHAT_STORAGE_KEY)
+    const id = Number(raw)
+    return raw !== null && Number.isInteger(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
+}
+
+export function onChatOpen(cb: (session: number) => void): Promise<UnlistenFn> {
+  return listen<number>(CHAT_OPEN_EVENT, (e) => {
+    try {
+      localStorage.removeItem(CHAT_STORAGE_KEY)
+    } catch {
+      // 读写失败不影响打开
+    }
+    cb(e.payload)
+  })
 }
