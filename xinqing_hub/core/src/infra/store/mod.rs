@@ -18,6 +18,7 @@ use crate::infra::templates::AppCat;
 
 mod chat;
 mod comfort;
+mod dashboard;
 pub mod demo;
 mod diary;
 pub mod export;
@@ -28,6 +29,7 @@ mod summary;
 mod writer;
 pub use chat::{MessageRow, NewMessage, SessionRow};
 pub use comfort::ComfortRecord;
+pub use dashboard::ComfortRow;
 pub use diary::DiaryRow;
 pub use letter::{LetterRow, NewLetter};
 pub use schedule::{ScheduleRow, TodoRow};

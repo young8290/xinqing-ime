@@ -148,7 +148,11 @@ impl LetterPort for ShellPort {
 }
 
 /// 那周（周一 `week` 起 7 天）到 `now` 为止的统计（ADR 0030 第 3 条）。
-fn read_week(db: &Db, week: NaiveDate, now: DateTime<Local>) -> Result<WeekFacts, StoreError> {
+pub(crate) fn read_week(
+    db: &Db,
+    week: NaiveDate,
+    now: DateTime<Local>,
+) -> Result<WeekFacts, StoreError> {
     let days: Vec<NaiveDate> = week.iter_days().take(7).collect();
     let from = evening::day_range_ms(week).0;
     let to = evening::day_range_ms(days[6]).1.min(now.timestamp_millis());

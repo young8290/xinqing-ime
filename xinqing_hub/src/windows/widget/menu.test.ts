@@ -13,14 +13,19 @@ const snap: StatusSnapshot = {
 }
 
 describe('menuEntries', () => {
-  it('按规格顺序：我现在…、暂停感知、打开看板、设置、隐藏小组件', () => {
+  it('按规格顺序：我现在…、暂停感知、打开看板、待确认日程与待办、设置、隐藏小组件', () => {
     expect(menuEntries(snap).map((e) => e.text)).toEqual([
       '我现在…',
       '暂停感知',
       '打开看板',
+      '待确认日程与待办',
       '设置',
       '隐藏小组件',
     ])
+  })
+
+  it('有待确认的日程与待办时带上数量', () => {
+    expect(menuEntries(snap, 3)[3]).toEqual({ id: 'pending', text: '待确认日程与待办（3）' })
   })
 
   it('已暂停时换成“恢复感知”', () => {

@@ -13,10 +13,12 @@ mod evening;
 mod events;
 mod fullscreen;
 mod gateway;
+mod hotkeys;
 mod ime_events;
 mod letter;
 mod notify;
 mod paths;
+mod pulse;
 mod research;
 mod rest;
 mod rewrite;
@@ -65,6 +67,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::consent_get,
             commands::consent_set,
             commands::open_window,
+            commands::hotkey_status,
+            commands::db_rebuilt_take,
             commands::rest_action,
             commands::ai::ai_config_get,
             commands::ai::secrets_set,
@@ -73,6 +77,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::ai::ai_gateway_metrics,
             commands::ai::ai_net_log_recent,
             commands::comfort::comfort_feedback,
+            commands::dashboard::comfort_list,
+            commands::dashboard::day_stats,
+            commands::dashboard::month_moods,
+            commands::dashboard::week_stats,
             commands::letter::letters_list,
             commands::letter::letter_read,
             commands::letter::letter_delete,
@@ -104,6 +112,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::schedule::schedule_delete,
             commands::schedule::schedule_export_ics,
             commands::schedule::reminder_action,
+            commands::schedule::reminder_missed_take,
             commands::schedule::todo_list,
             commands::schedule::todo_confirm,
             commands::schedule::todo_ignore,
@@ -138,6 +147,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::TodoReady,
             events::ReminderDue,
             events::ReminderMissed,
+            events::MoodTypo,
+            events::TypingPulse,
         ])
 }
 
@@ -164,6 +175,8 @@ pub fn run() {
         }))
         // 系统“另存为”对话框：设置页“导出我的数据”选保存位置（FR-DAT-03）；权限只给设置窗口，见 capabilities/settings.json
         .plugin(tauri_plugin_dialog::init())
+        // 全局快捷键 Ctrl+Alt+Q / W / D（FR-ENT-04）：组合键从设置读，setup 里注册（ADR 0036）
+        .plugin(hotkeys::plugin())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
@@ -187,6 +200,8 @@ pub fn run() {
             // 休息提醒：使用时长计时与四类提醒（B-08）
             notify::start(app.handle());
             rest::start(app.handle());
+            // 打错字“晃一下”、打字心电图（DS-MOTION-02、FR-DSH-02，ADR 0036）
+            pulse::start(app.handle());
             // 研究模式：定时自评邀请（FR-DMO-04）
             research::start(app.handle());
             // 对话与对话里的危机安全（C-07、C-08）
@@ -208,6 +223,8 @@ pub fn run() {
             if let Some(target) = launch.open {
                 windows::open(app.handle(), target)?;
             }
+            app.manage(hotkeys::Hotkeys::default());
+            hotkeys::apply(app.handle());
             // 前台全屏时自动隐藏小组件（FR-WGT-01）
             fullscreen::start(app.handle());
             // 输入法配置变更：设置中心跟着刷新（ADR 0017）

@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "心晴各窗口共用：事件收发、窗口拖动与关闭。窗口清单见 07 第 2 节。",
-  "windows": ["widget", "chat", "dashboard", "settings", "onboarding"],
+  "windows": ["widget", "chat", "dashboard", "settings", "onboarding", "cards"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

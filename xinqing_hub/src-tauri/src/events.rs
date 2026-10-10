@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri_specta::Event;
-use xinqing_hub_core::care::ComfortSource;
+use xinqing_hub_core::care::{ComfortSource, ComfortTrigger};
 use xinqing_hub_core::chat::ChatFailure;
 use xinqing_hub_core::domain::rest::RestKind;
 use xinqing_hub_core::domain::self_report::SelfWeather;
@@ -58,7 +58,7 @@ pub struct LetterNew {
 }
 
 /// `comfort:new`：晴晴说了一句暖心话（FR-CMF-04）。小组件一句话区显示；`ai_generated` 时句尾加 `AI 生成` 标签，
-/// 模板句不加。
+/// 模板句不加。`trigger` 为 `self_report` 时是负面自评后的回应：卡片层另显示“和晴晴聊聊”（FR-STA-10 第 2 条，ADR 0036）。
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "comfort:new")]
 pub struct ComfortNew {
@@ -67,6 +67,7 @@ pub struct ComfortNew {
     pub text: String,
     pub source: ComfortSource,
     pub ai_generated: bool,
+    pub trigger: ComfortTrigger,
 }
 
 /// `care:reduced`：连续 3 天的反馈都是 👎 / 🔕，主动关怀频率自动降了一档（FR-CMF-06 第 2 条）。
@@ -213,4 +214,18 @@ pub struct ReminderMissed {
     pub title: String,
     pub body: String,
     pub items: Vec<ReminderDue>,
+}
+
+/// `mood:typo`：刚打错了字（04 FR-STA-04 的 `typo` 瞬时事件）。小精灵“晃一下”（DS-MOTION-02），天气不变（FR-WGT-03）。
+/// 最多每 [`crate::pulse::TYPO_MIN_GAP_MS`] 推一次，动画不会连成闪烁（DS-MOTION-04）。ADR 0036。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "mood:typo")]
+pub struct MoodTypo {}
+
+/// `typing:pulse`：最近 100 毫秒内的按键脉冲（打字心电图，FR-DSH-02、FR-DMO-03）。只有键间间隔和是不是退格，
+/// 不含键值与文字；只在看板窗口看得见时推送，最多每秒 10 次。ADR 0036。
+#[derive(Debug, Clone, Serialize, Type, Event)]
+#[tauri_specta(event_name = "typing:pulse")]
+pub struct TypingPulse {
+    pub keys: Vec<xinqing_hub_core::domain::pulse::Pulse>,
 }

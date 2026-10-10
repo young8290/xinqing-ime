@@ -1,6 +1,7 @@
 //! 窗口管理（07 第 2 节窗口清单）。窗口的尺寸与样式都写在 `tauri.conf.json`，且全部 `create: false`：
 //! 启动时由 `lib.rs` 按引导状态决定先开哪个，其余按需创建；关掉的窗口下次再从配置重建。
-//! 小组件例外：建好后由前端定好位置再显示（`visible: false`）。
+//! 小组件与卡片层例外：建好后由前端定好位置再显示（`visible: false`）。卡片层随小组件一起建（FR-WGT-07），
+//! 有卡片时自己贴着小组件显示，没有时隐藏。
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -18,15 +19,18 @@ pub enum WindowTarget {
     Dashboard,
     Settings,
     Onboarding,
+    /// 卡片层（07 第 2 节、FR-WGT-07）：依附小组件，由前端决定显示与位置
+    Cards,
 }
 
 impl WindowTarget {
-    pub const ALL: [WindowTarget; 5] = [
+    pub const ALL: [WindowTarget; 6] = [
         WindowTarget::Widget,
         WindowTarget::Chat,
         WindowTarget::Dashboard,
         WindowTarget::Settings,
         WindowTarget::Onboarding,
+        WindowTarget::Cards,
     ];
 
     pub fn label(self) -> &'static str {
@@ -36,6 +40,7 @@ impl WindowTarget {
             WindowTarget::Dashboard => "dashboard",
             WindowTarget::Settings => "settings",
             WindowTarget::Onboarding => "onboarding",
+            WindowTarget::Cards => "cards",
         }
     }
 
@@ -50,6 +55,10 @@ pub fn open<R: Runtime, M: Manager<R>>(app: &M, target: WindowTarget) -> Result<
     // 打开小组件就看到了暖心话，熄灭工具栏小圆点（FR-CMF-04 第 4 条）
     if target == WindowTarget::Widget {
         crate::comfort::widget_opened(app);
+    }
+    // 卡片层跟着小组件一起建好，事件来了才接得住（FR-WGT-07）
+    if target == WindowTarget::Widget {
+        open(app, WindowTarget::Cards)?;
     }
     let (win, created) = match app.get_webview_window(label) {
         Some(w) => (w, false),
@@ -71,6 +80,10 @@ pub fn open<R: Runtime, M: Manager<R>>(app: &M, target: WindowTarget) -> Result<
     // 小组件建好时先不显示（配置里 `visible: false`）：前端挪到记住的位置后自己 show()，
     // 免得先在配置的位置闪一下再跳过去（FR-WGT-01）
     if created && target == WindowTarget::Widget {
+        return Ok(());
+    }
+    // 卡片层只由它自己的前端显示和隐藏：没有卡片时不该出现
+    if target == WindowTarget::Cards {
         return Ok(());
     }
     if win.is_minimized()? {
@@ -113,14 +126,32 @@ mod tests {
         assert_eq!(windows.len(), WindowTarget::ALL.len());
     }
 
-    /// 小组件建好时不显示，等前端定位后再 show()（`useWidgetWindow.ts`）；其余窗口照常显示。
+    /// 小组件与卡片层建好时不显示，等前端定位后再 show()（`useWidgetWindow.ts`、`useCardsWindow.ts`）；其余窗口照常显示。
     #[test]
-    fn only_the_widget_starts_hidden() {
+    fn only_the_widget_and_cards_start_hidden() {
         let conf: serde_json::Value =
             serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
         for w in conf["app"]["windows"].as_array().unwrap() {
             let hidden = w["visible"] == false;
-            assert_eq!(hidden, w["label"] == "widget", "{}", w["label"]);
+            let floating = w["label"] == "widget" || w["label"] == "cards";
+            assert_eq!(hidden, floating, "{}", w["label"]);
         }
+    }
+
+    /// 卡片层不抢焦点、不进任务栏、跟小组件一样置顶（FR-WGT-07、07 第 2 节）。
+    #[test]
+    fn cards_layer_does_not_take_focus() {
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let w = conf["app"]["windows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|w| w["label"] == "cards")
+            .unwrap();
+        assert_eq!(w["focus"], false);
+        assert_eq!(w["skipTaskbar"], true);
+        assert_eq!(w["alwaysOnTop"], true);
+        assert_eq!(w["width"], 320);
     }
 }

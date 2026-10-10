@@ -25,3 +25,16 @@ export function weatherColor(w: Weather): string {
 export function hedge(state: MoodState): string {
   return t(state === 'unknown' ? 'explain.hedge.fluent' : (`explain.hedge.${state}` satisfies CopyKey))
 }
+
+/**
+ * 历史记录里的状态 → 天气（04 第 3.1 节对照表，与后端 `Weather::for_state` 一致）。
+ * 看板时间线、晚间小结色带这类“过去的状态”只有 MoodState，画图时按这张表取天气；`unknown` 没有天气。
+ */
+export const STATE_WEATHER: Record<MoodState, Weather | null> = {
+  fluent: 'sunny',
+  hesitant: 'cloudy',
+  low: 'rain',
+  agitated: 'storm',
+  tired: 'night',
+  unknown: null,
+}

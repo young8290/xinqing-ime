@@ -24,7 +24,7 @@ pub struct AppState {
     explanation: RwLock<Option<Explanation>>,
     /// 自动判断最近一个窗口的显示状态（自评期间也照常更新），自评时记入 `self_report.auto_state`。
     auto_state: RwLock<Option<MoodState>>,
-    /// 本次启动时数据库损坏并已重建（FR-DAT-01）。界面提示 `error.db_rebuilt` 随小组件一句话区（D-02）接入
+    /// 本次启动时数据库损坏并已重建（FR-DAT-01）。小组件一句话区经 `db_rebuilt_take` 提示一次 `error.db_rebuilt`（D-02）
     #[allow(dead_code)]
     pub db_rebuilt: bool,
 }

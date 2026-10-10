@@ -4,7 +4,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // 每个窗口一个入口（17 第 3.1 节）。名字与 tauri.conf.json 的窗口 label、src/windows/<label>/ 一致。
-export const WINDOWS = ['widget', 'chat', 'dashboard', 'settings', 'onboarding'] as const
+export const WINDOWS = ['widget', 'chat', 'dashboard', 'settings', 'onboarding', 'cards'] as const
 
 const src = fileURLToPath(new URL('./src', import.meta.url))
 
@@ -21,6 +21,8 @@ export default defineConfig({
     outDir: fileURLToPath(new URL('./dist', import.meta.url)),
     emptyOutDir: true,
     target: 'es2022',
+    // 看板窗口带 ECharts（折线、条形、热力图），单包约 600 kB；都是安装目录里的本地文件，不走网络，只在看板窗口加载
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       input: Object.fromEntries(WINDOWS.map((w) => [w, `${src}/windows/${w}/index.html`])),
     },
