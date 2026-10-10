@@ -74,14 +74,15 @@ pub fn timeline(points: &[(i64, i64, MoodState)]) -> Vec<Segment> {
     let mut out: Vec<Segment> = Vec::new();
     // 当前这一段：(起点, 最后一条记录的时刻, 状态, 最后一条的行号)
     let mut cur: Option<(i64, i64, MoodState, i64)> = None;
-    let close = |out: &mut Vec<Segment>, (start, last, state, id): (i64, i64, MoodState, i64), end: i64| {
-        out.push(Segment {
-            start_ts: start as f64,
-            end_ts: end.max(last) as f64,
-            state,
-            mood_id: u32::try_from(id).unwrap_or(0),
-        });
-    };
+    let close =
+        |out: &mut Vec<Segment>, (start, last, state, id): (i64, i64, MoodState, i64), end: i64| {
+            out.push(Segment {
+                start_ts: start as f64,
+                end_ts: end.max(last) as f64,
+                state,
+                mood_id: u32::try_from(id).unwrap_or(0),
+            });
+        };
     for &(id, ts, state) in points {
         let next = match cur {
             Some(c) if state == MoodState::Unknown => {
@@ -324,9 +325,11 @@ impl WeeklyLines {
             if groups[&LineGroup::Plain].is_empty() {
                 return Err(invalid("plain 组至少要有一句"));
             }
-            if groups.values().flatten().any(|t| {
-                t.trim().is_empty() || banned.find(t, Scene::Other).is_some()
-            }) {
+            if groups
+                .values()
+                .flatten()
+                .any(|t| t.trim().is_empty() || banned.find(t, Scene::Other).is_some())
+            {
                 return Err(invalid("句子不能为空，也不能含禁用内容"));
             }
             Ok(Self { groups })
@@ -450,7 +453,11 @@ mod tests {
         assert_eq!(m.len(), 31);
         assert_eq!(m[0].date, "2026-10-01");
         assert_eq!((m[2].dominant, m[2].has_diary), (Some(Low), false));
-        assert_eq!((m[3].dominant, m[3].has_diary), (None, true), "只有 1 个窗口");
+        assert_eq!(
+            (m[3].dominant, m[3].has_diary),
+            (None, true),
+            "只有 1 个窗口"
+        );
         let feb = month(NaiveDate::from_ymd_opt(2026, 2, 1).unwrap(), &[], &diaries);
         assert_eq!(feb.len(), 28);
     }
@@ -525,7 +532,10 @@ mod tests {
             ..late.clone()
         };
         for seed in 0..4 {
-            assert_eq!(l.pick(&no_slot, seed), "这周晚上 11 点后更容易累，早点休息吧。");
+            assert_eq!(
+                l.pick(&no_slot, seed),
+                "这周晚上 11 点后更容易累，早点休息吧。"
+            );
         }
         let rest = LineFacts {
             hard_hour: Some(15),

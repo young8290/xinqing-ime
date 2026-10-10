@@ -68,7 +68,10 @@ pub struct Hotkeys {
 
 impl Hotkeys {
     pub fn status(&self) -> Vec<HotkeyStatus> {
-        self.status.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.status
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     fn action(&self, id: u32) -> Option<HotkeyAction> {
@@ -194,6 +197,10 @@ mod tests {
         assert_eq!(sc("ctrl+alt+q").key, Code::KeyQ);
         assert_eq!(sc("ctrl+alt+7").key, Code::Digit7);
         assert_eq!(sc("win+f12").key, Code::F12);
-        assert!(sc("ctrl+shift+win+a").mods.contains(Modifiers::SUPER | Modifiers::SHIFT));
+        assert!(
+            sc("ctrl+shift+win+a")
+                .mods
+                .contains(Modifiers::SUPER | Modifiers::SHIFT)
+        );
     }
 }

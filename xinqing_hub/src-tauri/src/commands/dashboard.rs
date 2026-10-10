@@ -78,7 +78,10 @@ pub fn day_stats(state: State<'_, AppState>, date: String) -> Result<DayStats, U
     Ok(read_day(&state.db(), day)?)
 }
 
-fn read_day(db: &Db, day: NaiveDate) -> Result<DayStats, xinqing_hub_core::infra::store::StoreError> {
+fn read_day(
+    db: &Db,
+    day: NaiveDate,
+) -> Result<DayStats, xinqing_hub_core::infra::store::StoreError> {
     let date = day.format(DATE_FMT).to_string();
     let (typing_min, rests_due, rests_done, water) = db.summary_counts(&date)?.unwrap_or_default();
     let (from, to) = evening::day_range_ms(day);
@@ -114,7 +117,10 @@ pub fn month_moods(state: State<'_, AppState>, month: String) -> Result<Vec<DayM
         .map(|(_, ts, s)| (ts, s))
         .collect();
     let diaries: HashSet<String> = db
-        .diary_dates_between(&first.format(DATE_FMT).to_string(), &last.format(DATE_FMT).to_string())?
+        .diary_dates_between(
+            &first.format(DATE_FMT).to_string(),
+            &last.format(DATE_FMT).to_string(),
+        )?
         .into_iter()
         .collect();
     Ok(dashboard::month(first, &points, &diaries))
@@ -199,11 +205,23 @@ mod tests {
         db.summary_active_minute("2026-10-05", None, ts(5, 9, 0))
             .unwrap();
         for m in 0..10 {
-            db.insert_mood_state(ts(5, 9, m), None, MoodState::Low, MoodState::Low, Source::Rule)
-                .unwrap();
-        }
-        db.insert_mood_state(ts(6, 9, 0), None, MoodState::Tired, MoodState::Tired, Source::Rule)
+            db.insert_mood_state(
+                ts(5, 9, m),
+                None,
+                MoodState::Low,
+                MoodState::Low,
+                Source::Rule,
+            )
             .unwrap();
+        }
+        db.insert_mood_state(
+            ts(6, 9, 0),
+            None,
+            MoodState::Tired,
+            MoodState::Tired,
+            Source::Rule,
+        )
+        .unwrap();
         db.comfort_insert(&xinqing_hub_core::infra::store::ComfortRecord {
             ts: ts(5, 9, 5),
             state: "low",

@@ -24,7 +24,10 @@ impl Hotkey {
             win: false,
             key: String::new(),
         };
-        let parts: Vec<String> = s.split('+').map(|p| p.trim().to_ascii_lowercase()).collect();
+        let parts: Vec<String> = s
+            .split('+')
+            .map(|p| p.trim().to_ascii_lowercase())
+            .collect();
         let (key, mods) = parts.split_last()?;
         for m in mods {
             let flag = match m.as_str() {
@@ -68,12 +71,10 @@ fn valid_key(k: &str) -> bool {
     let b = k.as_bytes();
     match b {
         [c] => c.is_ascii_lowercase() || c.is_ascii_digit(),
-        [b'f', rest @ ..] if !rest.is_empty() && rest.len() <= 2 => {
-            std::str::from_utf8(rest)
-                .ok()
-                .and_then(|n| n.parse::<u8>().ok())
-                .is_some_and(|n| (1..=24).contains(&n) && !rest.starts_with(b"0"))
-        }
+        [b'f', rest @ ..] if !rest.is_empty() && rest.len() <= 2 => std::str::from_utf8(rest)
+            .ok()
+            .and_then(|n| n.parse::<u8>().ok())
+            .is_some_and(|n| (1..=24).contains(&n) && !rest.starts_with(b"0")),
         _ => false,
     }
 }
@@ -92,7 +93,10 @@ mod tests {
         let hk = Hotkey::parse("Alt+CTRL+Q").unwrap();
         assert!(hk.ctrl && hk.alt && !hk.shift && !hk.win);
         assert_eq!(hk.normalized(), "ctrl+alt+q");
-        assert_eq!(Hotkey::parse("win+shift+f12").unwrap().normalized(), "shift+win+f12");
+        assert_eq!(
+            Hotkey::parse("win+shift+f12").unwrap().normalized(),
+            "shift+win+f12"
+        );
         assert_eq!(Hotkey::parse("ctrl+alt+7").unwrap().key, "7");
     }
 

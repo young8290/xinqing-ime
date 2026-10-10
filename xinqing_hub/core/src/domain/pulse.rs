@@ -50,9 +50,9 @@ impl PulseTracker {
                 if *src != want || matches!(kind, KeyKind::Nav | KeyKind::Esc | KeyKind::Other) {
                     return None;
                 }
-                let iki = self
-                    .last
-                    .map_or(0, |l| ts.saturating_sub(l).min(u64::from(MAX_IKI_MS)) as u32);
+                let iki = self.last.map_or(0, |l| {
+                    ts.saturating_sub(l).min(u64::from(MAX_IKI_MS)) as u32
+                });
                 self.last = Some(*ts);
                 Some(Pulse {
                     ts: now_ms as f64,
@@ -85,12 +85,28 @@ mod tests {
     #[test]
     fn intervals_follow_one_source_and_cap_long_pauses() {
         let mut t = PulseTracker::default();
-        let a = t.on_up(&key(100, KeyKind::Letter, KeySrc::Core), 1).unwrap();
+        let a = t
+            .on_up(&key(100, KeyKind::Letter, KeySrc::Core), 1)
+            .unwrap();
         assert_eq!((a.iki_ms, a.backspace, a.ts), (0, false, 1.0));
-        assert!(t.on_up(&key(150, KeyKind::Letter, KeySrc::Tsf), 2).is_none(), "没声明 tsf_trace 时只看 core");
-        assert_eq!(t.on_up(&key(300, KeyKind::Backspace, KeySrc::Core), 3).unwrap().iki_ms, 200);
-        assert!(t.on_up(&key(310, KeyKind::Nav, KeySrc::Core), 4).is_none(), "方向键不是打字");
-        let long = t.on_up(&key(60_000, KeyKind::Letter, KeySrc::Core), 5).unwrap();
+        assert!(
+            t.on_up(&key(150, KeyKind::Letter, KeySrc::Tsf), 2)
+                .is_none(),
+            "没声明 tsf_trace 时只看 core"
+        );
+        assert_eq!(
+            t.on_up(&key(300, KeyKind::Backspace, KeySrc::Core), 3)
+                .unwrap()
+                .iki_ms,
+            200
+        );
+        assert!(
+            t.on_up(&key(310, KeyKind::Nav, KeySrc::Core), 4).is_none(),
+            "方向键不是打字"
+        );
+        let long = t
+            .on_up(&key(60_000, KeyKind::Letter, KeySrc::Core), 5)
+            .unwrap();
         assert_eq!(long.iki_ms, MAX_IKI_MS);
     }
 
@@ -106,7 +122,10 @@ mod tests {
             },
             0,
         );
-        assert!(t.on_up(&key(10, KeyKind::Letter, KeySrc::Core), 0).is_none());
+        assert!(
+            t.on_up(&key(10, KeyKind::Letter, KeySrc::Core), 0)
+                .is_none()
+        );
         assert!(t.on_up(&key(10, KeyKind::Letter, KeySrc::Tsf), 0).is_some());
         t.on_up(
             &Up::PauseChanged {
@@ -117,6 +136,11 @@ mod tests {
             },
             0,
         );
-        assert_eq!(t.on_up(&key(9_000, KeyKind::Letter, KeySrc::Tsf), 0).unwrap().iki_ms, 0);
+        assert_eq!(
+            t.on_up(&key(9_000, KeyKind::Letter, KeySrc::Tsf), 0)
+                .unwrap()
+                .iki_ms,
+            0
+        );
     }
 }

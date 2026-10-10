@@ -324,7 +324,9 @@ pub async fn open_window(app: AppHandle, target: WindowTarget) -> Result<(), UiE
 /// 或与另一项重复），界面提示换一个，不弹窗打扰（07 FR-ENT-04）。
 #[tauri::command]
 #[specta::specta]
-pub fn hotkey_status(hotkeys: State<'_, crate::hotkeys::Hotkeys>) -> Vec<crate::hotkeys::HotkeyStatus> {
+pub fn hotkey_status(
+    hotkeys: State<'_, crate::hotkeys::Hotkeys>,
+) -> Vec<crate::hotkeys::HotkeyStatus> {
     hotkeys.status()
 }
 
