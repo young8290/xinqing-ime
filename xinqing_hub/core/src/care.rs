@@ -50,8 +50,10 @@ impl ComfortSource {
     }
 }
 
-/// 为什么说这句话。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// 为什么说这句话。也随 `comfort:new` 交给界面：自评后的回应在小组件上带“和晴晴聊聊”（FR-STA-10 第 2 条，ADR 0036）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
 pub enum ComfortTrigger {
     /// 主动关怀（FR-CMF-01）
     Auto,

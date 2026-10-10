@@ -4,6 +4,7 @@
 pub mod ai;
 pub mod chat;
 pub mod comfort;
+pub mod dashboard;
 pub mod diary;
 pub mod ime;
 pub mod letter;
@@ -277,6 +278,10 @@ pub fn settings_set(
     {
         ai.apply_caps(&state.db());
     }
+    // 全局快捷键改了：整组重新注册，设置页随后用 `hotkey_status` 看有没有冲突（FR-ENT-04）
+    if changed && key.starts_with("hotkey.") {
+        crate::hotkeys::apply(&app);
+    }
     if changed && let Err(e) = (SettingsChanged { key }).emit(&app) {
         eprintln!("推送 settings:changed 失败：{e}");
     }
@@ -313,6 +318,14 @@ pub fn consent_set(
 #[specta::specta]
 pub async fn open_window(app: AppHandle, target: WindowTarget) -> Result<(), UiError> {
     windows::open(&app, target)
+}
+
+/// 全局快捷键的注册结果（FR-ENT-04，设置页“常规”）：`conflict` 为真的是设了但没注册上（被别的软件占用，
+/// 或与另一项重复），界面提示换一个，不弹窗打扰（07 FR-ENT-04）。
+#[tauri::command]
+#[specta::specta]
+pub fn hotkey_status(hotkeys: State<'_, crate::hotkeys::Hotkeys>) -> Vec<crate::hotkeys::HotkeyStatus> {
+    hotkeys.status()
 }
 
 /// 用户点了休息提醒卡片上的按钮（FR-RST-06 第 2 条）：完成或关闭后该类计时清零，“5 分钟后”顺延；

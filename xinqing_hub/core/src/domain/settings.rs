@@ -118,6 +118,8 @@ pub enum SettingItem {
     /// 用户研究的匿名编号（FR-DMO-04、12 第 4 节）：ASCII 字母、数字、`-`、`_`，不超过
     /// [`RESEARCH_ID_MAX_CHARS`] 字；空串表示没填
     ResearchId,
+    /// Hub 的全局快捷键（FR-ENT-04），如 `ctrl+alt+q`；空串表示不设（[`super::hotkey::accepts`]，ADR 0036）
+    Hotkey,
 }
 
 pub const PHONE_MAX_CHARS: usize = 24;
@@ -142,6 +144,7 @@ impl SettingItem {
                     && s.chars()
                         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
             }
+            SettingItem::Hotkey => super::hotkey::accepts(s),
         }
     }
 }
@@ -345,6 +348,22 @@ pub const KEYS: &[KeySpec] = &[
         key: "review.letter.enabled",
         kind: Kind::Bool,
         default: || true.into(),
+    },
+    // Hub 的全局快捷键（FR-ENT-04，ADR 0036）：出厂值放标量字段，清空即不设；Ctrl+Alt+P、Ctrl+Alt+R 在核心
+    KeySpec {
+        key: "hotkey.chat",
+        kind: Kind::Text(SettingItem::Hotkey),
+        default: || "ctrl+alt+q".into(),
+    },
+    KeySpec {
+        key: "hotkey.widget",
+        kind: Kind::Text(SettingItem::Hotkey),
+        default: || "ctrl+alt+w".into(),
+    },
+    KeySpec {
+        key: "hotkey.dashboard",
+        kind: Kind::Text(SettingItem::Hotkey),
+        default: || "ctrl+alt+d".into(),
     },
     KeySpec {
         key: "dev.mode",

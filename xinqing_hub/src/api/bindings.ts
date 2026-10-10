@@ -75,6 +75,11 @@ export const commands = {
 	/**  必须是 async：同步命令跑在主线程，在 Windows 上同步命令里建窗口会死锁（wry#583）。 */
 	openWindow: (target: WindowTarget) => typedError<null, UiError>(__TAURI_INVOKE("open_window", { target })),
 	/**
+	 *  全局快捷键的注册结果（FR-ENT-04，设置页“常规”）：`conflict` 为真的是设了但没注册上（被别的软件占用，
+	 *  或与另一项重复），界面提示换一个，不弹窗打扰（07 FR-ENT-04）。
+	 */
+	hotkeyStatus: () => __TAURI_INVOKE<HotkeyStatus[]>("hotkey_status"),
+	/**
 	 *  用户点了休息提醒卡片上的按钮（FR-RST-06 第 2 条）：完成或关闭后该类计时清零，“5 分钟后”顺延；
 	 *  每次操作记一条 `reminder_log`（FR-RST-08）。服务没在运行时忽略。
 	 */
@@ -102,6 +107,17 @@ export const commands = {
 	 *  这句话已被清理时什么也不做。
 	 */
 	comfortFeedback: (id: number, verdict: ComfortVerdict) => typedError<null, UiError>(__TAURI_INVOKE("comfort_feedback", { id, verdict })),
+	/**  某天（本地日期 `YYYY-MM-DD`）的暖心话，从早到晚（FR-DSH-02“今日一句”、FR-WGT-04“今日一句”）。 */
+	comfortList: (date: string) => typedError<ComfortItem[], UiError>(__TAURI_INVOKE("comfort_list", { date })),
+	/**  某天的概要（FR-DSH-02 概要卡片与状态时间线、FR-WGT-05 今日输入时长）。没有记录的天全是 0。 */
+	dayStats: (date: string) => typedError<DayStats, UiError>(__TAURI_INVOKE("day_stats", { date })),
+	/**  情绪日历的一个月（FR-DSH-03）：`month` 是 `YYYY-MM`，返回这个月每天的主导天气与有没有日记。 */
+	monthMoods: (month: string) => typedError<DayMood[], UiError>(__TAURI_INVOKE("month_moods", { month })),
+	/**
+	 *  周报（FR-DSH-04）：`week_start` 是那周里的任意一天，按所在周的周一算。作息洞察另用 `get_routine`。
+	 *  一句话总结来自本地模板 `weekly_line.toml`，不调用 AI；模板读不出来时用一句兜底。
+	 */
+	weekStats: (weekStart: string) => typedError<WeekReport, UiError>(__TAURI_INVOKE("week_stats", { weekStart })),
 	/**  全部周信，新的在前（保留 1 年）。 */
 	lettersList: () => typedError<LetterItem[], UiError>(__TAURI_INVOKE("letters_list")),
 	/**  标记已读。这封已被删除或清理时什么也不做。 */
@@ -219,6 +235,7 @@ export const events = {
 	gatewayHealth: makeEvent<GatewayHealthChanged>("gateway:health"),
 	imeConfigChanged: makeEvent<ImeConfigChanged>("ime_config:changed"),
 	letterNew: makeEvent<LetterNew>("letter:new"),
+	moodTypo: makeEvent<MoodTypo>("mood:typo"),
 	reminderDue: makeEvent<ReminderDue>("reminder:due"),
 	reminderMissed: makeEvent<ReminderMissed>("reminder:missed"),
 	researchInvite: makeEvent<ResearchInvite>("research:invite"),
@@ -233,6 +250,7 @@ export const events = {
 	statusChanged: makeEvent<StatusChanged>("status:changed"),
 	todoDetected: makeEvent<TodoDetected>("todo:detected"),
 	todoReady: makeEvent<TodoReady>("todo:ready"),
+	typingPulse: makeEvent<TypingPulse>("typing:pulse"),
 };
 
 /* Types */
@@ -382,9 +400,21 @@ export type ChatSessionItem = {
 	mode: ChatMode,
 };
 
+/**  一句暖心话（看板“今日一句”、小组件重开时的“今日一句”）。时间戳是 Unix 毫秒。 */
+export type ComfortItem = {
+	id: number,
+	ts: number,
+	text: string,
+	/**  为真时句尾显示 `AI 生成`（FR-CMF-04 第 2 条） */
+	ai_generated: boolean,
+	trigger: ComfortTrigger,
+	/**  用户点过的反馈（FR-CMF-05）；没点过为空 */
+	feedback: ComfortVerdict | null,
+};
+
 /**
  *  `comfort:new`：晴晴说了一句暖心话（FR-CMF-04）。小组件一句话区显示；`ai_generated` 时句尾加 `AI 生成` 标签，
- *  模板句不加。
+ *  模板句不加。`trigger` 为 `self_report` 时是负面自评后的回应：卡片层另显示“和晴晴聊聊”（FR-STA-10 第 2 条，ADR 0036）。
  */
 export type ComfortNew = {
 	/**  `comfort_log` 的行号，反馈（FR-CMF-05）时用 */
@@ -392,10 +422,18 @@ export type ComfortNew = {
 	text: string,
 	source: ComfortSource,
 	ai_generated: boolean,
+	trigger: ComfortTrigger,
 };
 
 /**  暖心话从哪里来：大模型生成的要标 `AI 生成`，模板句不标（FR-CMF-04 第 2 条、FR-CMF-03 第 3 条）。 */
 export type ComfortSource = "llm" | "template";
+
+/**  为什么说这句话。也随 `comfort:new` 交给界面：自评后的回应在小组件上带“和晴晴聊聊”（FR-STA-10 第 2 条，ADR 0036）。 */
+export type ComfortTrigger = 
+/**  主动关怀（FR-CMF-01） */
+"auto" | 
+/**  负面自评后的回应（FR-STA-10 第 2 条） */
+"self_report";
 
 /**  一句暖心话上的反馈（`comfort_log.feedback`）。 */
 export type ComfortVerdict = 
@@ -438,6 +476,31 @@ export type ConsentItem =
 export type ConsentState = {
 	policy_ver: number,
 	items: ConsentEntry[],
+};
+
+/**  情绪日历的一天（FR-DSH-03）。 */
+export type DayMood = {
+	date: string,
+	dominant: MoodState | null,
+	/**  当天有日记：日历上画小本子图标（FR-DIA-03） */
+	has_diary: boolean,
+};
+
+/**  某天的概要（看板“今日”的四张概要卡片与时间线、小组件底栏的今日输入时长）。 */
+export type DayStats = {
+	/**  本地日期 `YYYY-MM-DD` */
+	date: string,
+	/**  输入时长（分钟，FR-RST-01 的活跃分钟） */
+	typing_min: number,
+	/**  休息提醒：出现 / 完成次数；完成率 = 完成 / 出现（FR-RST-08） */
+	rests_due: number,
+	rests_done: number,
+	water: number,
+	/**  暖心话次数（含自评后的回应） */
+	comforts: number,
+	/**  主导天气（[`dominant`]）；有效窗口不足时为空 */
+	dominant: MoodState | null,
+	timeline: Segment[],
 };
 
 /**  `demo_status`：界面据此在标题栏显示“演示模式”（FR-DMO-03）。 */
@@ -535,6 +598,24 @@ export type GatewayHealthChanged = GatewayHealth;
 export type GatewayMetricsView = {
 	apis: ApiMetricsView[],
 	models: ModelStatusView[],
+};
+
+/**  快捷键做什么。 */
+export type HotkeyAction = 
+/**  打开对话（FR-CHT-01） */
+"chat" | 
+/**  显示 / 隐藏小组件（FR-WGT-01） */
+"widget" | 
+/**  打开看板 */
+"dashboard";
+
+/**  一项快捷键现在的样子（设置页“常规”分类）。 */
+export type HotkeyStatus = {
+	action: HotkeyAction,
+	/**  设置里的组合键（规范写法，如 `ctrl+alt+q`）；空串表示没设 */
+	keys: string,
+	/**  设了但没注册上：被别的软件占用，或与另一项重复。界面提示 `error.hotkey_conflict` */
+	conflict: boolean,
 };
 
 /**  `ime_config_get` 的返回：整份合并后的配置，界面按键名的点分路径取值。 */
@@ -672,6 +753,12 @@ export type ModelStatusView = {
 /**  显示状态（04 第 3.1 节；`typo` 是瞬时事件，不作为显示状态下发）。 */
 export type MoodState = "fluent" | "hesitant" | "low" | "agitated" | "tired" | "unknown";
 
+/**
+ *  `mood:typo`：刚打错了字（04 FR-STA-04 的 `typo` 瞬时事件）。小精灵“晃一下”（DS-MOTION-02），天气不变（FR-WGT-03）。
+ *  最多每 [`crate::pulse::TYPO_MIN_GAP_MS`] 推一次，动画不会连成闪烁（DS-MOTION-04）。ADR 0036。
+ */
+export type MoodTypo = Record<string, never>;
+
 /**  设置页展示的出网记录；只包含接口、模型、字段名和计量信息，不含请求或响应正文。 */
 export type NetLogView = {
 	/**  Unix 毫秒；前端用 number 展示即可，时间不会超过 JavaScript 安全整数范围。 */
@@ -683,6 +770,16 @@ export type NetLogView = {
 	status: string,
 	tokens_in: number | null,
 	tokens_out: number | null,
+};
+
+/**  一次按键。 */
+export type Pulse = {
+	/**  Hub 收到这一键的时刻（Unix 毫秒） */
+	ts: number,
+	/**  离上一键多久（毫秒，最多 [`MAX_IKI_MS`]）；会话里的第一键为 0 */
+	iki_ms: number,
+	/**  退格或删除：成串的在心电图上标红 */
+	backspace: boolean,
 };
 
 /**
@@ -858,6 +955,16 @@ export type ScheduleSaved = {
 	conflicts: ConflictItem[],
 };
 
+/**  状态时间线上的一段（FR-DSH-02）：相邻、同状态、间隔不超过 [`TIMELINE_GAP_MS`] 的记录合并成一段。 */
+export type Segment = {
+	/**  Unix 毫秒 */
+	start_ts: number,
+	end_ts: number,
+	state: MoodState,
+	/**  这一段最后一条状态记录的行号：点开时用 `state_explain(mood_id)` 取那一刻的解释（FR-STA-09） */
+	mood_id: number,
+};
+
 /**
  *  `self_report:changed`：用户刚自评（FR-STA-10）。到 `until_ts` 之前小组件显示“你说的：…”；
  *  “说不上来”时 `until_ts` 就是自评时刻，即不覆盖显示。
@@ -930,7 +1037,9 @@ export type SettingItem =
  *  用户研究的匿名编号（FR-DMO-04、12 第 4 节）：ASCII 字母、数字、`-`、`_`，不超过
  *  [`RESEARCH_ID_MAX_CHARS`] 字；空串表示没填
  */
-"research_id";
+"research_id" | 
+/**  Hub 的全局快捷键（FR-ENT-04），如 `ctrl+alt+q`；空串表示不设（[`super::hotkey::accepts`]，ADR 0036） */
+"hotkey";
 
 /**  设置项的值。只有这四种形态，对应 [`Kind`]；以 JSON 文本落库（`true` / `0.8` / `"system"` / `["22:00-07:00"]`）。 */
 export type SettingValue = boolean | number | string | string[];
@@ -972,6 +1081,12 @@ export type SignalKind =
 "session" | 
 /**  R5 命中 */
 "late";
+
+/**  状态分布的一项（环形图）：这个状态有多少个窗口。 */
+export type StateCount = {
+	state: MoodState,
+	windows: number,
+};
 
 /**  `status:changed`：载荷同 `get_status`。 */
 export type StatusChanged = StatusSnapshot;
@@ -1025,6 +1140,14 @@ export type TodoReady = {
 	todo: TodoItem | null,
 };
 
+/**
+ *  `typing:pulse`：最近 100 毫秒内的按键脉冲（打字心电图，FR-DSH-02、FR-DMO-03）。只有键间间隔和是不是退格，
+ *  不含键值与文字；只在看板窗口看得见时推送，最多每秒 10 次。ADR 0036。
+ */
+export type TypingPulse = {
+	keys: Pulse[],
+};
+
 export type UiError = {
 	/**  稳定的错误码，前端可据此分支；只写日志，不展示给用户 */
 	code: string,
@@ -1044,6 +1167,39 @@ export type Verdict = "fit" | "unfit";
 
 /**  情绪天气（04 第 3.1 节、07 DS-COLOR）。`Wind` 只用于打错字的瞬时动画，不作为持续状态。 */
 export type Weather = "sunny" | "wind" | "cloudy" | "rain" | "storm" | "night";
+
+/**  周报里的一天（每日输入时长柱状图、休息与饮水、专注）。 */
+export type WeekDay = {
+	date: string,
+	typing_min: number,
+	rests_due: number,
+	rests_done: number,
+	water: number,
+	focus_min: number,
+};
+
+/**  周报（FR-DSH-04）。作息洞察另用 `get_routine`。 */
+export type WeekReport = {
+	/**  那周的周一 */
+	week_start: string,
+	/**  周一到周日 */
+	days: WeekDay[],
+	/**  状态分布，按固定顺序，只列出现过的 */
+	states: StateCount[],
+	/**  7 × 24：周一到周日 × 0–23 时，“低落 / 疲劳”出现的窗口数（热力图） */
+	heat: number[][],
+	/**  休息完成率（百分比，四舍五入）；这周没出过提醒时为空 */
+	rest_rate: number | null,
+	rests_done: number,
+	rests_due: number,
+	water: number,
+	/**  本周新加入的日程（已添加的，按创建时间）与完成的待办 */
+	schedules_added: number,
+	todos_done: number,
+	focus_min: number,
+	/**  一句话总结（`weekly_line.toml`，本地模板） */
+	line: string,
+};
 
 /**
  *  `open_window` 与 `--open` 的目标。标签与 `tauri.conf.json` 的窗口 `label`、

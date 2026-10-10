@@ -158,6 +158,7 @@ impl ComfortPort for ShellPort {
             text: c.text.clone(),
             source: c.source,
             ai_generated: c.source == ComfortSource::Llm,
+            trigger: c.trigger,
         };
         if let Err(e) = ev.emit(&self.app) {
             eprintln!("推送 comfort:new 失败：{e}");

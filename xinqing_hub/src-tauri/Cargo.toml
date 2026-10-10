@@ -41,6 +41,8 @@ async-trait = "0.1"
 futures = "0.3"
 dirs = "6"
 tauri-plugin-dialog = "2"
+# 全局快捷键 Ctrl+Alt+Q / W / D（FR-ENT-04，src/hotkeys.rs，ADR 0036）；只在 Rust 端注册，前端不需要它的权限
+tauri-plugin-global-shortcut = "2"
 
 [dev-dependencies]
 mock-ai = { path = "../../tools/mock-ai" }
