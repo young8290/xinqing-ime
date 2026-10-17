@@ -116,6 +116,9 @@ impl Coordinator {
         // 不依赖 IME 激活——全局热键的语义就是在本输入法未激活时也生效。
         coordinator.sync_global_hotkeys();
 
+        // 剪贴板历史监听（clipboard.enabled）与插件注册表。
+        coordinator.sync_extensions();
+
         // CapsLock 全局钩子：仅当 keys.session_actions 里配了 capslock 才安装。
         // （动作消费线程已在内部构造函数里起好，见那里。）
         coordinator.sync_capslock_hook();
@@ -340,10 +343,10 @@ impl Coordinator {
         }));
         let user_dir = user_dir.map(|d| d.to_path_buf());
         let store = user_dir.as_deref().and_then(Self::open_user_store);
-        (
-            Self::build(config, data_dir, push_server, ui_tx, user_dir, store, None),
-            rx,
-        )
+        let c = Self::build(config, data_dir, push_server, ui_tx, user_dir, store, None);
+        // Android 生产路径同样加载插件（同一个 .wasm 两端通用）；剪贴板由宿主注入，不需要监听器。
+        c.sync_plugins();
+        (c, rx)
     }
 
     /// 打开用户目录下的 redb（缺目录时创建）。失败只 warn：store 不可用时协调器

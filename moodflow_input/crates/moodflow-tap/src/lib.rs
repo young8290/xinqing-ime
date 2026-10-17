@@ -180,6 +180,11 @@ impl Tap {
         self.shared.gate.paused()
     }
 
+    /// 当前焦点进程是否命中应用名单（黑名单、内置排除或不在白名单内）。不看同意状态。
+    pub fn app_blocked(&self) -> bool {
+        self.shared.gate.app_blocked()
+    }
+
     /// 改写能否使用；为假时改写快捷键只弹一次同意询问（10 第 2.5 节 `cfg.rewrite`）。
     pub fn rewrite_enabled(&self) -> bool {
         self.shared.gate.rewrite() && self.shared.is_linked()

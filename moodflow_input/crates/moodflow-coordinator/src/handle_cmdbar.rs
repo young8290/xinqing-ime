@@ -301,6 +301,16 @@ impl EvalContext for CmdbarCtx<'_> {
     fn services(&self) -> Option<&Services> {
         Some(self.services)
     }
+    fn external_func(
+        &self,
+        name: &str,
+        args: &[String],
+    ) -> Option<moodflow_cmdbar::error::Result<String>> {
+        // 插件命令函数（ADR 0054）：内置没有的名字才会走到这里。
+        self.coord
+            .plugin_cmd(name, args)
+            .map(|r| r.map_err(|e| moodflow_cmdbar::CmdbarError::runtime(name, e.to_string())))
+    }
 }
 
 /// IME 控制器：ime.toggle / ime.schema 接通；setting.* / theme_cycle 待平台能力补齐。

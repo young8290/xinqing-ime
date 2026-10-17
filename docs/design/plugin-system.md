@@ -189,8 +189,8 @@ network = []                          # 逐键插件不需要也拿不到网络
 | 阶段 | 已完成 | 尚缺 |
 |---|---|---|
 | M0 立约 | ADR 0054 | — |
-| M1 | `moodflow-plugin-api`：清单、能力、设置声明及校验（13 个单测） | 扩展点 trait 接入协调器，并把快捷输入、命令函数、文本变换改为经注册表接入；内容包按类型交给现有加载器 |
-| M2 | `moodflow-plugin-host`：wasmi 沙箱、`mf` 宿主函数按能力放行、步数与内存上限、连续失败停用、隐私场景不调用（12 个单测）；`plugin_tool check/pack` | 协调器在按键路径上调用插件；设置页按声明渲染 |
+| M1 | `moodflow-plugin-api`：清单、能力、设置声明及校验（13 个单测）；`moodflow-plugin-registry`：加载已启用插件、按扩展点汇总调用（6 个单测）；协调器接入候选来源（首选不让位）、上屏变换（按键动作出口，与换行改写共用字段清单）、命令函数（命令栏 `external_func`，内置优先） | 快捷输入、命令函数、文本变换这些**内置**功能改走注册表；内容包按类型交给现有加载器 |
+| M2 | `moodflow-plugin-host`：wasmi 沙箱、`mf` 宿主函数按能力放行、步数与内存上限、连续失败停用、隐私场景不调用（12 个单测）；逐键调用 50 万步上限；隐私判断统一为 `moodflow::input_privacy()`；`plugins.enabled` / `plugins.safe_mode` 配置；`plugin_tool check/pack/try`；示例插件与 CI 端到端 | 设置页按声明渲染（设置程序在邻仓） |
 | M3 | `moodflow-market`：签名索引、更新与撤回、安装包检查、原子安装（9 个单测）；`plugin_tool sign` | `moodflow-plugins` 索引仓库与审核 CI、正式签名密钥（须线下生成并保管，公钥写入客户端）、Windows 设置程序与 Android 的插件页 |
 
 已确认的实现细节：wasmi 必须用 `portable-dispatch`（尾调用分派在带 debug 断言的构建里会因死循环插件爆栈）；

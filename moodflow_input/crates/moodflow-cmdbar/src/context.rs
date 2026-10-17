@@ -4,6 +4,7 @@
 //! （编码、上屏历史、剪贴板、前台应用、时间、服务束）暴露给求值器函数。
 //! [`MemoryContext`] 是测试友好的内存实现；宿主侧另有适配器。
 
+use crate::error::Result;
 use crate::services::Services;
 use chrono::{DateTime, Local};
 use std::sync::Mutex;
@@ -51,6 +52,14 @@ pub trait EvalContext {
     /// 短语与命令栏的上下文没有。故 `{year()}` 写进 `system.phrases.toml` 只会得到空串，
     /// 而不是拿当前编码硬解出一个假年份——错值比空值难查得多。
     fn quick_var(&self, _name: &str) -> Option<String> {
+        None
+    }
+
+    /// 内置注册表里没有的函数名交给宿主（插件提供的命令函数，ADR 0054）。
+    ///
+    /// 返回 `None` 表示宿主也不认识，求值按「未知函数」报错。**默认返回 `None`**：短语与
+    /// 快捷输入的上下文不接插件，只有命令栏上下文接。内置函数永远优先——插件不能遮蔽内置名。
+    fn external_func(&self, _name: &str, _args: &[String]) -> Option<Result<String>> {
         None
     }
 }

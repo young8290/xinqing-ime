@@ -319,6 +319,12 @@ pub enum UiCommand {
     SoftKeyboardKeyState { slot: String, down: bool },
     /// 软键盘：切层（按住 Shift 显示第二层，松开还原）。
     SoftKeyboardLayer { shift: bool },
+    /// 显示或刷新 Buffer 浮窗（docs/design/buffer.md）。
+    ShowBuffer(crate::BufferView),
+    /// 隐藏 Buffer 浮窗。
+    HideBuffer,
+    /// 开关剪贴板监听（剪贴板历史，`clipboard.enabled`）。关闭即注销系统监听器。
+    SetClipboardMonitor(bool),
     /// 关闭 UI
     Shutdown,
     /// 注入 host-render 管理器（Windows）；协调器 `set_host_render` 后下发，

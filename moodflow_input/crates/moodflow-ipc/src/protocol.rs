@@ -511,6 +511,10 @@ pub const CONFIG_KEY_PAIR_STATE_TTL: &str = "pair_state_ttl";
 /// 由服务端在 HUD 打开时推开。**必须在握手时也推一次**：DLL 每次重连都从默认值
 /// （关）起步，只在切换时推会让重连后的宿主永远不采集（`push_connect_fix` 记过同型）。
 pub const CONFIG_KEY_DIAG_SNAPSHOT: &str = "diag_snapshot";
+/// 并击键集合（VK）同步键名。格式：`count(u8) + [vk:u16(LE)]...`。集合非空即并击开启：
+/// TSF 对这些键额外转发**松开**事件（平时字母键的 keyup 不转发）；集合为空时行为与改造前一致。
+/// DLL 每次重连都从空集合起步，故握手时也要推。
+pub const CONFIG_KEY_CHORD_KEYS: &str = "chord_keys";
 
 /// 语言栏按钮的悬停提示文本。格式：`[ch:u16(LE)]...`（UTF-16LE，无长度前缀，
 /// `value` 本身就是整段）。与 `CONFIG_KEY_CUSTOM_EN_PUNCT` 同惯例——C++ 侧照此可以

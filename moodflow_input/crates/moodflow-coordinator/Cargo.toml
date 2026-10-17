@@ -31,6 +31,14 @@ moodflow-softkeyboard = { path = "../moodflow-softkeyboard" }
 moodflow-reverse = { path = "../moodflow-reverse" }
 moodflow-aux-code = { path = "../moodflow-aux-code" }
 moodflow-punct = { path = "../moodflow-punct" }
+# 剪贴板历史（纯逻辑，handle_clipboard 接入）
+moodflow-clipboard = { path = "../moodflow-clipboard" }
+# Buffer 上屏前工作台（纯逻辑，handle_buffer 接入）
+moodflow-buffer = { path = "../moodflow-buffer" }
+# 并击结算（纯逻辑，handle_chord 接入）
+moodflow-chord = { path = "../moodflow-chord" }
+# 插件注册表（WASM 沙箱插件，handle_plugins 接入；纯 Rust、无 JIT，不破坏 Android 闭包）
+moodflow-plugin-registry = { path = "../moodflow-plugin-registry" }
 # Moodflow：核心侧 MFP 服务端（纯 Rust，无 C 依赖，不影响 Android 闭包）
 moodflow-tap = { path = "../moodflow-tap" }
 unicode-segmentation = { workspace = true }
@@ -70,6 +78,8 @@ moodflow-bridge = { path = "../moodflow-bridge" }
 moodflow-ipc = { path = "../moodflow-ipc" }
 # Moodflow：tests/moodflow_tap.rs 扮演 Hub 收发 MFP 帧
 mfp = { path = "../../../crates/mfp" }
+# handle_plugins 的端到端用例用 WAT 写测试插件
+wat = "1"
 
 [lints]
 workspace = true

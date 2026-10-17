@@ -1,0 +1,19 @@
+[package]
+name = "moodflow-android"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# JNI 绑定：产物 libmoodflow_android.so，由 Gradle 经 cargo-ndk 交叉编译后打进 APK。
+# 只依赖 moodflow-mobile（核心门面），核心内部怎么重构由门面吸收。
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+moodflow-mobile = { path = "../../../moodflow_input/crates/moodflow-mobile" }
+jni = "0.21"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
+
+[lints]
+workspace = true

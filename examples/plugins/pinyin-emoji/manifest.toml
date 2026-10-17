@@ -1,0 +1,16 @@
+id = "dev.moodflow.example.pinyin-emoji"
+name = "拼音出表情（示例）"
+version = "1.0.0"
+sdk = 1
+min_host_version = "0.1.0"
+type = "wasm"
+entry = "plugin.wasm"
+platforms = ["windows", "android"]
+license = "MIT"
+description = "输入 xiao、ku、zan 等拼音时在候选里给出表情；命令直通车函数 emoji(名称)。"
+
+[contributes]
+candidate_provider = { priority = 50 }
+cmdbar_functions = ["emoji"]
+
+[capabilities]

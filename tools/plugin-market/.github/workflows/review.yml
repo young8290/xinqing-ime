@@ -1,0 +1,44 @@
+# moodflow-plugins 索引仓库的审核 CI（模板，复制到索引仓库根目录使用）。
+# 每个 PR：下载索引里每个未撤回版本的包 → 按 sha256 命名 → plugin_tool review（与客户端安装同一套检查）。
+# 合入 main 后由维护者在线下签名：MF_MARKET_SIGNING_KEY 只在维护者机器上，绝不放进 CI secrets。
+name: review
+
+on:
+  pull_request:
+    paths: ["index.json"]
+  push:
+    branches: [main]
+    paths: ["index.json"]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 取 plugin_tool 源码
+        uses: actions/checkout@v4
+        with:
+          repository: young8290/xinqing-ime
+          path: host
+      - uses: dtolnay/rust-toolchain@stable
+      - name: 构建 plugin_tool
+        run: cargo build --release --manifest-path host/moodflow_input/Cargo.toml -p moodflow-tools --bin plugin_tool
+      - name: 下载各版本的包
+        run: |
+          mkdir -p pkgs
+          python3 - <<'PY'
+          import json, subprocess
+          idx = json.load(open("index.json"))
+          revoked = {(r["id"], r.get("version")) for r in idx.get("revoked", [])}
+          for p in idx["plugins"]:
+              for r in p["releases"]:
+                  if (p["id"], None) in revoked or (p["id"], r["version"]) in revoked:
+                      continue
+                  out = f"pkgs/{r['sha256']}.mfpack"
+                  subprocess.run(["curl", "-fsSL", "--max-filesize", str(r["size"] + 1), "-o", out, r["url"]], check=True)
+          PY
+      - name: 审核
+        run: host/moodflow_input/target/release/plugin_tool review index.json pkgs

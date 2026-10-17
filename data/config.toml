@@ -1121,6 +1121,13 @@ take_screenshot = "ctrl+shift+f11"
 #   里的条目用户在设置页删掉后每次加载都会被合并回来、永远关不掉。本字段是普通标量，
 #   清空即禁用。给某个**面**配直通车（softkeyboard:<面id>）仍写 key_actions。
 softkeyboard = "ctrl+shift+k"
+# 打开剪贴板历史面板（[clipboard] enabled = true 时才有记录）。同上，标量字段，清空即禁用。
+clipboard_panel = "ctrl+shift+h"
+# Buffer：选好的词先攒在光标上方的小窗里，再一次发到绑定的输入框。
+# toggle_buffer 打开并绑定当前输入框（换过框后再按一次重新绑定，已绑定时再按关闭，内容保留）；
+# buffer_send 发送（Buffer 关着时这个键照常交给应用）。同上，标量字段，清空即禁用。
+toggle_buffer = "alt+shift+b"
+buffer_send = "ctrl+shift+enter"
 # 改用系统级 RegisterHotKey 抢占的**动作名**列表（不是键串）：列进来的动作会绕开宿主
 # 自身的同名快捷键。仅支持无需按键上下文的 9 个动作：
 #   switch_engine / toggle_full_width / toggle_punct / toggle_toolbar /
@@ -1687,6 +1694,32 @@ rewrite_insert_apps = []
 remember_pause = false
 # 输入法启动时自动打开 Moodflow，Moodflow 意外退出后自动重新打开（10 分钟内最多 3 次）。
 hub_autostart = true
+
+# ── clipboard：剪贴板历史 ─────────────────────────────────────────────────────
+# 出厂关闭：剪贴板里常有验证码、地址这类内容，记不记由你决定。密码管理器标记为
+# 「不进剪贴板历史」的内容一律不记；密码框、无痕模式、名单应用里复制的也不记。
+[clipboard]
+enabled = false
+# 未收藏条目最多保留几条；收藏的不受限。
+max_entries = 200
+# 未收藏条目保留天数；0 表示不按时间清理。
+retention_days = 30
+
+# ── plugins：插件 ───────────────────────────────────────────────────────────
+# 插件装在用户目录的 plugins/ 下；只有列在 enabled 里的才会加载。
+# 密码框、安全桌面、无痕模式、名单应用里，插件收不到任何输入内容。
+[plugins]
+enabled = []
+# 安全模式：所有插件都不加载。装了某个插件后输入异常时先打开它排查。
+safe_mode = false
+
+# ── chord：并击（多键同按出拼音） ────────────────────────────────────────────
+# 一组键同时按下（或先左手后右手分开敲）、全部松开时，按键位方案查出拼音再交给拼音引擎。
+# 只在中文态、不按 Ctrl/Alt/Win 时生效。方案读不出或校验不过时不启用，并提示一次。
+[chord]
+enabled = false
+# 键位方案文件（JSON）。相对路径按用户目录解析。
+keymap = "chord_keymap.json"
 
 # ── mobile：移动端对上面各域的覆盖 ─────────────────────────────────────────────
 #

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Moodflow 输入法</string>
+    <string name="ime_name">Moodflow</string>
+    <string name="settings_title">Moodflow 设置</string>
+    <string name="subtype_zh">中文（拼音）</string>
+</resources>

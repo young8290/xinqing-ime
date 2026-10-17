@@ -108,6 +108,8 @@ impl Coordinator {
         // 诊断采集开关：DLL 每次重连都从默认值（关）起步，握手不推则 HUD 开着也收不到
         // 新连接宿主的快照——而最需要它的 SearchHost 恰恰是最常重连的那类。
         self.push_diag_snapshot_config(client_token);
+        // 并击键集合：DLL 每次重连都从空集合起步。
+        self.push_chord_keys_config(client_token);
         self.push_langbar_tooltip(client_token); // 握手强推：新连接手里没有任何文本
 
         let Some(mgr) = self.host_render() else {

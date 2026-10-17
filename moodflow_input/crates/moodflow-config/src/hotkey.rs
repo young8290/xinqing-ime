@@ -35,6 +35,8 @@ use tracing::{debug, warn};
 /// | `toggle_punct` / `toggle_s2t` / `toggle_t2s` / `single_char` | `CHINESE_ONLY` | 只在中文态有意义；**不带 `GLOBAL`**，避免不必要地抢占宿主快捷键 |
 /// | 进 overlay 的（`temp_pinyin` / `temp_english` / `aux_code` / `rare_char` / `reverse` / `mix:` / `special:`） | `CHINESE_ONLY \| GLOBAL` | 进 overlay 只在中文输入中途有意义；`GLOBAL` 让 TSF 用 `RegisterHotKey` 抢占，穿透 QQNT/Tabby 等 Chromium 宿主的同名加速键 |
 /// | `command:<表达式>` | 无 | 跑的是用户的命令，与中英态无关（英文态下也该按得动）；不改输入状态，不需要抢占 |
+/// | `toggle_buffer` / `buffer_send`（同名字段） | 无 | Buffer 两种模式下都要能用；发送键在 Buffer 关着时不接受，按键交还应用 |
+/// | `clipboard_panel`（`keys.clipboard_panel` 字段） | 无 | 两模式下都该能打开剪贴板历史；不需要穿透宿主快捷键 |
 /// | `softkeyboard[:<id>]` | `GLOBAL` | 面板画的是「键位 → 符号」，与中英文态无关（英文态想打个 ℃ 同样合理），C++ 侧为此专设了软键盘总闸 `IsSoftKeyboard()`；带上 `CHINESE_ONLY` 英文态连开都开不出来 |
 ///
 /// ⚠️ `GLOBAL` 有**容量上限 16**（`TextService.cpp` 的 `kHotkeyIdAddWordBase + 16`，
@@ -495,6 +497,30 @@ impl Compiler {
                 match_hash: raw,
                 action: "softkeyboard".to_string(),
             });
+        }
+
+        // ── KeyDown：剪贴板历史面板（无策略位：两种模式下都该能打开，与 toggle_toolbar 同档；
+        //    不给 GLOBAL——它容量只有 16，面板不需要穿透宿主快捷键） ──
+        if let Some(raw) = parse_hotkey(&h.clipboard_panel) {
+            result.key_down.push(HotkeyEntry {
+                tsf_hash: raw,
+                match_hash: raw,
+                action: "clipboard_panel".to_string(),
+            });
+        }
+        // ── KeyDown：Buffer 绑定 / 发送（无策略位，理由同上）。发送键在 Buffer 没打开时
+        //    由协调器返回「未接受」，按键交还应用（dispatch_hotkey_keyed 返回 None）。
+        for (field, action) in [
+            (&h.toggle_buffer, "toggle_buffer"),
+            (&h.buffer_send, "buffer_send"),
+        ] {
+            if let Some(raw) = parse_hotkey(field) {
+                result.key_down.push(HotkeyEntry {
+                    tsf_hash: raw,
+                    match_hash: raw,
+                    action: action.to_string(),
+                });
+            }
         }
 
         // ── KeyDown：临拼直达热键（CHINESE_ONLY | GLOBAL，与加词键同策略） ──

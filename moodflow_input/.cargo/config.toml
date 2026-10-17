@@ -7,7 +7,7 @@ check-headless = "check -p moodflow-coordinator --no-default-features"
 # （rustup target add aarch64-linux-android 即可）；编不过且报缺 C 编译器 =
 # 有人把 -sys crate 混回了闭包，先查依赖别配 NDK。
 #
-# ⚠ 本门**不再覆盖 FFI 绑定层**（uniffi 宏 / cdylib / tracing-android 的 cfg 分支）——
-# 那一层随 moodflow-android crate 搬去了 MoodflowAndroid 仓，由该仓的 scripts/build-rust.ps1
-# 真正交叉编译 .so 时把关（比 check 更强）。这里过了不等于安卓仓构建得出来。
+# ⚠ 本门**不覆盖 JNI 绑定层**（cdylib / jni / logcat 的 cfg 分支）——那一层在
+# moodflow_android/rust（独立 workspace），由 .github/workflows/android.yml 用 cargo-ndk
+# 真正交叉编译 .so 时把关（比 check 更强）。这里过了不等于 APK 构建得出来。
 check-android = "check -p moodflow-mobile --target aarch64-linux-android"

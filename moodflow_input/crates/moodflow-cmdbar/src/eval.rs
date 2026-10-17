@@ -231,9 +231,15 @@ fn call_func(
     ctx: &dyn EvalContext,
     reg: &Registry,
 ) -> Result<String> {
-    let spec = reg
-        .lookup(name)
-        .ok_or_else(|| CmdbarError::UnknownFunc { name: name.into() })?;
+    let Some(spec) = reg.lookup(name) else {
+        // 内置没有：交给宿主（插件函数）。插件函数不接受具名参数。
+        if named.is_empty()
+            && let Some(r) = ctx.external_func(name, args)
+        {
+            return r;
+        }
+        return Err(CmdbarError::UnknownFunc { name: name.into() });
+    };
     if !spec.accepts(args.len()) {
         return Err(CmdbarError::Arity {
             name: name.into(),
@@ -483,6 +489,69 @@ mod tests {
         let ctx = MemoryContext::new().with_input("nihao");
         let p = parse(src).unwrap();
         evaluate(&p, &ctx, &reg).unwrap().display
+    }
+
+    /// 只认 `plugin_echo` 的宿主：其余方法全部转给内存上下文。
+    struct ExtCtx(MemoryContext);
+    impl EvalContext for ExtCtx {
+        fn input(&self) -> String {
+            self.0.input()
+        }
+        fn last(&self, n: i64) -> String {
+            self.0.last(n)
+        }
+        fn clip(&self, n: i64) -> String {
+            self.0.clip(n)
+        }
+        fn sel(&self) -> String {
+            self.0.sel()
+        }
+        fn app(&self) -> String {
+            self.0.app()
+        }
+        fn title(&self) -> String {
+            self.0.title()
+        }
+        fn env(&self, name: &str) -> String {
+            self.0.env(name)
+        }
+        fn reverse_lookup(&self, text: &str, format: &str) -> String {
+            self.0.reverse_lookup(text, format)
+        }
+        fn now(&self) -> chrono::DateTime<chrono::Local> {
+            self.0.now()
+        }
+        fn services(&self) -> Option<&crate::services::Services> {
+            self.0.services()
+        }
+        fn external_func(&self, name: &str, args: &[String]) -> Option<Result<String>> {
+            (name == "plugin_echo" || name == "upper")
+                .then(|| Ok(format!("ext:{}", args.join(","))))
+        }
+    }
+
+    #[test]
+    fn unknown_functions_fall_back_to_host_but_builtins_win() {
+        let reg = Registry::with_builtins();
+        let ctx = ExtCtx(MemoryContext::new().with_input("ab"));
+        let run = |src: &str| evaluate(&parse(src).unwrap(), &ctx, &reg).map(|e| e.display);
+        assert_eq!(run("{plugin_echo(code, \"x\")}").unwrap(), "ext:ab,x");
+        assert_eq!(
+            run("{upper(code)}").unwrap(),
+            "AB",
+            "内置函数不能被宿主遮蔽"
+        );
+        assert!(matches!(
+            run("{nope(code)}"),
+            Err(CmdbarError::UnknownFunc { .. })
+        ));
+        assert!(
+            matches!(
+                run("{plugin_echo(code, k=\"v\")}"),
+                Err(CmdbarError::UnknownFunc { .. })
+            ),
+            "宿主函数不接受具名参数"
+        );
     }
 
     #[test]

@@ -1,0 +1,9 @@
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+# cargo（未设 CARGO_TARGET_DIR 时）
+rust/target/

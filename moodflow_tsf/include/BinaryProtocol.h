@@ -912,6 +912,10 @@ constexpr const char* CONFIG_KEY_PASSWORD_SUPPRESS = "password_suppress";
 // 诊断快照采集开关（会话级，随输入诊断 HUD 显隐）。格式：enabled(u8)。默认关。
 // 采集要查三次窗口类名 + band，属于「只有排查时才值得付」的开销。
 constexpr const char* CONFIG_KEY_DIAG_SNAPSHOT = "diag_snapshot";
+// 并击键集合（VK）。格式：count(u8) + [vk:u16(LE)]...（对齐 Rust encode_chord_keys_value）。
+// 非空即并击开启：这些键按下时照常转发，**松开时也转发**（平时字母键的 keyup 不转发）。
+// 空集合 = 行为与改造前逐字一致。每次重连从空集合起步，core 在握手时推。
+constexpr const char* CONFIG_KEY_CHORD_KEYS = "chord_keys";
 // 「英文半角列有自定义标点映射」的源字符集合。英文模式（非全角）下本 DLL 默认直接透传标点键、
 // core 收不到，用户配的「英半」列因此永远不生效；据此集合精确吃下这些键转发给 core。
 // 集合为空（默认）= 行为与历史完全一致。格式：count(u8) + [ch:u16(LE)]...

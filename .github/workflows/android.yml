@@ -1,0 +1,179 @@
+# Android 应用（moodflow_android/）：Rust JNI 绑定 + Gradle 工程，产出 debug APK。
+#
+# 按路径触发（XSIME 吸收计划 §4.1）：Android 工程本身、moodflow-mobile 依赖闭包里的核心 crate、
+# 打进 APK 的出厂数据，以及本文件。闭包清单用下面这条命令核对（核心新增依赖边时同步这里）：
+#   cd moodflow_android/rust && cargo tree --target aarch64-linux-android -e normal,build --prefix none | grep "(/"
+#
+# runner 自带 Android SDK 与 NDK（ANDROID_HOME / ANDROID_NDK_LATEST_HOME），所以这里**不能**
+# 像 ci.yml 那样删 /usr/local/lib/android 腾磁盘。
+name: Android
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "moodflow_android/**"
+      - "data/**"
+      - "crates/mfp/**"
+      - "moodflow_input/crates/moodflow-assoc/**"
+      - "moodflow_input/crates/moodflow-aux-code/**"
+      - "moodflow_input/crates/moodflow-bridge/**"
+      - "moodflow_input/crates/moodflow-buffer/**"
+      - "moodflow_input/crates/moodflow-candidate/**"
+      - "moodflow_input/crates/moodflow-chord/**"
+      - "moodflow_input/crates/moodflow-clipboard/**"
+      - "moodflow_input/crates/moodflow-cmdbar/**"
+      - "moodflow_input/crates/moodflow-config/**"
+      - "moodflow_input/crates/moodflow-coordinator/**"
+      - "moodflow_input/crates/moodflow-dict/**"
+      - "moodflow_input/crates/moodflow-engine/**"
+      - "moodflow_input/crates/moodflow-host/**"
+      - "moodflow_input/crates/moodflow-ipc/**"
+      - "moodflow_input/crates/moodflow-keys/**"
+      - "moodflow_input/crates/moodflow-mobile/**"
+      - "moodflow_input/crates/moodflow-phrase/**"
+      - "moodflow_input/crates/moodflow-punct/**"
+      - "moodflow_input/crates/moodflow-quick-input/**"
+      - "moodflow_input/crates/moodflow-reverse/**"
+      - "moodflow_input/crates/moodflow-softkeyboard/**"
+      - "moodflow_input/crates/moodflow-store/**"
+      - "moodflow_input/crates/moodflow-tap/**"
+      - "moodflow_input/crates/moodflow-theme/**"
+      - "moodflow_input/crates/moodflow-transform/**"
+      - "moodflow_input/crates/moodflow-ui-types/**"
+      - "moodflow_input/crates/moodflow-utils/**"
+      - "docs/VERSION"
+      - ".github/workflows/android.yml"
+  push:
+    branches: [main]
+    paths:
+      - "moodflow_android/**"
+      - "data/**"
+      - "crates/mfp/**"
+      - "moodflow_input/crates/moodflow-assoc/**"
+      - "moodflow_input/crates/moodflow-aux-code/**"
+      - "moodflow_input/crates/moodflow-bridge/**"
+      - "moodflow_input/crates/moodflow-buffer/**"
+      - "moodflow_input/crates/moodflow-candidate/**"
+      - "moodflow_input/crates/moodflow-chord/**"
+      - "moodflow_input/crates/moodflow-clipboard/**"
+      - "moodflow_input/crates/moodflow-cmdbar/**"
+      - "moodflow_input/crates/moodflow-config/**"
+      - "moodflow_input/crates/moodflow-coordinator/**"
+      - "moodflow_input/crates/moodflow-dict/**"
+      - "moodflow_input/crates/moodflow-engine/**"
+      - "moodflow_input/crates/moodflow-host/**"
+      - "moodflow_input/crates/moodflow-ipc/**"
+      - "moodflow_input/crates/moodflow-keys/**"
+      - "moodflow_input/crates/moodflow-mobile/**"
+      - "moodflow_input/crates/moodflow-phrase/**"
+      - "moodflow_input/crates/moodflow-punct/**"
+      - "moodflow_input/crates/moodflow-quick-input/**"
+      - "moodflow_input/crates/moodflow-reverse/**"
+      - "moodflow_input/crates/moodflow-softkeyboard/**"
+      - "moodflow_input/crates/moodflow-store/**"
+      - "moodflow_input/crates/moodflow-tap/**"
+      - "moodflow_input/crates/moodflow-theme/**"
+      - "moodflow_input/crates/moodflow-transform/**"
+      - "moodflow_input/crates/moodflow-ui-types/**"
+      - "moodflow_input/crates/moodflow-utils/**"
+      - "docs/VERSION"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+    steps:
+      # 只删用不到的大件；Android SDK 要留着
+      - name: 释放 runner 磁盘空间
+        run: sudo nohup rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL >/dev/null 2>&1 &
+
+      - uses: actions/checkout@v7
+
+      - name: 产品名检查
+        run: python3 scripts/moodflow/check_names.py
+
+      # moodflow_android/VERSION 的主次版本号必须与产品版本 docs/VERSION 一致，
+      # 补丁号不低于产品版本的补丁号（§4.1）
+      - name: Android 版本号与产品版本对齐
+        run: |
+          product="$(tr -d '[:space:]' < docs/VERSION)"
+          android="$(tr -d '[:space:]' < moodflow_android/VERSION)"
+          p_mm="$(echo "$product" | cut -d. -f1,2)"
+          a_mm="$(echo "$android" | cut -d. -f1,2)"
+          p_patch="$(echo "$product" | cut -d. -f3 | grep -oE '^[0-9]+')"
+          a_patch="$(echo "$android" | cut -d. -f3 | grep -oE '^[0-9]+')"
+          echo "产品 $product / Android $android"
+          [ "$p_mm" = "$a_mm" ] || { echo "主次版本号不一致: $a_mm != $p_mm"; exit 1; }
+          [ "$a_patch" -ge "$p_patch" ] || { echo "补丁号低于产品版本: $a_patch < $p_patch"; exit 1; }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: moodflow_android/rust
+          cache-on-failure: true
+
+      - name: 安装 cargo-ndk
+        run: cargo install cargo-ndk --version 4.1.2 --locked
+
+      - name: 指向 runner 自带的 NDK
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+          echo "NDK: $ANDROID_NDK_LATEST_HOME"
+
+      # 绑定层自身的门禁（核心 crate 的 fmt / clippy 归 ci.yml）
+      - name: Rust fmt / clippy / 单测（绑定层）
+        working-directory: moodflow_android/rust
+        run: |
+          cargo fmt --all --check
+          cargo clippy --all-targets --target aarch64-linux-android -- -D warnings
+          cargo test
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # assembleDebug 经 cargoBuild 任务用 cargo-ndk 编 arm64-v8a + x86_64 的 .so；
+      # :app 的单测含 JNI 契约对账（Kotlin external ↔ Rust 导出）
+      - name: Gradle 构建与单测
+        working-directory: moodflow_android
+        run: ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest :imelogic:test
+
+      - name: 核对 APK 里带着 .so
+        working-directory: moodflow_android
+        run: |
+          apk="$(ls app/build/outputs/apk/debug/*.apk | head -n1)"
+          unzip -l "$apk" | grep -E "lib/(arm64-v8a|x86_64)/libmoodflow_android.so"
+          unzip -l "$apk" | grep -q "assets/data/config.toml"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moodflow-android-debug-apk
+          path: moodflow_android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: android-test-reports
+          path: |
+            moodflow_android/app/build/reports/tests/
+            moodflow_android/imelogic/build/reports/tests/
+          if-no-files-found: ignore

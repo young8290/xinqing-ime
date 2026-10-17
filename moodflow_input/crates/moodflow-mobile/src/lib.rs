@@ -22,7 +22,7 @@
 //! 所以本 crate 的依赖表里不该出现任何绑定框架——一旦沾上，「接口层」就退化成
 //! 「那个平台的实现层」，第二个平台再来只能复制粘贴。
 //!
-//! # 通道形状（对应 MoodflowAndroid docs/architecture.md §3.1）
+//! # 通道形状（Android 绑定见本仓 `moodflow_android/rust/moodflow-android`）
 //!
 //! - 正向：[`MobileCore::key_down`] → `Coordinator::handle_key_event` → 同步 [`KeyOutcome`]
 //!   （上屏文本/组合区走按键返回值，与 TSF 宿主同一条主输入路）
@@ -45,12 +45,23 @@
 //!
 //! 状态**必须**由引擎推送而不是宿主自己记：方案切换会改写方案短称，密码框会强制
 //! 英文，这些都发生在引擎内部；宿主侧自记一份开关态必然与引擎漂移。
+//!
+//! # XSIME 吸收的四块纯逻辑（计划 §4：门面只加与绑定框架无关的能力）
+//!
+//! - [`buffer`]：Buffer 工作台，替宿主保管投递凭据；
+//! - [`clipboard`]：剪贴板历史 + 落盘；
+//! - [`chord`]：物理键盘并击结算；
+//! - [`t9`]：九宫格切分，结果经 [`MobileCore::replace_composition`] 送进拼音引擎。
 
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+pub mod buffer;
+pub mod chord;
+pub mod clipboard;
 pub mod config_api;
+pub mod t9;
 
 use moodflow_bridge::handler::KeyAction as BridgeKeyAction;
 use moodflow_bridge::handler::{FocusData, KeyEventData, MessageHandler};
@@ -58,6 +69,7 @@ use moodflow_config::Config;
 use moodflow_coordinator::Coordinator;
 use moodflow_host::{KeyProbe, Modifiers};
 use moodflow_ipc::protocol::{EVENT_KEY_DOWN, FocusLostReason, caret_source};
+use moodflow_keys::keymap::VK_ESCAPE;
 use moodflow_ui_types::{MenuCmd, MenuKind, UiCommand, UiEvent};
 
 /// 宿主直接消费的接缝类型，从 [`moodflow_host`] 原样透出。
@@ -308,8 +320,21 @@ impl MobileCore {
         moodflow_coordinator::edit_ops::to_outcome(dispatch_key(&self.coord, vk, modifiers))
     }
 
-    /// 焦点获得（对应 Android `onStartInput`）。
+    /// 焦点获得（对应 Android `onStartInput`），普通字段。
     pub fn focus_gained(&self) {
+        self.focus_gained_with(false);
+    }
+
+    /// 焦点获得，并告知是否**私密字段**（密码、可见密码、宿主要求不学习）。
+    ///
+    /// 私密时按 TSF 宿主报密码框的同一条路走（`IS_PASSWORD` 位 + 输入态上报），核心据此
+    /// 关掉 Moodflow 采集闸门并按 `input.password_force_english` 强制英文。非私密时同样上报一次，
+    /// 把上一个字段留下的密码态清掉——只在私密时报，离开密码框后会一直停在强制英文。
+    ///
+    /// ⚠ 核心目前没有「本字段不学习但允许中文」的开关，所以 Android 宿主对私密字段**完全绕过
+    /// 引擎**直接上屏（见 `moodflow_android` 的 `FieldPolicy`）；这里的上报是第二道闸。
+    pub fn focus_gained_with(&self, private: bool) {
+        let mask = if private { PASSWORD_SCOPE_MASK } else { 0 };
         let _ = self.coord.handle_focus_gained(&FocusData {
             x: 0,
             y: 0,
@@ -317,7 +342,7 @@ impl MobileCore {
             composition_start_x: 0,
             composition_start_y: 0,
             client_token: 1,
-            input_scope_mask: 0,
+            input_scope_mask: mask,
             disabled: false,
             reason: 0,
             caret_source: caret_source::TSF_SELECTION,
@@ -326,11 +351,50 @@ impl MobileCore {
             // 消费端据此保持现状（见 AppCompat::initial_mode_applies_to_window）。
             window_class: String::new(),
         });
+        // reason 2 = 宿主报密码（与 TSF 侧同值），0 = 无
+        let reason = if private { 2 } else { 0 };
+        self.coord.handle_input_state_report(0, false, reason, mask);
     }
 
     /// 焦点丢失（对应 Android `onFinishInput`）。Thread 语义 = 真正离开，清输入态。
     pub fn focus_lost(&self) {
         self.coord.handle_focus_lost(1, FocusLostReason::Thread);
+    }
+
+    /// 把一串可打印 ASCII 逐键送进引擎（并击结算的拼音片段、九宫格切分）。
+    ///
+    /// 字符 → 按法查 [`Self::char_strokes`] 同一张表，与软键盘点字符同一条路；
+    /// 查不到按法的字符跳过（不绕过引擎直接上屏）。各键结果按顺序合并成一个 [`KeyOutcome`]。
+    pub fn feed_text(&self, text: &str) -> KeyOutcome {
+        let strokes = moodflow_coordinator::key_convert::char_strokes();
+        let mut out = KeyOutcome::default();
+        for ch in text.chars() {
+            let Some(&(_, vk, shift)) = strokes.iter().find(|(c, _, _)| *c == ch) else {
+                continue;
+            };
+            let mods = if shift { Modifiers::SHIFT } else { 0 };
+            merge_outcome(&mut out, self.key_down(vk, mods));
+        }
+        out
+    }
+
+    /// 清掉当前组字（等价于按一次 Esc；没有组字时什么也不做）。
+    pub fn clear_composition(&self) -> KeyOutcome {
+        let mut out = self.key_down(VK_ESCAPE, 0);
+        if !out.consumed {
+            // 没有组字时 Esc 不归引擎：结果里不能带「已消费」，否则宿主不知道该不该给应用发 Esc
+            out = KeyOutcome::passthrough();
+        }
+        out
+    }
+
+    /// 用 `text` **整体替换**当前组字（九宫格每按一个数字键就重算一次切分）。
+    ///
+    /// 结果只用 `ops`：宿主不应据 `consumed` 再给应用发键。
+    pub fn replace_composition(&self, text: &str) -> KeyOutcome {
+        let mut out = self.clear_composition();
+        merge_outcome(&mut out, self.feed_text(text));
+        out
     }
 
     /// 下达引擎命令。状态变化经 [`MobileEventSink::on_status`] 异步回报，不在此处同步返回
@@ -573,6 +637,19 @@ fn mount_dirs(data_dir: &Path, user_root: &Path) {
     }
 }
 
+/// TSF `IS_PASSWORD` 输入范围位（与 `moodflow_coordinator::input_diag` 同值）。
+const PASSWORD_SCOPE_MASK: u64 = 1 << 31;
+
+/// 把 `next` 接在 `acc` 后面：编辑指令按序拼接，标志位取或，时序提示取最后一个。
+fn merge_outcome(acc: &mut KeyOutcome, next: KeyOutcome) {
+    acc.consumed |= next.consumed;
+    acc.mode_changed |= next.mode_changed;
+    acc.ops.extend(next.ops);
+    if next.hint.is_some() {
+        acc.hint = next.hint;
+    }
+}
+
 /// 反向通道泵：`Receiver<UiCommand>` → [`MobileEventSink`] 回调。
 fn spawn_ui_pump(
     rx: std::sync::mpsc::Receiver<UiCommand>,
@@ -689,4 +766,46 @@ fn dispatch_key(coord: &Coordinator, vk: u32, modifiers: u32) -> BridgeKeyAction
         event_seq: 0,
         prev_char: 0,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merge_outcome_concatenates_ops_in_order() {
+        let mut acc = KeyOutcome {
+            consumed: true,
+            ops: vec![EditOp::SetComposition {
+                text: "n".into(),
+                caret: 1,
+            }],
+            hint: None,
+            mode_changed: false,
+        };
+        merge_outcome(
+            &mut acc,
+            KeyOutcome {
+                consumed: false,
+                ops: vec![EditOp::Commit("你".into())],
+                hint: Some(TimingHint::AutoCommitAfter { timeout_ms: 10 }),
+                mode_changed: true,
+            },
+        );
+        assert!(acc.consumed && acc.mode_changed);
+        assert_eq!(
+            acc.ops,
+            vec![
+                EditOp::SetComposition {
+                    text: "n".into(),
+                    caret: 1
+                },
+                EditOp::Commit("你".into())
+            ]
+        );
+        assert_eq!(
+            acc.hint,
+            Some(TimingHint::AutoCommitAfter { timeout_ms: 10 })
+        );
+    }
 }

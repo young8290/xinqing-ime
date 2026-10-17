@@ -682,6 +682,82 @@ pub struct Config {
     /// 移动端对上面各域的覆盖；桌面构建完全无视。见 [`MobileConfig`]。
     #[serde(default)]
     pub mobile: MobileConfig,
+    /// 剪贴板历史（XSIME 吸收计划 §2.4）。
+    #[serde(default)]
+    pub clipboard: ClipboardConfig,
+    /// 插件（ADR 0054，docs/design/plugin-system.md）。
+    #[serde(default)]
+    pub plugins: PluginsConfig,
+    /// 并击（XSIME 吸收计划 §2.3）。
+    #[serde(default)]
+    pub chord: ChordConfig,
+}
+
+/// 并击：多键同按出拼音。出厂关闭；方案文件放在用户目录。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChordConfig {
+    /// 是否启用。启用但方案读不出或校验不过时不生效，并提示一次。
+    #[serde(default)]
+    pub enabled: bool,
+    /// 键位方案文件（JSON，格式见 `moodflow-chord`）。相对路径按用户目录解析。
+    #[serde(default = "default_chord_keymap")]
+    pub keymap: String,
+}
+
+fn default_chord_keymap() -> String {
+    "chord_keymap.json".to_string()
+}
+
+impl Default for ChordConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            keymap: default_chord_keymap(),
+        }
+    }
+}
+
+/// 剪贴板历史。出厂关闭：剪贴板里常有验证码、地址这类东西，记录与否由用户决定。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClipboardConfig {
+    /// 是否记录剪贴板历史。关闭时不监听剪贴板，已有记录保留（可在面板里清空）。
+    #[serde(default)]
+    pub enabled: bool,
+    /// 未收藏条目最多保留几条。
+    #[serde(default = "default_clipboard_max_entries")]
+    pub max_entries: usize,
+    /// 未收藏条目保留天数；0 表示不按时间清理。
+    #[serde(default = "default_clipboard_retention_days")]
+    pub retention_days: u64,
+}
+
+fn default_clipboard_max_entries() -> usize {
+    200
+}
+fn default_clipboard_retention_days() -> u64 {
+    30
+}
+
+impl Default for ClipboardConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            max_entries: default_clipboard_max_entries(),
+            retention_days: default_clipboard_retention_days(),
+        }
+    }
+}
+
+/// 插件。启用状态用数组而非 map 子键：map 逐键深合并删不掉出厂值，用户关不掉
+/// （AGENTS.md「出厂预置的绑定/开关」）。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PluginsConfig {
+    /// 已启用的插件 id。只有安装了且在这里的插件才会加载。
+    #[serde(default)]
+    pub enabled: Vec<String>,
+    /// 安全模式：所有第三方插件都不加载（排查「装了某个插件后输入异常」用）。
+    #[serde(default)]
+    pub safe_mode: bool,
 }
 
 // ──────────────── input.default（启动默认状态，原 general 域）────────────────
@@ -4872,6 +4948,15 @@ pub struct KeysConfig {
     /// docs/design/key-resolver-unification.md §9 第一条否决过的合并提案）。
     #[serde(default = "default_softkeyboard")]
     pub softkeyboard: String,
+    /// 打开剪贴板历史面板。标量字段（出厂绑定可被用户清空），见 buffer.md 与 AGENTS.md。
+    #[serde(default = "default_clipboard_panel")]
+    pub clipboard_panel: String,
+    /// 打开 / 重新绑定 / 关闭 Buffer（docs/design/buffer.md）。标量字段，清空即禁用。
+    #[serde(default = "default_toggle_buffer")]
+    pub toggle_buffer: String,
+    /// 把 Buffer 投递到绑定的输入框。Buffer 没打开时这个键原样交给应用。
+    #[serde(default = "default_buffer_send")]
+    pub buffer_send: String,
     #[serde(default)]
     pub global_hotkeys: Vec<String>,
     /// **已废弃且不再生效**：方案直达热键已并入 [`Self::key_actions`]，动词
@@ -4989,6 +5074,15 @@ fn default_take_screenshot() -> String {
 }
 fn default_softkeyboard() -> String {
     "ctrl+shift+k".to_string()
+}
+fn default_clipboard_panel() -> String {
+    "ctrl+shift+h".to_string()
+}
+fn default_toggle_buffer() -> String {
+    "alt+shift+b".to_string()
+}
+fn default_buffer_send() -> String {
+    "ctrl+shift+enter".to_string()
 }
 fn default_activate_ime() -> String {
     "ctrl+shift+[".to_string()
@@ -5181,6 +5275,9 @@ impl Default for KeysConfig {
             delete_candidate: default_delete_candidate(),
             take_screenshot: default_take_screenshot(),
             softkeyboard: default_softkeyboard(),
+            clipboard_panel: default_clipboard_panel(),
+            toggle_buffer: default_toggle_buffer(),
+            buffer_send: default_buffer_send(),
             global_hotkeys: Vec::new(),
             legacy_schema_hotkeys: HashMap::new(),
             key_actions: BTreeMap::new(),

@@ -1743,6 +1743,18 @@ pub fn encode_diag_snapshot_value(enabled: bool) -> Vec<u8> {
     vec![enabled as u8]
 }
 
+/// 编码并击键集合（对齐 TSF `OnSyncConfig` 的 CONFIG_KEY_CHORD_KEYS）。
+/// 格式：count(u8) + [vk:u16(LE)]...；超过 255 个只取前 255 个。
+pub fn encode_chord_keys_value(vks: &[u32]) -> Vec<u8> {
+    let vks = &vks[..vks.len().min(255)];
+    let mut value = Vec::with_capacity(1 + vks.len() * 2);
+    value.push(vks.len() as u8);
+    for vk in vks {
+        value.extend_from_slice(&(*vk as u16).to_le_bytes());
+    }
+    value
+}
+
 /// 编码配对跳出键的值部分（对齐 TSF KeyEventSink::OnSyncConfig CONFIG_KEY_JUMP_OUT_KEYS）。
 ///
 /// 格式：right_symbol(u8) + count(u8) + [vk:u16(LE)]...

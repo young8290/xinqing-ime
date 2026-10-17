@@ -1462,6 +1462,13 @@ STDAPI CKeyEventSink::OnKeyDown(ITfContext* pContext, WPARAM wParam, LPARAM lPar
     // This ensures the candidate window appears at the correct position
     _pTextService->SendCaretPositionUpdate();
 
+    // 并击：记下按下时转发过的并击键，松开时据此转发 keyup（见 _DispatchChordKeyUp）。
+    if (!_chordKeys.empty() && _chordKeys.count((UINT)wParam) > 0
+        && !(modifiers & (KEYMOD_CTRL | KEYMOD_ALT)))
+    {
+        _chordDown.insert((UINT)wParam);
+    }
+
     // Send key to Go Service using binary protocol (SYNC mode)
     if (!_SendKeyToService((uint32_t)wParam, modifiers, KEY_EVENT_DOWN))
     {
@@ -1703,6 +1710,13 @@ STDAPI CKeyEventSink::OnTestKeyUp(ITfContext* pContext, WPARAM wParam, LPARAM lP
         }
     }
 
+    // 并击键松开：转发给 core 结算（先到者转发，见 _DispatchChordKeyUp）。
+    if (_DispatchChordKeyUp(wParam))
+    {
+        *pfEaten = TRUE;
+        return S_OK;
+    }
+
     // Handle pending toggle key release.
     // Dispatch here so apps like mintty (which call OnTestKeyUp but NOT OnKeyUp) still toggle.
     // _DispatchPendingToggleKeyUp clears _pendingKeyUpKey, making the OnKeyUp call a no-op.
@@ -1759,6 +1773,20 @@ STDAPI CKeyEventSink::OnKeyUp(ITfContext* pContext, WPARAM wParam, LPARAM lParam
 
     // Update modifier state machine for this KeyUp event
     _UpdateModsOnKeyUp(wParam);
+
+    // 并击键松开：OnTestKeyUp 没来得及转发（宿主跳过了它）就在这里转发；
+    // 已经转发过的只吃掉，不重复。
+    if (_DispatchChordKeyUp(wParam))
+    {
+        *pfEaten = TRUE;
+        return S_OK;
+    }
+    if (_chordUpDispatched != 0 && _chordUpDispatched == (UINT)wParam)
+    {
+        _chordUpDispatched = 0;
+        *pfEaten = TRUE;
+        return S_OK;
+    }
 
     // Execute pending auto-pair action when all modifiers are released
     if (_pendingPairAction.active && !_AreModifiersHeld())
@@ -2076,6 +2104,19 @@ BOOL CKeyEventSink::_DispatchPendingToggleKeyUp(WPARAM wParam)
             MOODFLOW_LOG_ERROR(L"IPC failed for toggle key, not toggling locally");
     }
 
+    return TRUE;
+}
+
+BOOL CKeyEventSink::_DispatchChordKeyUp(WPARAM wParam)
+{
+    if (_chordDown.erase((UINT)wParam) == 0)
+        return FALSE;
+    _chordUpDispatched = (UINT)wParam;
+    MOODFLOW_LOG_DEBUG_FMT(L"Chord: forwarding keyup vk=0x%02X\n", (UINT)wParam);
+    if (_SendKeyToService((uint32_t)wParam, 0, KEY_EVENT_UP))
+        _HandleServiceResponse();
+    else
+        MOODFLOW_LOG_ERROR(L"IPC failed for chord keyup");
     return TRUE;
 }
 
@@ -2933,6 +2974,21 @@ void CKeyEventSink::OnSyncConfig(const std::string& key, const std::vector<uint8
         uint16_t secs = *reinterpret_cast<const uint16_t*>(value.data());
         _pairStateTtlMs = (ULONGLONG)secs * 1000ULL;
         MOODFLOW_LOG_INFO_FMT(L"Pair state TTL updated: %d s\n", (int)secs);
+    }
+    else if (key == CONFIG_KEY_CHORD_KEYS)
+    {
+        // 格式：count(u8) + [vk:u16(LE)]...（对齐 Rust encode_chord_keys_value）
+        _chordKeys.clear();
+        _chordDown.clear();
+        _chordUpDispatched = 0;
+        if (value.empty()) return;
+        uint8_t count = value[0];
+        for (size_t i = 0; i < count && (1 + i * 2 + 2) <= value.size(); i++)
+        {
+            uint16_t vk = *reinterpret_cast<const uint16_t*>(value.data() + 1 + i * 2);
+            _chordKeys.insert((UINT)vk);
+        }
+        MOODFLOW_LOG_INFO_FMT(L"Chord keys updated: count=%d\n", (int)_chordKeys.size());
     }
     else if (key == CONFIG_KEY_PASSWORD_SUPPRESS)
     {

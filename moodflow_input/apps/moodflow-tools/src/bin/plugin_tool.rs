@@ -3,6 +3,9 @@
 //! ```text
 //! plugin_tool check <插件目录>            校验 manifest.toml；WASM 插件再实际加载一次，检查导入与导出
 //! plugin_tool pack  <插件目录> <输出.mfpack>  打包，并打印可贴进 index.json 的 sha256 / size
+//! plugin_tool try   <插件目录> <编码>        加载后按候选来源调一次，打印候选（开发调试用）
+//! plugin_tool review <index.json> <包目录>   市场审核：包目录里放按 sha256 命名的 `<sha256>.mfpack`，
+//!                                         逐个核对哈希、身份、清单、受保护文件，WASM 再实际加载
 //! plugin_tool sign  <index.json>          用环境变量 MF_MARKET_SIGNING_KEY（32 字节种子的十六进制）签名，
 //!                                         写出 index.json.sig；密钥不打印、不落盘
 //! ```
@@ -14,7 +17,7 @@ use std::path::Path;
 
 use ed25519_dalek::{Signer, SigningKey};
 use moodflow_plugin_api::{Kind, Manifest, SettingsSchema};
-use moodflow_plugin_host::{Limits, MemoryHost, PluginInstance};
+use moodflow_plugin_host::{InputContext, Limits, MemoryHost, PluginInstance};
 use sha2::{Digest, Sha256};
 
 /// 校验用的宿主版本：产品版本唯一真源 docs/VERSION（编译时读入）。
@@ -26,8 +29,12 @@ fn main() {
         (Some("check"), Some(dir), None) => check(Path::new(dir)).map(|_| ()),
         (Some("pack"), Some(dir), Some(out)) => pack(Path::new(dir), Path::new(out)),
         (Some("sign"), Some(index), None) => sign(Path::new(index)),
+        (Some("try"), Some(dir), Some(code)) => try_candidates(Path::new(dir), code),
+        (Some("review"), Some(index), Some(dir)) => review(Path::new(index), Path::new(dir)),
         _ => {
-            eprintln!("用法: plugin_tool check <目录> | pack <目录> <输出> | sign <index.json>");
+            eprintln!(
+                "用法: plugin_tool check <目录> | pack <目录> <输出> | try <目录> <编码> | review <index.json> <包目录> | sign <index.json>"
+            );
             std::process::exit(2);
         }
     };
@@ -76,6 +83,92 @@ fn check(dir: &Path) -> anyhow::Result<Manifest> {
         }
     );
     Ok(m)
+}
+
+fn try_candidates(dir: &Path, code: &str) -> anyhow::Result<()> {
+    let m = check(dir)?;
+    let Kind::Wasm { entry } = &m.kind else {
+        anyhow::bail!("内容包没有候选来源");
+    };
+    let wasm = std::fs::read(dir.join(entry))?;
+    let mut p = PluginInstance::load(
+        m.clone(),
+        &wasm,
+        Limits::default(),
+        Box::new(MemoryHost::default()),
+    )
+    .map_err(|e| anyhow::anyhow!("{entry}: {e}"))?;
+    let list = p
+        .candidates(&InputContext::default(), code)
+        .map_err(|e| anyhow::anyhow!("调用失败：{e}"))?;
+    for c in list {
+        println!("{}\t{}\t{}", c.weight, c.text, c.comment);
+    }
+    Ok(())
+}
+
+/// 市场审核（docs/design/plugin-system.md §7）：索引里每个未撤回的版本都必须有对应的包，且包能过客户端安装时的同一套检查。
+fn review(index: &Path, dir: &Path) -> anyhow::Result<()> {
+    let idx: moodflow_market::Index = serde_json::from_slice(&std::fs::read(index)?)?;
+    let host = host_version();
+    let mut failed = 0usize;
+    let mut seen = std::collections::BTreeSet::new();
+    for l in &idx.plugins {
+        if !seen.insert(l.id.as_str()) {
+            println!("✗ {} 在索引里出现了不止一次", l.id);
+            failed += 1;
+        }
+        for r in &l.releases {
+            if idx.is_revoked(&l.id, &r.version) {
+                continue;
+            }
+            let label = format!("{} {}", l.id, r.version);
+            let path = dir.join(format!("{}.mfpack", r.sha256));
+            let checked = std::fs::read(&path)
+                .map_err(|e| format!("读不到 {}：{e}", path.display()))
+                .and_then(|bytes| {
+                    moodflow_market::inspect_package(&bytes, &l.id, r, &host, None)
+                        .map_err(|e| format!("{e:?}"))
+                })
+                .and_then(|plan| {
+                    if let Kind::Wasm { entry } = &plan.manifest.kind {
+                        let wasm = plan
+                            .files
+                            .iter()
+                            .find(|(n, _)| n == entry)
+                            .map(|(_, b)| b.as_slice())
+                            .unwrap_or_default();
+                        PluginInstance::load(
+                            plan.manifest.clone(),
+                            wasm,
+                            Limits::default(),
+                            Box::new(MemoryHost::default()),
+                        )
+                        .map_err(|e| format!("{entry}: {e}"))?;
+                    }
+                    Ok(plan.manifest)
+                });
+            match checked {
+                Ok(m) => {
+                    let caps: Vec<String> = m
+                        .capabilities
+                        .list()
+                        .iter()
+                        .map(|c| format!("{c:?}"))
+                        .collect();
+                    println!("✓ {label}  能力：{}", caps.join("、"));
+                }
+                Err(e) => {
+                    println!("✗ {label}：{e}");
+                    failed += 1;
+                }
+            }
+        }
+    }
+    if failed > 0 {
+        anyhow::bail!("{failed} 项未通过");
+    }
+    Ok(())
 }
 
 fn pack(dir: &Path, out: &Path) -> anyhow::Result<()> {

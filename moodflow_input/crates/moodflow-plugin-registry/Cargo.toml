@@ -1,0 +1,20 @@
+[package]
+name = "moodflow-plugin-registry"
+version.workspace = true
+edition.workspace = true
+
+# 插件注册表：从用户目录加载已安装且已启用的插件，按扩展点汇总调用（候选来源、上屏变换、命令函数）。
+# 协调器只经这里接触插件。纯 Rust，须过 cargo check-android。
+[dependencies]
+moodflow-plugin-api = { path = "../moodflow-plugin-api" }
+moodflow-plugin-host = { path = "../moodflow-plugin-host" }
+moodflow-market = { path = "../moodflow-market" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+wat = "1"
+
+[lints]
+workspace = true

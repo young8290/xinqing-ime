@@ -716,14 +716,62 @@ pub(crate) fn on_commit(text: &str, keystrokes: u32, cand_pos: i32, source: Comm
     });
 }
 
+/// 当前输入环境的隐私状态。**插件、剪贴板历史、打字测速等一切读输入内容的扩展**都以它为准：
+/// 任一项为真就不给内容（ADR 0054 第 5 条）。与 MFP 的隐私闸门同源，但不依赖 Hub 的同意状态——
+/// 闸门管的是「能不能发给 Hub」，这里管的是「本地扩展能不能看见」。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct InputPrivacy {
+    /// 密码框或禁用输入的框。
+    pub private_field: bool,
+    pub secure_desktop: bool,
+    /// 无痕模式（Hub 下发或菜单/快捷键开启的暂停）。
+    pub incognito: bool,
+    /// 应用名单命中。
+    pub app_blocked: bool,
+}
+
+impl InputPrivacy {
+    pub(crate) fn input_allowed(&self) -> bool {
+        !(self.private_field || self.secure_desktop || self.incognito || self.app_blocked)
+    }
+}
+
+/// `(private_field, secure_desktop)`，每次焦点变化时更新；无 Tap 时也更新。
+static FOCUS_PRIVACY: Mutex<(bool, bool)> = Mutex::new((false, false));
+
+#[cfg(test)]
+thread_local! {
+    /// 测试用：本线程固定的隐私状态。`FOCUS_PRIVACY` 是进程级的，并行的其它用例会报密码框焦点，
+    /// 不隔离的话依赖它的用例会随调度时序时绿时红。
+    pub(crate) static TEST_PRIVACY: Cell<Option<InputPrivacy>> = const { Cell::new(None) };
+}
+
+/// 当前输入环境的隐私状态。
+pub(crate) fn input_privacy() -> InputPrivacy {
+    #[cfg(test)]
+    if let Some(p) = TEST_PRIVACY.with(Cell::get) {
+        return p;
+    }
+    let (private_field, secure_desktop) = *FOCUS_PRIVACY.lock().unwrap_or_else(|e| e.into_inner());
+    let (incognito, app_blocked) = tap().map_or((false, false), |t| (t.paused(), t.app_blocked()));
+    InputPrivacy {
+        private_field,
+        secure_desktop,
+        incognito,
+        app_blocked,
+    }
+}
+
 /// 焦点或输入框类型变化（FR-SEN-03）。`app` 是小写进程名，空串表示未知。
 pub(crate) fn on_focus(app: &str, scope: Scope) {
     *FOCUS_APP.lock().unwrap_or_else(|e| e.into_inner()) = app.to_string();
+    let secure = on_secure_desktop(app);
+    *FOCUS_PRIVACY.lock().unwrap_or_else(|e| e.into_inner()) = (scope != Scope::Normal, secure);
     let Some(tap) = tap() else {
         return;
     };
     // 先定安全桌面，再报焦点：锁屏、UAC 框里连 focus 也不发（C-PLT-05）
-    tap.set_secure_desktop(on_secure_desktop(app));
+    tap.set_secure_desktop(secure);
     tap.hook_focus(FocusHook {
         app: (!app.is_empty()).then_some(app),
         scope,

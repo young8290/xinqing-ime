@@ -4,13 +4,14 @@
 
 ## 仓库地图
 
-本仓含三大组件，另有若干独立仓库与本仓协同（相对路径以本仓根为基准）：
+本仓含四个组件，另有若干独立仓库与本仓协同（相对路径以本仓根为基准）：
 
 | 位置 | 内容 | 文档 |
 |---|---|---|
 | `moodflow_input/` | Rust 核心服务（cargo workspace：19 个 crate + `apps/service`） | 本文档 + crate 级 AGENTS.md |
 | `moodflow_tsf/` | C++17 TSF DLL：Windows 输入法接口层，经 Named Pipe 与 Rust 服务通信 | [AGENTS.md](moodflow_tsf/AGENTS.md) |
 | `moodflow_macos/` | macOS IMKit `.app`（与 `moodflow_tsf/` 对位，开发中） | [AGENTS.md](moodflow_macos/AGENTS.md) |
+| `moodflow_android/` | Android 输入法应用（与 `moodflow_tsf/` 对位，骨架期）：Kotlin `InputMethodService` + Rust JNI 绑定（`rust/`，独立 cargo workspace，只依赖 `moodflow-mobile`）；CI `android.yml` | 本文档「Android（`moodflow_android/`）」一节 |
 | `../moodflow-setting` | 设置 UI（**独立仓库**，经 JSON-RPC 与核心通信）；改设置界面去那边 | — |
 | `../moodflow-portable` | 绿色版启动器（独立仓库，不存在时构建脚本自动跳过） | — |
 
@@ -25,6 +26,7 @@
 | `moodflow-coordinator` | 输入法“大脑”：按键路由、状态机、候选与模式切换的中央协调器 | [AGENTS.md](moodflow_input/crates/moodflow-coordinator/AGENTS.md) |
 | `moodflow-engine` | Schema 驱动的引擎工厂：拼音/码表/混输/英文四类引擎的构建、切换与候选分发 | [AGENTS.md](moodflow_input/crates/moodflow-engine/AGENTS.md) |
 | `moodflow-ui` | 所有浮层窗口（候选窗/工具栏/菜单/状态泡/Toast/Tooltip）的渲染与鼠标交互 | [AGENTS.md](moodflow_input/crates/moodflow-ui/AGENTS.md) |
+| `moodflow-mobile` | 移动端门面：headless 协调器收口（按键 / 候选拉取 / 配置读写）+ Buffer、剪贴板历史、并击、九宫格的门面；**不得**依赖 jni / uniffi 等绑定框架（绑定在 `moodflow_android/rust/`） | — |
 | `moodflow-ui-types` | 表现层协议（纯数据）：`UiCommand`/`UiEvent` 及载荷，协调器 ↔ 任意前端（桌面/macOS/Android）共用 | [AGENTS.md](moodflow_input/crates/moodflow-ui-types/AGENTS.md) |
 | `moodflow-cmdbar` | 命令直通车：短语解析 → AST 求值 → 动作执行（纯逻辑） | [AGENTS.md](moodflow_input/crates/moodflow-cmdbar/AGENTS.md) |
 | `moodflow-dict` | 多层复合词典引擎：DictLayer/CompositeDict 查询 + wdat mmap 二进制词库 | [AGENTS.md](moodflow_input/crates/moodflow-dict/AGENTS.md) |
@@ -44,10 +46,12 @@
 | `moodflow-buffer` | Buffer 上屏前文本工作台（纯逻辑、零依赖）：块编辑、目标绑定与投递授权、两段式投递、容量上限；设计见 `docs/design/buffer.md` | — |
 | `moodflow-chord` | 并击输入（纯逻辑）：键位方案 JSON 格式与校验（草稿/应用两级）、同批与先左后右的结算、组合 → 拼音片段 | — |
 | `moodflow-clipboard` | 剪贴板历史（纯逻辑）：文本/链接条目、去重置顶、收藏、按保留期与条数清理、搜索、JSON 快照；采集由平台事件注入，正文不进日志 | — |
+| `moodflow-typing-practice` | 打字测速计分（纯逻辑）：有效速度、过程正确率、有界编辑距离字准；日常统计在 `moodflow-store::stats`，练习期间暂停它 | — |
 | `moodflow-manifest` | 安装数据逐文件 SHA-256 清单：打包时生成 `data/manifest.json`（拒收用户库、build/、sync/、符号链接），安装/解包时复核；工具 `moodflow-tools --bin data_manifest` | — |
 | `moodflow-plugin-api` | 插件清单、能力与设置声明（纯数据 + 校验，ADR 0054）：逐键扩展点不得联网、内容包不得声明代码能力、升级新增能力需重新同意 | — |
 | `moodflow-plugin-host` | L1 沙箱插件宿主（wasmi 纯解释器，portable-dispatch）：按能力放行 `mf` 宿主函数、加载时检查导入、每次调用限步数与内存、连续失败自动停用、密码框/无痕等场景不调用插件 | — |
 | `moodflow-market` | 插件市场客户端（不联网，只处理字节）：Ed25519 签名索引校验、可用更新与撤回、安装包哈希/身份/解压安全/安全资产检查、按版本原子安装与卸载 | — |
+| `moodflow-plugin-registry` | 插件注册表：从用户目录加载已安装且在 `plugins.enabled` 里的 WASM 插件，按优先级汇总候选来源、串联上屏变换、路由命令函数；单个插件失败只影响自己；插件私有存储按插件隔离并限额；安全模式全部不加载 | — |
 | `moodflow-aux-code` | 辅助码过滤：拼音后追加字形辅助码，按字形裁减候选字词（**出厂关闭**，`schema.pinyin.aux_code.enabled`） | [AGENTS.md](moodflow_input/crates/moodflow-aux-code/AGENTS.md) |
 | `moodflow-punct` | 标点转换纯逻辑（中英标点/全半角/数字后智能） | — |
 | `moodflow-transform` | 文本变换：标点、全角、自动配对、简繁 | — |
@@ -391,6 +395,41 @@ cargo test -p moodflow-rpc --test wind_setting_assets
   安装包 `8`/`d8` → `.pkg`。
 - `.app` 侧单测：`cd moodflow_macos && swift test`。
 - 与 Windows 的功能差距（宿主层）登记在 `moodflow_macos/AGENTS.md`「与 Windows 的功能差距」。
+
+### Android（`moodflow_android/`）
+
+计划与验收见 [XSIME 吸收计划](docs/design/xsime-feature-port-plan.md) §4.1 / §5 P3。结构：
+
+- `rust/moodflow-android`：JNI 绑定 cdylib（`libmoodflow_android.so`），**独立 workspace**，经 path
+  依赖只吃 `moodflow-mobile` 一条边——`moodflow_input` 的 workspace、依赖锁与 CI 不因它变动。
+  结构化结果一律编成 `String[]` 过边界（格式见 `src/wire.rs`，Kotlin 解码在 `imelogic` 的 `Wire.kt`）。
+- `imelogic`：纯 Kotlin/JVM，无 Android SDK 依赖（字段隐私判据、`Wire` 解码、键码映射、九宫格串、
+  编辑指令派发），单测在任何有 JDK 的机器上都能跑。
+- `app`：`InputMethodService`、键盘视图、设置页、JNI 包装；构建时经 cargo-ndk 编 `.so`，并把仓库根
+  `data/` 拷进 assets（首次启动解到 `filesDir/data`）。
+
+```bash
+cd moodflow_android/rust
+cargo check --target aarch64-linux-android   # 闭包纯 Rust，免 NDK
+cargo fmt --all --check && cargo clippy --all-targets --target aarch64-linux-android -- -D warnings && cargo test
+
+cd moodflow_android
+gradle -Pmoodflow.jvmOnly=true :imelogic:test   # 无 Android SDK 时：不加载 AGP、不含 :app
+# 完整构建：Android SDK + NDK、cargo-ndk 4.1.2、rustup target aarch64/x86_64-linux-android
+ANDROID_NDK_HOME=<ndk> ./gradlew assembleDebug testDebugUnitTest :imelogic:test
+#   -Pmoodflow.skipRust=true 只编 Kotlin（APK 无 .so，键盘退化为直接上屏）；-Pmoodflow.abis=arm64-v8a 只编一个 ABI
+```
+
+- **JNI 契约**：`lib.rs` 的 `Java_com_moodflow_ime_jni_MoodflowNative_*` 与 `MoodflowNative.kt` 的
+  `external fun` 名字、参数、返回类型必须逐一对应——写错不报编译错，只在设备上调用时抛
+  `UnsatisfiedLinkError`。`:app` 的 `MoodflowNativeContractTest` 解析 Rust 源码对账，改任一边都要过它。
+  回调方向（`sink.rs` → `NativeEventSink.kt`）的方法签名串同理，靠两边注释互指。
+- **私密字段**（密码类、`IME_FLAG_NO_PERSONALIZED_LEARNING`）**完全绕过引擎**直接上屏，且不启用
+  Buffer、不采集剪贴板：核心没有「本字段不学习但允许中文」的开关，绕过是唯一能保证不学习的做法。
+- **版本**：`moodflow_android/VERSION` 的主次版本号与 `docs/VERSION` 一致、补丁号不低于它（CI 校验）；
+  标签 `android-vX.Y.Z`，发布时不设为 latest。
+- 本机若到不了 `downloads.gradle.org`（wrapper 下载）与 `dl.google.com`（AGP），只能跑上面两条
+  免 SDK 的检查；完整构建以 CI（`android.yml`，runner 自带 SDK/NDK）为准。设备行为只能真机验。
 
 ### 注意
 

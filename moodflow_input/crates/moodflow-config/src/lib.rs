@@ -31,14 +31,14 @@ pub mod variant;
 pub use code_charset::{CodeCharSet, CodeCharSetError};
 pub use config::{
     AssociationConfig, AuxCodeShare, BoundAction, CUSTOM_DATA_DIR_NAME, CUSTOM_MANIFEST_NAME,
-    CodetableEnglishMerge, CodetableGlobal, CommentDictSpec, Config, CustomHideList,
-    CustomIdentity, CustomManifest, DEFAULT_DOTA2_ALIAS, DEFAULT_LABEL_CAPS, DEFAULT_LABEL_ENGLISH,
-    DOTA2_ALIAS_MAX_LEN, KeyOrigin, LabelsConfig, LangBarConfig, LayerOrigin, LayoutIntent,
-    MOODFLOW_DEFAULT_BLOCKLIST, MOODFLOW_REWRITE_STYLES, MixGlobal, MobileAssociationConfig,
-    MobileConfig, ModeIndicatorStyle, MoodflowConfig, Orientation, PinyinEnglishMerge, PinyinFuzzy,
-    PinyinGlobalConfig, PreeditDisplay, ResourceLayer, SessionAction, SingleCharAction,
-    TOOLBAR_ITEM_KEYS, TOOLBAR_LABEL_MAX_WIDTH, TextOrientation, ToolbarButtonSpec, TopCommitMode,
-    sanitize_dota2_alias, toolbar_label_trunc,
+    ClipboardConfig, CodetableEnglishMerge, CodetableGlobal, CommentDictSpec, Config,
+    CustomHideList, CustomIdentity, CustomManifest, DEFAULT_DOTA2_ALIAS, DEFAULT_LABEL_CAPS,
+    DEFAULT_LABEL_ENGLISH, DOTA2_ALIAS_MAX_LEN, KeyOrigin, LabelsConfig, LangBarConfig,
+    LayerOrigin, LayoutIntent, MOODFLOW_DEFAULT_BLOCKLIST, MOODFLOW_REWRITE_STYLES, MixGlobal,
+    MobileAssociationConfig, MobileConfig, ModeIndicatorStyle, MoodflowConfig, Orientation,
+    PinyinEnglishMerge, PinyinFuzzy, PinyinGlobalConfig, PluginsConfig, PreeditDisplay,
+    ResourceLayer, SessionAction, SingleCharAction, TOOLBAR_ITEM_KEYS, TOOLBAR_LABEL_MAX_WIDTH,
+    TextOrientation, ToolbarButtonSpec, TopCommitMode, sanitize_dota2_alias, toolbar_label_trunc,
 };
 pub use dir_var::{dir_var, dir_var_help, dir_var_names, dir_var_str, is_dir_var};
 pub use runtime_state::RuntimeState;

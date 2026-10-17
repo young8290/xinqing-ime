@@ -2289,6 +2289,8 @@ impl Coordinator {
                 },
             );
         }
+        // 插件候选（首选不动，见 handle_plugins 模块文档）。
+        self.add_plugin_candidates(state);
         state.candidate_input = state.input_buffer.clone();
         state.candidate_limit = limit;
         // 引擎返回数达到上限 → 可能还有更多未加载

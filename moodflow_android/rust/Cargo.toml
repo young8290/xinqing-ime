@@ -1,0 +1,33 @@
+# Android 绑定层的独立 workspace。
+#
+# 刻意**不**并进 moodflow_input 的 workspace：那边的 CI（fmt / clippy msvc / test）与
+# 依赖锁不该因为多了一个 cdylib 与 jni 依赖而变动；本 workspace 只经 path 依赖
+# 吃 moodflow-mobile 一条边（见 moodflow-mobile 的 Cargo.toml 注释）。
+[workspace]
+resolver = "2"
+members = ["moodflow-android"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+# 与 moodflow_input 同一套全工作区 lint（那边的说明见其 Cargo.toml）。
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+# .so 一律按 release 档出（debug 档的引擎在手机上每键慢一个数量级）。
+# 不开 panic = "abort"：JNI 边界用 catch_unwind 兜住，panic 不该带走宿主进程。
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2

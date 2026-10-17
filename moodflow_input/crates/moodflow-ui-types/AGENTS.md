@@ -23,7 +23,7 @@
 3. **平台专属载荷一律 target-specific 依赖 + `#[cfg]` 变体**（先例：`SetHostRender` + cfg(windows) 的 moodflow-bridge）。禁止无条件平台依赖。
 
 ### 演化约定
-- **不要给枚举加 `#[non_exhaustive]`**：全部消费者同 workspace，穷尽匹配正是加变体时的编译期消费者清单——新变体一加，编译器逐个点名 moodflow-ui 的 match 与 moodflow-mobile 的映射层，机械化「逐一标注接/不接」流程。（移动端的**绑定层**在 MoodflowAndroid 仓，不在本 workspace 内；它只看 moodflow-mobile 的门面，故此处的编译期点名到 moodflow-mobile 为止。）
+- **不要给枚举加 `#[non_exhaustive]`**：全部消费者同 workspace，穷尽匹配正是加变体时的编译期消费者清单——新变体一加，编译器逐个点名 moodflow-ui 的 match 与 moodflow-mobile 的映射层，机械化「逐一标注接/不接」流程。（移动端的**绑定层**在 `moodflow_android/rust`（独立 workspace），不在本 workspace 内；它只看 moodflow-mobile 的门面，故此处的编译期点名到 moodflow-mobile 为止。）
 - 加 `UiCommand` 变体时按域放进对应注释分节；moodflow-ui 侧 `manager.rs` 的 `pub use` 清单同步补（DiagSections 三件套走 input_diag_hud 链式转发，勿重复列出，否则 E0252）。
 - derive/手写 impl 是行为契约：`MenuItemSpec` 的 `PartialEq` 是 popup_menu 增量重绘判据、`DiagSections`/`InputDiagView` 的手写 `Default`（全开/置顶）不可 derive 化。
 

@@ -1,6 +1,8 @@
 # Buffer（上屏前的文本工作台）
 
-> 状态：P1 纯逻辑已实现（`moodflow_input/crates/moodflow-buffer`），协调器与两端宿主尚未接入。
+> 状态：P1 纯逻辑已实现（`moodflow_input/crates/moodflow-buffer`）；Android 门面（`moodflow-mobile::buffer`）与
+> 键盘内 Buffer 栏已搭好；Windows 已接入协调器（`handle_buffer`）与浮窗（`moodflow-ui::buffer_panel`）。
+> 两端都**未真机验证**。
 > 来源：[XSIME 吸收计划](xsime-feature-port-plan.md) §2.1；行为契约取自 XSIME 在 macOS / Windows / Android 上验证过的规则。
 
 ## 1. 是什么
@@ -44,9 +46,22 @@
 发送键、绑定键的出厂值放标量配置字段（如 `keys.toggle_buffer`、`keys.buffer_send`），不放 `keys.key_actions`，
 保证用户删得掉（AGENTS.md「出厂预置的绑定/开关」）。
 
-## 4. 下一步
+## 4. Windows 接入现状（2026-10-17）
 
-1. 协调器：Buffer 开启时把上屏路由到 `Buffer`；新增 `UiCommand::UpdateBuffer`（`moodflow-ui-types`）。
-2. Windows：`moodflow-ui` Buffer 浮窗（不激活、焦点留在宿主）；TSF 投递与授权复核。
-3. Android：`moodflow-mobile` 门面方法；`moodflow_android/` 的键盘内 Buffer 栏。
-4. 长按发送逐块投递（默认约 1.2 秒，可配 500–3000 ms）、可选 1/2/3/5 秒节奏投递：在协调器里用 `begin_next` 循环实现，本 crate 不管计时。
+- 绑定 `keys.toggle_buffer`（出厂 Alt+Shift+B）：打开并绑定当前输入框；暂停后再按重新绑定；已绑定时再按关闭（内容保留）。
+- 发送 `keys.buffer_send`（出厂 Ctrl+Shift+Enter）：经按键响应同步写入，按 Accepted 结算；有组字时只提示，不顺带发送。
+  Buffer 关着时这个键落回常规链路。
+- 截获点：按键动作出口（`handle_key_event_policed`），在插件上屏变换与换行改写之前；收进 Buffer 后宿主只收到一次空上屏。
+- 浮窗贴在光标行上方，右键菜单：全部发送、删除最后一块、清空、关闭。
+- **已知差距**：
+  1. 目标身份是 TSF 客户端令牌（进程 + 实例），同一进程内换框识别不到；补偿做法是任何有效失焦都暂停，回框后按一次绑定键。
+     要做到真正按输入框区分，需要 TSF 在 `FocusGainedPayload` 里带上文档/上下文身份。
+  2. 推送通道（菜单发送）没有回执，「结果不明 → 暂停不重发」暂时区分不了，按 Accepted 处理。
+  3. 英文直输不经协调器出字，不会合进 Buffer（契约 1 的后半句在 Windows 上尚未实现）。
+  4. 长按逐块投递、节奏投递未做。
+
+## 5. 下一步
+
+1. TSF：焦点事件带文档身份；推送上屏加回执。
+2. Android：协调器接入后改走同一套截获（目前 Android 上 Buffer 直接截获宿主侧的上屏指令）。
+3. 长按发送逐块投递（默认约 1.2 秒，可配 500–3000 ms）、可选 1/2/3/5 秒节奏投递：在协调器里用 `begin_next` 循环实现，本 crate 不管计时。

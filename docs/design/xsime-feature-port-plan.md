@@ -11,7 +11,7 @@
    把 librime 拉进来等于并行维护两套引擎、两套用户词库，**不做**。
 2. **先进纯逻辑 crate，再接两个宿主。** 每个功能的状态机、数据格式、失效规则写在零平台依赖的
    crate 里，必须过 `cargo check-android`；Windows（TSF + `moodflow-ui`）与 Android
-   （`moodflow-mobile` → `moodflow_android/` 里的 UniFFI 绑定）只做薄薄的呈现与投递。这是本仓「平台分层策略」的
+   （`moodflow-mobile` → `moodflow_android/` 里的 JNI 绑定）只做薄薄的呈现与投递。这是本仓「平台分层策略」的
    直接应用（见 AGENTS.md 同名一节）。
 3. **首批只拿六项基础功能**（§2），其余 XSIME 能力（Mailbox 终端、截图录屏、音乐、摩斯、
    密码库、iCloud 等）明确不在范围内（§7）。
@@ -32,7 +32,7 @@ XSIME 的结构：librime 引擎 + 三个「槽位」界面（Buffer / Capsule /
 | **跨平台方案导入**（同一份 Rime ZIP / UTF-8 TXT·TSV 词库五端导入） | 数据迁移 | 有 `.wpkg` 方案包，无 Rime 包导入 | ✅ 首批（转换到 `.wpkg`，见 §2.5） |
 | **九宫格拼音**（移动端） | 移动端输入方式 | 无（UI 里的「九宫格」是九宫格图片拉伸，与 T9 无关） | ✅ 首批（Android 专属） |
 | 学习词库异常提示与恢复 | 数据安全 | 用户库打不开时**静默降级**为不落盘（§3.2） | ✅ 首批（§3.2） |
-| 日常统计 / 打字测速 | 周边 | `coordinator/src/stats.rs` 只有三行注释，未实现 | 🔶 二批，按 XSIME 口径实现（§3.3） |
+| 日常统计 / 打字测速 | 周边 | 日常统计已有（`moodflow-store::stats`：字符分类、时段、码长、选重、活跃时长、速度模型 v2）；无打字测速 | 🔶 二批，补打字测速（§3.3） |
 | Buffer 插件：AI 生成 / 润色 / 实时翻译 | 依赖 Buffer | Hub 已有 AI 服务与温柔改写（ADR 0012/0028） | 🔶 二批，复用 Hub 的 AI 配置 |
 | XSIME 五笔（五笔码与拼音免切换） | 方案 | 已有混输、满码唯一上屏、临时拼音与编码提示 | 🔁 已覆盖，用 XSIME 用例做对照测试（§3.5） |
 | Mailbox（终端 / 对话 / 收件） | 桌面应用 | Hub 有对话 | ⛔ 不做 |
@@ -183,9 +183,12 @@ XSIME 五端导入同一份标准 Rime ZIP（含 Lua/OpenCC/多方案依赖）�
 - **XSIME**：分成两个数据集。「日常统计」只存不含正文的计数（按键分布、成文字数、活跃时长，
   活跃时间只累计不超过 10 秒的连续间隔）；「打字测速」是显式开始的练习，有明确计分口径
   （有效速度、过程正确率、用有界编辑距离对齐的最终字准），练习不计入日常统计。
-- **Moodflow**：`stats.rs` 只有三行注释，没有实现。
-- **吸收**：二批按上面口径实现日常统计；动手前先确认与 `moodflow-tap`（Hub 的按键/上屏采集）
-  的关系，同一份事件只采一次，隐私闸门共用，`info` 日志不出现任何正文。
+- **Moodflow**（2026-10-17 更正）：日常统计**早已实现**，在 `moodflow-store::stats` 与 `stat_collector`
+  （字符分类、24 小时分布、码长、选重、活跃时长、按方案/来源，速度模型 v2 修掉了三条结构性偏差），
+  RPC `stats.summary/daily/clear/pruneBefore`。先前「`coordinator/src/stats.rs` 只有三行注释」的判断
+  只看了一个遗留空文件，是错的。缺的只有打字测速。
+- **吸收**：新增 `moodflow-typing-practice`（纯逻辑计分：有效速度、过程正确率、有界编辑距离字准）；
+  练习期间经 `StatCollector::pause` 暂停日常统计，练习的输入不计入日常统计。
 
 ### 3.4 安装数据逐文件校验（两端）
 
@@ -253,7 +256,7 @@ Android 应用尚未开始写（§4.1），以下作为从零搭建时的设计�
 | 设置界面 | 邻仓 `moodflow-setting`（新增配置键要跑 `wind_setting_assets` 对账） | `moodflow_android/` 设置页 |
 
 `moodflow-mobile` 只新增**与绑定框架无关**的能力（Buffer/剪贴板/矩阵的门面方法）；
-UniFFI 类型投影仍在 Android 工程里。
+JNI 类型投影在 Android 工程里（`moodflow_android/rust/moodflow-android`）。
 
 ### 4.1 仓库与分支：照 XSIME，单仓单主线
 
@@ -270,8 +273,8 @@ XSIME 的 Android 端在主仓 `platforms/android/`，与其他平台共用 `mai
 - **版本与标签按平台独立**：产品版本仍以 `docs/VERSION` 为唯一真源；Android 另设
   `moodflow_android/VERSION`，主次版本号必须与产品版本一致，补丁号可独立递增且不低于产品版本的补丁号；
   标签用 `android-vX.Y.Z`，发布时不设为 latest。
-- **现状**：目前没有任何 Android 应用代码（`moodflow-mobile` 模块文档里提到的 MoodflowAndroid 仓库并不存在）。
-  P3 开工时新建 `moodflow_android/` 工程，同步更新 AGENTS.md 的仓库地图与构建命令。
+- **现状**（2026-10-17）：`moodflow_android/` 骨架已建（见 §9），CI 工作流 `android.yml`；
+  AGENTS.md 的仓库地图与构建命令已同步。
 
 ## 5. 阶段与验收
 
@@ -338,6 +341,15 @@ Buffer 是 AI/翻译二批的地基；并击风险最高（TSF keyup），放最
 | §3.5 五笔对照 | `moodflow-engine/tests/xsime_wubi_parity.rs` | 4 条，与 XSIME 行为一致 |
 | §3.8 联想历史上限 | `moodflow-store::assoc_history`（每上文 8 条、整表 4800 条） | 2 个新单测 |
 
+**P2 Windows 接入（2026-10-17，未真机验证）**
+
+| 项 | 落点 | 说明 |
+|---|---|---|
+| 剪贴板历史 | `moodflow-ui::clipboard_monitor`、协调器 `handle_clipboard` | `[clipboard] enabled`（出厂关）；`keys.clipboard_panel` 打开菜单式面板；密码管理器排除标记、隐私环境不记 |
+| Buffer | `moodflow-ui::buffer_panel`、协调器 `handle_buffer` | `keys.toggle_buffer` 绑定 / `keys.buffer_send` 发送；已知差距见 `buffer.md` §4 |
+| 并击 | 协调器 `handle_chord`、TSF `_DispatchChordKeyUp` | `[chord] enabled` + 用户目录方案 JSON；并击键集合经 `CONFIG_KEY_CHORD_KEYS` 推给 TSF，集合非空时才转发字母键 keyup |
+| 候选矩阵 | — | 尚未接入候选窗（需要候选窗支持多行网格排版） |
+
 **核查结论**
 
 - §3.6 LPAC：**已补**（2026-10-17）。管道、共享内存与命名事件共用的 SDDL 原先只放行 `WD`、`SY`、`BA`、`AC`，
@@ -350,5 +362,35 @@ Buffer 是 AI/翻译二批的地基；并击风险最高（TSF keyup），放最
 **尚未开始，需要本会话没有的条件**
 
 - P2 Windows 接入（协调器路由、`moodflow-ui` 的 Buffer 浮窗/矩阵/剪贴板条、TSF 投递与并击 keyup）：需要 Windows 桌面验证。
-- P3 Android（`moodflow_android/` 从零搭建）：需要 Android SDK 与真机。
+- P3 Android 的**真机验收**（§5 P3 一栏）：骨架已搭好（见下），设备行为一项都还没验。
 - §3.3 日常统计与打字测速、§3.6 Windows TSF 自动化测试：同上。
+
+## P3 Android 骨架（2026-10-17）
+
+**已搭好**（`moodflow_android/`，构建与约定见 AGENTS.md「Android」一节）
+
+| 项 | 落点 |
+|---|---|
+| 门面 | `moodflow-mobile` 新增 `buffer` / `clipboard` / `chord` / `t9` 模块与 `focus_gained_with`、`feed_text`、`replace_composition`（19 个单测） |
+| JNI 绑定 | `moodflow_android/rust/moodflow-android`：独立 workspace，cdylib，结构化结果编成 `String[]`，日志接 logcat（8 个单测） |
+| 纯 Kotlin 逻辑 | `imelogic`：字段隐私判据、输入框代际与 Buffer 目标、`Wire` 解码、键码映射、九宫格串、编辑指令派发（29 个 JVM 单测） |
+| 应用 | `InputMethodService`：全键盘 / 九宫格 / 符号 / 数字布局，候选栏，Buffer 栏（绑定、逐块 / 全部投递、两段式授权），剪贴板面板（仅键盘可见时采集），物理键盘按键与并击接入，最小设置页（含并击方案导入） |
+| 隐私 | 密码类与 `IME_FLAG_NO_PERSONALIZED_LEARNING` 字段完全绕过引擎、禁 Buffer、禁剪贴板采集；核心焦点同时按密码框上报 |
+| CI | `android.yml`：产品名检查、版本号对齐、绑定层 fmt/clippy/单测、`assembleDebug testDebugUnitTest :imelogic:test`（含 JNI 契约对账）、APK 内 `.so` 与出厂数据核对、上传 debug APK |
+
+**本机验证过的**：`cargo test -p moodflow-mobile`、绑定层 `cargo check/clippy --target aarch64-linux-android`
+与 host 单测、`:imelogic:test`、JNI 契约测试（临时挂到 JVM 模块上跑通）、`app` 全部 Kotlin 源码对
+`android-all`（API 34）编译通过。本机无 Android SDK/NDK，AGP 构建、`.so` 链接与 APK 打包只由 CI 验证。
+
+**未验证（需真机，即 §5 P3 的验收项）**：Buffer 换字段 / 隐藏键盘清理、密码框禁用、剪贴板仅前台采集、
+九宫格与全键盘切换、物理键盘并击、旧组字不重放到新输入框、核心在设备上的冷启动与出厂数据解包。
+
+**已知缺口**
+
+- 核心没有「本字段不学习但允许中文」的开关，所以无痕字段（`NO_PERSONALIZED_LEARNING`）暂时只能直接上屏英文；
+  要放开需先在协调器加按字段关学习的开关。
+- 九宫格只取第一种切分喂引擎（多切分按引擎候选质量排序未做）；部分上屏后剩余数字串与核心组字不同步。
+- 出厂数据只含仓库 `data/`：拼音 / 五笔词库由 gen-data 生成、不入库，APK 里目前没有，候选质量取决于后续的
+  词库打包方案（§3.4 的清单校验也尚未接到 Android 解包）。
+- 剪贴板历史先落 JSON 文件（`filesDir/rust/clipboard.json`），计划中的 redb 存储未接。
+- 触屏并击、候选矩阵、标点数据共用、热区几何（§3.7）均未做；设置页只有宿主开关，引擎配置页未做。

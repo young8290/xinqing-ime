@@ -76,6 +76,11 @@ impl Gate {
         self.paused.load(RELAXED)
     }
 
+    /// 当前进程是否命中名单（不看同意状态）。插件与剪贴板历史共用这一判断。
+    pub fn app_blocked(&self) -> bool {
+        self.app_blocked.load(RELAXED)
+    }
+
     pub fn set_enabled(&self, on: bool) {
         self.enabled.store(on, RELAXED);
     }

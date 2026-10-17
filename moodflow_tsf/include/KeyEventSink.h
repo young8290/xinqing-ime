@@ -261,6 +261,14 @@ private:
     ULONGLONG _pairStateTtlMs = 0;
     bool _IsJumpOutKey(UINT vk) const { return _jumpOutKeys.count(vk) > 0; }
 
+    // 并击（chord）：core 经 CONFIG_KEY_CHORD_KEYS 推的键集合，空 = 关闭。
+    std::set<UINT> _chordKeys;
+    // 按下时已转发给 core 的并击键，等它们的 keyup。只有这里面的键才转发 keyup——
+    // 按下时没转发（如带 Ctrl、英文模式透传）的键，松开也不该凭空出现在 core 那边。
+    std::set<UINT> _chordDown;
+    // OnTestKeyUp 已转发过的那个 keyup：OnKeyUp 随后再来时只吃掉、不重复转发。
+    UINT _chordUpDispatched = 0;
+
     // 软键盘布局**之外**的键：小键盘。
     //
     // ⛔ 软键盘态下不得吃它们。`ClassifyInputKey` 把 VK_NUMPAD0-9 与 + - * / . 一并归成
@@ -556,6 +564,10 @@ private:
     // Called from both OnTestKeyUp and OnKeyUp; clearing in the first caller makes the second a no-op.
     // Returns TRUE if a toggle was matched (caller should set pfEaten=TRUE).
     BOOL _DispatchPendingToggleKeyUp(WPARAM wParam);
+    // 并击键的 keyup：在 _chordDown 里就转发给 core 并返回 TRUE（调用方吃掉）。
+    // OnTestKeyUp 与 OnKeyUp 都调（与 toggle 键同理：有的宿主只调其中一个），
+    // 先到者转发并从 _chordDown 移除，后到者经 _chordUpDispatched 只吃不转发。
+    BOOL _DispatchChordKeyUp(WPARAM wParam);
 
     // 记录「该切换键正等 keyup 触发切换」。OnTestKeyDown 与 OnKeyDown 都会调用：
     // 纯修饰键放行后 TSF 未必再调 OnKeyDown，只在后者记录会让切换失灵。幂等。

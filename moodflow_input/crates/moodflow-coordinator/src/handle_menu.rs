@@ -208,6 +208,14 @@ impl Coordinator {
     /// 执行功能主菜单命令
     pub(crate) fn run_menu_cmd(&self, cmd: MenuCmd) {
         match cmd {
+            MenuCmd::ClipboardPaste(_)
+            | MenuCmd::ClipboardTogglePin(_)
+            | MenuCmd::ClipboardRemove(_)
+            | MenuCmd::ClipboardClear => self.run_clipboard_menu_cmd(cmd),
+            MenuCmd::BufferSend
+            | MenuCmd::BufferDeleteLast
+            | MenuCmd::BufferClear
+            | MenuCmd::BufferClose => self.run_buffer_menu_cmd(cmd),
             MenuCmd::SchemaEnglish => {
                 // ctrl_held=false：菜单点的，与按键无关。它只被 `ignore_host_ime_close`
                 // 消费，而那条规则只拦 compartment 来源，菜单永远照办。

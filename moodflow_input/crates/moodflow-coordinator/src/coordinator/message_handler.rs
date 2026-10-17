@@ -96,7 +96,7 @@ pub(crate) fn apply_newline_style(action: KeyAction, style: NewlineStyle) -> Key
     if style == NewlineStyle::Keep {
         return action;
     }
-    let conv = |text: String| -> String {
+    map_commit_text(action, |text: String| -> String {
         if !text.contains(['\r', '\n']) {
             return text;
         }
@@ -104,7 +104,16 @@ pub(crate) fn apply_newline_style(action: KeyAction, style: NewlineStyle) -> Key
             std::borrow::Cow::Borrowed(_) => text,
             std::borrow::Cow::Owned(s) => s,
         }
-    };
+    })
+}
+
+/// 对 `action` 里所有**最终写入宿主文档**的文本字段逐个套用 `conv`（组合区文本不动，
+/// 理由见 [`apply_newline_style`]）。换行改写与插件上屏变换共用这一份字段清单——
+/// 两份清单各写各的，迟早有一个字段只被其中一边处理。
+pub(crate) fn map_commit_text(
+    action: KeyAction,
+    mut conv: impl FnMut(String) -> String,
+) -> KeyAction {
     match action {
         KeyAction::InsertText {
             text,
@@ -730,6 +739,9 @@ impl MessageHandler for Coordinator {
         // 上屏换行改写。与 record_input_stats / note_commit_action 同一收口理由（上屏路径
         // 40+ 个返回点，散点接线必漏），而且这里还多一条：换行形式是**平台/宿主**的表达
         // 约定，属于服务端的职责——DLL 拿到什么就写什么，不再自己判断（A3-3）。
+        // Buffer 截获在插件变换之前：收进 Buffer 的是原文，投递时整段只变换一次。
+        let action = self.route_commit_to_buffer(action);
+        let action = self.apply_plugin_transform(action);
         let action = self.apply_commit_newline(action);
         self.record_input_stats(&action);
         // 自提交打点 + 码表自动造词投喂。与 record_input_stats 同一收口理由：上屏路径有
@@ -936,6 +948,10 @@ impl MessageHandler for Coordinator {
         // 于 keyUp 转发该键事件（_SendKeyToService(..., KEY_EVENT_UP)）。因此服务端
         // 收到 toggle 键的 keyUp 即应直接切换，无需 keydown/pending（对齐 Go HandleKeyEvent）。
         if data.event_type == EVENT_KEY_UP {
+            // 并击键的松开（TSF 只在并击开启时转发字母键的 keyup，见 handle_chord）。
+            if let Some(act) = self.chord_key_up(data) {
+                return act;
+            }
             // 修饰键作二三候选键（select_key_groups 含 lrshift / lrctrl）：**先于**下面一切。
             // 同一个键可能多个身份都配了（设置页会提示冲突，但配置文件里拦不住），既有裁决是
             // 「有候选选词、无候选切换」——输入到一半按 Ctrl 想选词的意图远比切中英文常见，而
@@ -1109,6 +1125,11 @@ impl MessageHandler for Coordinator {
             return KeyAction::Consumed;
         }
 
+        // ── 并击：中文态的并击键按下只交给结算器（见 handle_chord）──
+        if let Some(act) = self.chord_key_down(data) {
+            return act;
+        }
+
         // ── key_down 热键匹配 ──
         // 规范化修饰位：TSF 转发的 modifiers 可能含 L/R 具体位，而 key_down 热键以
         // 通用位（ctrl/shift/alt/win）注册，故先掩掉具体位再比对 match_hash。
@@ -1165,6 +1186,18 @@ impl MessageHandler for Coordinator {
             } else if action == hotkey::MOODFLOW_REWRITE_ACTION {
                 // Moodflow：温柔改写（FR-RWR-01）。Moodflow 没启动时同上，不吞键。
                 if let Some(act) = self.moodflow_enter_rewrite() {
+                    return act;
+                }
+            } else if action == "clipboard_panel" {
+                // 剪贴板历史面板、Buffer：固定字段热键，不在 `BoundAction` 值域里，单独分派。
+                self.show_clipboard_panel();
+                return KeyAction::Consumed;
+            } else if action == "toggle_buffer" {
+                self.toggle_buffer();
+                return KeyAction::Consumed;
+            } else if action == "buffer_send" {
+                // Buffer 没打开时返回 None：落回常规链路（见 handle_buffer 模块文档）。
+                if let Some(act) = self.buffer_send_keyed() {
                     return act;
                 }
             } else if let Some(act) = self.dispatch_bound_action_hotkey(&action) {
@@ -2371,6 +2404,7 @@ impl MessageHandler for Coordinator {
         // 各发一条），全靠 menu_close_on_focus_change 的守卫期挡住刚弹出的菜单。
         self.menu_close_on_focus_change("focus_gained");
         self.close_softkeyboard_on_focus_change("focus_gained");
+        self.buffer_focus_gained(data.client_token);
         // 解析焦点进程的 caret 兼容态（微信 caret_use_top、per-app caret_offset_* 等）。
         // ★★ 必须在下面的 `apply_focus_caret` **之前**跑：那一步会读 `active_compat` 做
         // `caret_use_top`/`caret_offset_*` 变换，若仍在这之后调用，本次焦点事件带来的第一份
@@ -2596,6 +2630,8 @@ impl MessageHandler for Coordinator {
         if self.is_stale_focus_event(client_token, "handle_focus_lost") {
             return;
         }
+        // Buffer：任何有效失焦都撤销投递授权（契约 4，见 handle_buffer 模块文档）。
+        self.buffer_focus_lost();
         // ★ 探针：放行了一条「从未上报过 focus_gained 的 token」的失焦。
         //
         // `is_stale_focus_event` 挡不住它——`active_token` 有两个来源，`ime_activated`

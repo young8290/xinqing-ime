@@ -18,9 +18,11 @@
 //!   manager 的 Win32 消息泵。这些在非 Windows 是空实现，其测试仅验证 mock 的 API 契约。
 
 pub mod auto_hide;
+pub mod buffer_panel;
 pub mod candidate_window;
 /// macOS 全局热键（Carbon RegisterEventHotKey）。对位 Windows 的 RegisterHotKey 分支。
 pub mod caret_overlay;
+pub mod clipboard_monitor;
 pub mod debounce;
 pub mod double_click;
 pub mod dpi;

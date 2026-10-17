@@ -28,6 +28,8 @@ members = [
     "crates/moodflow-buffer",
     "crates/moodflow-chord",
     "crates/moodflow-clipboard",
+    "crates/moodflow-typing-practice",
+    "crates/moodflow-plugin-registry",
     "crates/moodflow-manifest",
     "crates/moodflow-plugin-api",
     "crates/moodflow-plugin-host",

@@ -1,0 +1,11 @@
+[package]
+name = "moodflow-typing-practice"
+version.workspace = true
+edition.workspace = true
+
+# 纯逻辑：打字测速（显式开始的练习）计分。时间由调用方给。须过 cargo check-android。
+[dependencies]
+serde = { workspace = true }
+
+[lints]
+workspace = true

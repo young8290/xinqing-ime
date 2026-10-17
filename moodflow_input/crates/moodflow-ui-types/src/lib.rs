@@ -13,6 +13,7 @@
 //! 约束（新增内容前先读 AGENTS.md）：仅纯数据与纯映射逻辑；零 IO、零日志、零 serde；
 //! 新增依赖必须通过 `aarch64-linux-android` 的 `cargo check`。
 
+pub mod buffer;
 pub mod candidate;
 pub mod command;
 pub mod diag;
@@ -24,6 +25,7 @@ pub mod styled;
 pub mod toast;
 pub mod toolbar;
 
+pub use buffer::*;
 pub use candidate::*;
 pub use command::*;
 pub use diag::*;

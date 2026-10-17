@@ -9,7 +9,7 @@ use crate::toast::{ToastKind, ToastPosition};
 /// re-export：使协调器以 `moodflow_ui::manager::InputDiagView` 统一引用。
 pub use crate::input_diag_hud::{DiagSections, InputDiagView, WindowDiagView};
 use std::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
 #[cfg(windows)]
@@ -147,6 +147,10 @@ impl UiManager {
             }
         };
         let mut toast_hide_at: Option<std::time::Instant> = None;
+        // Buffer 浮窗（惰性创建：首次 ShowBuffer 时构造，best-effort）。
+        let mut buffer_panel: Option<crate::buffer_panel::BufferPanel> = None;
+        // 剪贴板监听（SetClipboardMonitor(true) 时创建，false 时销毁）。
+        let mut clipboard_monitor: Option<crate::clipboard_monitor::ClipboardMonitor> = None;
         // 软键盘面板（惰性创建：首次 ShowSoftKeyboard 时构造，best-effort）
         let mut soft_keyboard: Option<crate::soft_keyboard::SoftKeyboard> = None;
         // 最近一次主题。**惰性创建的窗口靠它补课**——`SetTheme` 一般只在启动时发一次，
@@ -297,6 +301,15 @@ impl UiManager {
                 if crate::window::take_system_color_changed() {
                     debug!("UI: 系统明暗设置变更 → 通知协调器");
                     let _ = event_tx.send(UiEvent::SystemThemeChanged);
+                }
+                // 剪贴板变化：同样是窗口过程置标记、泵后取走（见 clipboard_monitor）。
+                if clipboard_monitor.is_some()
+                    && let Some(c) = crate::clipboard_monitor::take_change()
+                {
+                    let _ = event_tx.send(UiEvent::ClipboardChanged {
+                        text: c.text,
+                        sensitive: c.sensitive,
+                    });
                 }
             }
 
@@ -1133,6 +1146,32 @@ impl UiManager {
                     UiCommand::SoftKeyboardLayer { shift } => {
                         if let Some(k) = &mut soft_keyboard {
                             k.set_layer(shift);
+                        }
+                    }
+                    UiCommand::ShowBuffer(v) => {
+                        if buffer_panel.is_none() {
+                            match crate::buffer_panel::BufferPanel::new(event_tx.clone()) {
+                                Ok(p) => buffer_panel = Some(p),
+                                Err(e) => warn!("Buffer 浮窗创建失败: {}", e),
+                            }
+                        }
+                        if let Some(p) = &mut buffer_panel {
+                            p.show(&v);
+                        }
+                    }
+                    UiCommand::HideBuffer => {
+                        if let Some(p) = &buffer_panel {
+                            p.hide();
+                        }
+                    }
+                    UiCommand::SetClipboardMonitor(on) => {
+                        if !on {
+                            clipboard_monitor = None;
+                        } else if clipboard_monitor.is_none() {
+                            match crate::clipboard_monitor::ClipboardMonitor::new() {
+                                Ok(m) => clipboard_monitor = Some(m),
+                                Err(e) => warn!("剪贴板监听启动失败: {}", e),
+                            }
                         }
                     }
                     UiCommand::Shutdown => {

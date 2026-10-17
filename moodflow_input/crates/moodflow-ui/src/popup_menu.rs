@@ -1321,6 +1321,10 @@ pub fn try_set_clipboard_text(text: &str) -> anyhow::Result<()> {
     };
     unsafe {
         let _ = CloseClipboard();
+        // 剪贴板历史监听据此跳过本进程自己的写入（见 clipboard_monitor）。
+        if result.is_ok() {
+            crate::clipboard_monitor::note_own_write(GetClipboardSequenceNumber());
+        }
     }
     result
 }
